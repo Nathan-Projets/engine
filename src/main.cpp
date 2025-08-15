@@ -1,6 +1,12 @@
 #include <print>
 
+#include <core/application.hpp>
+
 int main(int argc, char const *argv[])
 {
-    std::println("Hello world!");
+    Application app;
+    if (!app.Run())
+    {
+        std::println("Application stopped unexpectedly!");
+    }
 }
