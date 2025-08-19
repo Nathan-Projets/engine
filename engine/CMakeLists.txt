@@ -5,7 +5,8 @@ add_library(
     
     render/shader.cpp
     render/texture.cpp
-    render/camera.hpp
+    render/camera/camera.hpp
+    render/camera/camera_perspective.cpp
     render/mesh.cpp
     render/model.cpp
 

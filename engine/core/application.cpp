@@ -46,85 +46,45 @@ bool Application::Run()
     }
 
     ResourceManager resourceManager;
-
     resourceManager.Load<Shader>("backpack", "assets/shaders/backpack.vert", "assets/shaders/backpack.frag");
-    resourceManager.Load<Shader>("simple", "assets/shaders/simple.vert", "assets/shaders/simple.frag");
-    resourceManager.Get<Shader>("simple")->Use();
-
-    resourceManager.Load<Texture>("wall", "assets/textures/wall.jpg");
-    resourceManager.Get<Shader>("simple")->Upload("texture1", 0);
-    resourceManager.Get<Texture>("wall")->Bind();
-
-    float vertices[] = {
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-
-        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
-
-    // world space positions of our cubes
-    glm::vec3 cubePositions[] = {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(2.0f, 5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f, 3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f, 2.0f, -2.5f),
-        glm::vec3(1.5f, 0.2f, -1.5f),
-        glm::vec3(-1.3f, 1.0f, -1.5f)};
+    resourceManager.Load<Shader>("model", "assets/shaders/model.vert", "assets/shaders/model.frag");
+    resourceManager.Load<Shader>("light", "assets/shaders/light.vert", "assets/shaders/light.frag");
 
     // camera
-    Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-    float lastX = m_width / 2.0f;
-    float lastY = m_height / 2.0f;
-    bool firstMouse = true;
+    glm::vec3 positionCamera = glm::vec3(0.0f, 0.0f, 7.0f);
+    PerspectiveCamera::Frustrum frustum = {45.0f, (float)m_width, (float)m_height, 0.1f, 150.0f};
+    PerspectiveCamera camera{frustum, positionCamera, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)};
 
     // timing
     float deltaTime = 0.0f; // time between current frame and last frame
     float lastFrame = 0.0f;
 
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)m_width / (float)m_height, 0.1f, 100.0f);
-    resourceManager.Get<Shader>("backpack")->Upload("projection", projection);
+    resourceManager.Get<Shader>("model")->Use();
+    resourceManager.Get<Shader>("model")->Upload("projection", camera.GetProjectionMatrix());
+    resourceManager.Get<Shader>("model")->Upload("model", glm::mat4(1.0f));
 
-    Model ourModel("assets/meshes/backpack/backpack.obj");
+    resourceManager.Get<Shader>("model")->Upload("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+    resourceManager.Get<Shader>("model")->Upload("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+    resourceManager.Get<Shader>("model")->Upload("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+    resourceManager.Get<Shader>("model")->Upload("material.shininess", 32.0f);
+
+    resourceManager.Get<Shader>("model")->Upload("light.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
+    resourceManager.Get<Shader>("model")->Upload("light.diffuse", glm::vec3(0.5f, 0.5f, 0.5f));
+    resourceManager.Get<Shader>("model")->Upload("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+
+    resourceManager.Get<Shader>("light")->Use();
+    resourceManager.Get<Shader>("light")->Upload("projection", camera.GetProjectionMatrix());
+    resourceManager.Get<Shader>("light")->Upload("color", glm::vec3(1.0f));
+
+    Model backpack("assets/meshes/backpack/backpack.obj");
+    Model light("assets/meshes/cube/cube.obj");
+
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(1.2f, 1.0f, 2.0f));
+    model = glm::scale(model, glm::vec3(0.1f));
+
+    const float cameraSpeed = 12.5f;
+    bool shouldLightOrbit = false;
 
     while (!glfwWindowShouldClose(m_window))
     {
@@ -132,35 +92,47 @@ bool Application::Run()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        float cameraSpeed = 10.5f * deltaTime;
-
+        // application controls
         if (glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        {
             Stop();
-        }
+        if (glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(m_window, true);
 
+        // camera controls
         if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
-            camera.ProcessKeyboard(FORWARD, deltaTime);
+            camera.MoveForward(cameraSpeed * deltaTime);
         if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
-            camera.ProcessKeyboard(BACKWARD, deltaTime);
+            camera.MoveBackward(cameraSpeed * deltaTime);
         if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
-            camera.ProcessKeyboard(LEFT, deltaTime);
+            camera.MoveLeft(cameraSpeed * deltaTime * 3.0f);
         if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
-            camera.ProcessKeyboard(RIGHT, deltaTime);
+            camera.MoveRight(cameraSpeed * deltaTime * 3.0f);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // camera/view transformation
         glm::mat4 view = camera.GetViewMatrix();
-        resourceManager.Get<Shader>("backpack")->Upload("view", view);
 
-        // render the loaded model
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));     // it's a bit too big for our scene, so scale it down
-        resourceManager.Get<Shader>("backpack")->Upload("model", model);
-        ourModel.Draw(*(resourceManager.Get<Shader>("backpack").get()));
+        // light
+        Shader &lightShader = *(resourceManager.Get<Shader>("light").get());
+        glm::mat4 lightModel = glm::mat4(1.0f);
+        lightModel = glm::rotate(lightModel, currentFrame, glm::vec3(0.0f, 1.0f, 0.0f));
+        lightModel = glm::translate(lightModel, glm::vec3(5.0f, 0.0f, 0.0f));
+        lightModel = glm::scale(lightModel, glm::vec3(0.1f));
+        glm::vec3 lightPos = glm::vec3(lightModel[3]);
+        lightShader.Use();
+        lightShader.Upload("view", view);
+        lightShader.Upload("model", lightModel);
+        light.Draw(lightShader);
+
+        // backpack
+        Shader &modelShader = *(resourceManager.Get<Shader>("model").get());
+        modelShader.Use();
+        modelShader.Upload("view", view);
+        modelShader.Upload("model", glm::mat4(1.0f));
+        modelShader.Upload("light.position", lightPos);
+        modelShader.Upload("viewPos", camera.GetPosition());
+        backpack.Draw(modelShader);
 
         glfwSwapBuffers(m_window);
         glfwPollEvents();

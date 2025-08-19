@@ -1,0 +1,81 @@
+#version 460 core
+
+in VS_OUT {
+    mat3 TBN;
+    vec3 FragPos;
+    vec2 TexCoords;
+} fs_in;
+
+struct Material {
+    sampler2D diffuse[16];
+    sampler2D specular[16];
+    sampler2D normal[16];
+    int diffuseCount;
+    int specularCount;
+    int normalCount;
+    float shininess;
+};
+
+uniform Material material;
+
+struct Light {
+    vec3 position;
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+uniform Light light;
+
+uniform vec3 viewPos;
+
+out vec4 FragColor;
+
+void main() {
+
+    // diffuse
+    vec3 diffuseColor = vec3(0.0);
+    for(int i = 0; i < material.diffuseCount; i++) {
+        diffuseColor += texture(material.diffuse[i], fs_in.TexCoords).rgb;
+    }
+    if(material.diffuseCount > 0)
+        diffuseColor /= float(material.diffuseCount);
+
+    // specular
+    vec3 specularColor = vec3(0.0);
+    for(int i = 0; i < material.specularCount; i++) {
+        specularColor += texture(material.specular[i], fs_in.TexCoords).rgb;
+    }
+    if(material.specularCount > 0)
+        specularColor /= float(material.specularCount);
+
+    // get tangent-space normal from normal maps
+    vec3 tangentNormal = vec3(0.0);
+    for(int i = 0; i < material.normalCount; i++) {
+        tangentNormal += texture(material.normal[i], fs_in.TexCoords).rgb * 2.0 - 1.0;
+    }
+    if(material.normalCount > 0)
+        tangentNormal = normalize(tangentNormal / float(material.normalCount));
+
+    // transform it into world space using TBN
+    vec3 norm = normalize(fs_in.TBN * tangentNormal);
+
+    // lighting directions (world space)
+    vec3 lightDir = normalize(light.position - fs_in.FragPos);
+    vec3 viewDir = normalize(viewPos - fs_in.FragPos);
+
+    // ambient
+    vec3 ambient = light.ambient * diffuseColor;
+
+    // diffuse
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = light.diffuse * diff * diffuseColor;
+
+    // specular
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 specular = light.specular * spec * specularColor;
+
+    FragColor = vec4(ambient + diffuse + specular, 1.0);
+}

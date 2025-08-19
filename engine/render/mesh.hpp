@@ -1,5 +1,6 @@
 #pragma once
 
+#include <print>
 #include <vector>
 #include <string>
 
@@ -28,7 +29,6 @@ struct Texture_t
 class Mesh
 {
 public:
-    // mesh data
     std::vector<Vertex_t> vertices;
     std::vector<unsigned int> indices;
     std::vector<Texture_t> textures;
@@ -37,7 +37,6 @@ public:
     void Draw(Shader &shader);
 
 private:
-    //  render data
     unsigned int VAO, VBO, EBO;
 
     void setupMesh();
