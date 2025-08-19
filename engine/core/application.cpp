@@ -45,46 +45,42 @@ bool Application::Run()
         return false;
     }
 
-    ResourceManager resourceManager;
-    resourceManager.Load<Shader>("backpack", "assets/shaders/backpack.vert", "assets/shaders/backpack.frag");
-    resourceManager.Load<Shader>("model", "assets/shaders/model.vert", "assets/shaders/model.frag");
-    resourceManager.Load<Shader>("light", "assets/shaders/light.vert", "assets/shaders/light.frag");
-
     // camera
     glm::vec3 positionCamera = glm::vec3(0.0f, 0.0f, 7.0f);
     PerspectiveCamera::Frustrum frustum = {45.0f, (float)m_width, (float)m_height, 0.1f, 150.0f};
     PerspectiveCamera camera{frustum, positionCamera, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)};
 
     // timing
-    float deltaTime = 0.0f; // time between current frame and last frame
+    float deltaTime = 0.0f;
     float lastFrame = 0.0f;
+
+    // resources/shaders
+    ResourceManager resourceManager;
+    resourceManager.Load<Shader>("model", "assets/shaders/model.vert", "assets/shaders/model.frag");
+    resourceManager.Load<Shader>("light", "assets/shaders/light.vert", "assets/shaders/light.frag");
 
     resourceManager.Get<Shader>("model")->Use();
     resourceManager.Get<Shader>("model")->Upload("projection", camera.GetProjectionMatrix());
     resourceManager.Get<Shader>("model")->Upload("model", glm::mat4(1.0f));
-
-    resourceManager.Get<Shader>("model")->Upload("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
-    resourceManager.Get<Shader>("model")->Upload("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
-    resourceManager.Get<Shader>("model")->Upload("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
     resourceManager.Get<Shader>("model")->Upload("material.shininess", 32.0f);
 
     resourceManager.Get<Shader>("model")->Upload("light.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
     resourceManager.Get<Shader>("model")->Upload("light.diffuse", glm::vec3(0.5f, 0.5f, 0.5f));
-    resourceManager.Get<Shader>("model")->Upload("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+    resourceManager.Get<Shader>("model")->Upload("light.specular", glm::vec3(0.7f, 0.7f, 0.7f));
 
     resourceManager.Get<Shader>("light")->Use();
     resourceManager.Get<Shader>("light")->Upload("projection", camera.GetProjectionMatrix());
     resourceManager.Get<Shader>("light")->Upload("color", glm::vec3(1.0f));
 
-    Model backpack("assets/meshes/backpack/backpack.obj");
+    // Model backpack("assets/meshes/backpack/backpack.obj");
     Model light("assets/meshes/cube/cube.obj");
+    Model rifle("assets/meshes/rifle/rifle.glb");
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(1.2f, 1.0f, 2.0f));
     model = glm::scale(model, glm::vec3(0.1f));
 
     const float cameraSpeed = 12.5f;
-    bool shouldLightOrbit = false;
 
     while (!glfwWindowShouldClose(m_window))
     {
@@ -117,22 +113,22 @@ bool Application::Run()
         Shader &lightShader = *(resourceManager.Get<Shader>("light").get());
         glm::mat4 lightModel = glm::mat4(1.0f);
         lightModel = glm::rotate(lightModel, currentFrame, glm::vec3(0.0f, 1.0f, 0.0f));
-        lightModel = glm::translate(lightModel, glm::vec3(5.0f, 0.0f, 0.0f));
+        lightModel = glm::translate(lightModel, glm::vec3(1.0f, 0.0f, 0.0f));
         lightModel = glm::scale(lightModel, glm::vec3(0.1f));
         glm::vec3 lightPos = glm::vec3(lightModel[3]);
         lightShader.Use();
         lightShader.Upload("view", view);
-        lightShader.Upload("model", lightModel);
-        light.Draw(lightShader);
+        light.Draw(lightShader, lightModel);
 
-        // backpack
+        // rifle
         Shader &modelShader = *(resourceManager.Get<Shader>("model").get());
+        glm::mat4 modelModel = glm::mat4(1.0f);
+        modelModel = glm::scale(modelModel, glm::vec3(6.0f));
         modelShader.Use();
         modelShader.Upload("view", view);
-        modelShader.Upload("model", glm::mat4(1.0f));
         modelShader.Upload("light.position", lightPos);
         modelShader.Upload("viewPos", camera.GetPosition());
-        backpack.Draw(modelShader);
+        rifle.Draw(modelShader, modelModel);
 
         glfwSwapBuffers(m_window);
         glfwPollEvents();

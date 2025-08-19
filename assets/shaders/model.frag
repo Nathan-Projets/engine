@@ -34,32 +34,49 @@ out vec4 FragColor;
 
 void main() {
 
-    // diffuse
-    vec3 diffuseColor = vec3(0.0);
-    for(int i = 0; i < material.diffuseCount; i++) {
-        diffuseColor += texture(material.diffuse[i], fs_in.TexCoords).rgb;
-    }
-    if(material.diffuseCount > 0)
+    // ----------------
+    // Diffuse color
+    // ----------------
+    vec3 diffuseColor = vec3(1.0); // fallback white
+    if(material.diffuseCount > 0) {
+        diffuseColor = vec3(0.0);
+        for(int i = 0; i < material.diffuseCount; i++) {
+            diffuseColor += texture(material.diffuse[i], fs_in.TexCoords).rgb;
+        }
         diffuseColor /= float(material.diffuseCount);
-
-    // specular
-    vec3 specularColor = vec3(0.0);
-    for(int i = 0; i < material.specularCount; i++) {
-        specularColor += texture(material.specular[i], fs_in.TexCoords).rgb;
     }
-    if(material.specularCount > 0)
+
+    // ----------------
+    // Specular color
+    // ----------------
+    vec3 specularColor = vec3(1.0); // fallback white (so specular works without a map)
+    if(material.specularCount > 0) {
+        specularColor = vec3(0.0);
+        for(int i = 0; i < material.specularCount; i++) {
+            specularColor += texture(material.specular[i], fs_in.TexCoords).rgb;
+        }
         specularColor /= float(material.specularCount);
-
-    // get tangent-space normal from normal maps
-    vec3 tangentNormal = vec3(0.0);
-    for(int i = 0; i < material.normalCount; i++) {
-        tangentNormal += texture(material.normal[i], fs_in.TexCoords).rgb * 2.0 - 1.0;
     }
-    if(material.normalCount > 0)
-        tangentNormal = normalize(tangentNormal / float(material.normalCount));
 
-    // transform it into world space using TBN
-    vec3 norm = normalize(fs_in.TBN * tangentNormal);
+    // ----------------
+    // Normals
+    // ----------------
+    vec3 norm;
+    if(material.normalCount > 0) {
+        vec3 tangentNormal = vec3(0.0);
+        for(int i = 0; i < material.normalCount; i++) {
+            tangentNormal += texture(material.normal[i], fs_in.TexCoords).rgb * 2.0 - 1.0;
+        }
+        tangentNormal = normalize(tangentNormal / float(material.normalCount));
+        norm = normalize(fs_in.TBN * tangentNormal);
+    } else {
+        // fallback: use mesh normal (Z axis of TBN basis is usually the interpolated normal)
+        norm = normalize(fs_in.TBN[2]);
+    }
+
+    // ----------------
+    // Lighting
+    // ----------------
 
     // lighting directions (world space)
     vec3 lightDir = normalize(light.position - fs_in.FragPos);
