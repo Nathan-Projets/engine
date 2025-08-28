@@ -1,6 +1,19 @@
 #include "model.hpp"
 
+Model::Model()
+{
+}
+
 Model::Model(const char *path)
+{
+    loadModel(path);
+}
+
+Model::~Model()
+{
+}
+
+void Model::Load(const char *path)
 {
     loadModel(path);
 }

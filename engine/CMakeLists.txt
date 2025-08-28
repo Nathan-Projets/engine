@@ -2,6 +2,9 @@ add_library(
     Engine
     
     core/application.cpp
+    core/scene.hpp
+    core/scene_backpack.cpp
+    core/scene_load_testing.cpp
     
     render/shader.cpp
     render/texture.cpp

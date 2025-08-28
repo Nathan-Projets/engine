@@ -26,6 +26,13 @@ struct Texture_t
     std::string path;
 };
 
+enum class TextureType
+{
+    DIFFUSE,
+    NORMAL,
+    SPECULAR,
+};
+
 class Mesh
 {
 public:
@@ -33,6 +40,7 @@ public:
     std::vector<unsigned int> indices;
     std::vector<Texture_t> textures;
 
+    Mesh();
     Mesh(std::vector<Vertex_t> vertices, std::vector<unsigned int> indices, std::vector<Texture_t> textures);
     void Draw(Shader &shader) const;
 

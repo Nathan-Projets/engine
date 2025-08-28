@@ -25,10 +25,16 @@ struct Node
 class Model
 {
 public:
+    Model();
     Model(const char *path);
+    ~Model();
 
-    void Draw(Shader &shader, const glm::mat4& modelTransform);
-    void DrawNode(Node& node, Shader& shader, const glm::mat4& parentTransform);
+    const std::vector<Mesh> &GetMeshes() { return meshes; }
+    const Mesh &GetMesh() { return meshes[0]; }
+
+    void Load(const char *path);
+    void Draw(Shader &shader, const glm::mat4 &modelTransform);
+    void DrawNode(Node &node, Shader &shader, const glm::mat4 &parentTransform);
 
 private:
     // model data
