@@ -19,7 +19,27 @@ public:
         int v = -1;
         int vt = -1;
         int vn = -1;
-        std::string key = "";
+
+        bool operator==(const Triplet &other) const noexcept
+        {
+            return v == other.v && vt == other.vt && vn == other.vn;
+        }
+    };
+
+    struct TripletHash
+    {
+        std::size_t operator()(const Triplet &t) const noexcept
+        {
+            std::size_t h1 = std::hash<int>{}(t.v);
+            std::size_t h2 = std::hash<int>{}(t.vt);
+            std::size_t h3 = std::hash<int>{}(t.vn);
+
+            // mix bits (boost::hash_combine style)
+            std::size_t seed = h1;
+            seed ^= h2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= h3 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            return seed;
+        }
     };
 
 public:

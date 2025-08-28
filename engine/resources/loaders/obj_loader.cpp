@@ -2,19 +2,19 @@
 
 #define REGISTER_VERTEX(indices, vertices, registered_vertices, vertex, positions, normals, texcoords) \
     {                                                                                                  \
-        if (registered_vertices.find(vertex.key) == registered_vertices.end())                         \
+        if (registered_vertices.find(vertex) == registered_vertices.end())                             \
         {                                                                                              \
             vertices.push_back({                                                                       \
                 .position = positions[vertex.v],                                                       \
                 .normal = vertex.vn > -1 ? normals[vertex.vn] : glm::vec3(0.0f),                       \
                 .tcoords = vertex.vt > -1 ? texcoords[vertex.vt] : glm::vec2(0.0f),                    \
             });                                                                                        \
-            registered_vertices[vertex.key] = vertices.size() - 1;                                     \
+            registered_vertices[vertex] = vertices.size() - 1;                                         \
             indices.push_back(vertices.size() - 1);                                                    \
         }                                                                                              \
         else                                                                                           \
         {                                                                                              \
-            indices.push_back(registered_vertices[vertex.key]);                                        \
+            indices.push_back(registered_vertices[vertex]);                                            \
         }                                                                                              \
     }
 
@@ -33,13 +33,14 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> texcoords;
 
-    std::unordered_map<std::string, int> registered_vertices = {};
+    std::unordered_map<Triplet, int, TripletHash> registered_vertices = {};
 
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 
     INFO("Starting OBJ loading file at: " << path);
     int line = 1;
+    // TODO: copy first the whole file and then parse it using pointer instead of stream.get() each time
     char c = stream.get();
     while (!stream.fail())
     {
@@ -127,7 +128,6 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
             while (!stream.fail() && stream.peek() != '\n')
             {
                 ignoreSpaces(stream);
-                // TODO: add consistency with the triplets
                 std::optional<Triplet> triplet = readTriplet(stream);
                 if (triplet)
                 {
@@ -217,9 +217,8 @@ std::optional<OBJLoader::Triplet> OBJLoader::readTriplet(std::ifstream &stream)
     }
 
     char c = stream.peek();
-    if (c == ' ' || c == '\n')
+    if (c == ' ' || c == '\n' || c == EOF)
     {
-        result.key = std::to_string(result.v);
         return result;
     }
 
@@ -250,8 +249,6 @@ std::optional<OBJLoader::Triplet> OBJLoader::readTriplet(std::ifstream &stream)
         // vn : 0-indexed
         result.vn = (*number) - 1;
     }
-
-    result.key = std::to_string(result.v) + "/" + std::to_string(result.vt) + "/" + std::to_string(result.vn);
 
     return result;
 }
@@ -391,30 +388,42 @@ std::optional<float> OBJLoader::readNumber(std::ifstream &stream)
 
 std::optional<int> OBJLoader::readInteger(std::ifstream &stream, bool strict)
 {
-    std::string data;
-    char c = stream.get();
+    int value = 0;
+
+    bool hasDigits = false;
+    bool isNegative = false;
+
+    int c = stream.peek();
+    if (c == '-' || c == '+')
+    {
+        isNegative = (c == '-');
+        stream.get(); // consume sign
+    }
+
     while (!stream.fail())
     {
+        c = stream.peek();
         if (c >= '0' && c <= '9')
         {
-            data += c;
-            c = stream.get();
+            hasDigits = true;
+            value = value * 10 + (c - '0');
+            stream.get(); // consume digit
         }
         else
         {
-            stream.unget();
             break;
         }
     }
-    if (data.empty())
+    if (!hasDigits)
     {
         if (strict)
         {
             ERROR("Invalid integer in stream");
         }
-        return {};
+        return std::nullopt;
     }
-    return std::stoi(data);
+
+    return isNegative ? -value : value;
 }
 
 std::string OBJLoader::readLine(std::ifstream &stream)
