@@ -11,6 +11,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "resources/fileloader.hpp"
+#include "helpers/log.hpp"
 
 enum class ShaderType
 {

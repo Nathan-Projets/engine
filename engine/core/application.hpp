@@ -17,6 +17,7 @@
 #include "render/camera/camera_perspective.hpp"
 #include "render/model.hpp"
 #include "resources/manager.hpp"
+#include "helpers/log.hpp"
 
 class Application
 {

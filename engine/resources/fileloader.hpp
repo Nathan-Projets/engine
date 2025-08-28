@@ -11,6 +11,8 @@
 
 #include <glm/glm.hpp>
 
+#include "helpers/log.hpp"
+
 class Mesh;
 struct FaceIndex;
 

@@ -26,7 +26,7 @@ Texture::Texture(const std::string &iFilePath) : m_id(0), m_width(0), m_height(0
     unsigned char *aData = stbi_load(iFilePath.c_str(), &aWidth, &aHeight, &_, 0);
     if (aData == nullptr)
     {
-        std::println("Error: Failed to load texture, param: {}", iFilePath);
+        ERROR("Failed to load texture, param: " << iFilePath);
         return;
     }
 

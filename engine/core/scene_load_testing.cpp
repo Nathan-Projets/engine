@@ -18,17 +18,23 @@ void SceneLoadingTest::Init()
 {
     m_camera = PerspectiveCamera({45.0f, (float)m_width, (float)m_height, 0.1f, 150.0f}, glm::vec3(0.0f, 0.0f, 9.0f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-    float beforeLoad = static_cast<float>(glfwGetTime());
-    Model test("assets/meshes/cube/cube.obj");
-    float afterLoad = static_cast<float>(glfwGetTime());
-    float durationLoad = afterLoad - beforeLoad;
-    std::println("assimp number of meshes: {} in {}s", test.GetMeshes().size(), durationLoad);
+    float beforeLoad, afterLoad, durationLoad;
 
     beforeLoad = static_cast<float>(glfwGetTime());
-    m_meshes = tools::LoadFileOBJ("assets/meshes/cube/cube.obj");
+    std::optional<Mesh> mesh = Loader::Load("assets/meshes/backpack/backpack.obj");
     afterLoad = static_cast<float>(glfwGetTime());
     durationLoad = afterLoad - beforeLoad;
-    std::println("number of meshes: {} in {}s", m_meshes.size(), durationLoad);
+    INFO("mesh loaded in " << durationLoad << "s");
+    if (mesh)
+    {
+        m_meshes.push_back(*mesh);
+    }
+
+    beforeLoad = static_cast<float>(glfwGetTime());
+    m_meshes = tools::LoadFileOBJ("assets/meshes/backpack/backpack.obj");
+    afterLoad = static_cast<float>(glfwGetTime());
+    durationLoad = afterLoad - beforeLoad;
+    INFO("number of meshes: " << m_meshes.size() << " in " << durationLoad << "s");
 
     m_resourceManager->Load<Shader>("model", "assets/shaders/model.vert", "assets/shaders/model.frag");
 

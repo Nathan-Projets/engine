@@ -12,10 +12,17 @@ add_library(
     render/camera/camera_perspective.cpp
     render/mesh.cpp
     render/model.cpp
-
+    
     resources/fileloader.cpp
     resources/registry.hpp
+    resources/loaders/all.hpp
+    resources/loaders/iloader.hpp
+    resources/loaders/loader.hpp
+    resources/loaders/auto_loader.hpp
+    resources/loaders/obj_loader.cpp
     resources/manager.hpp
+    
+    helpers/log.hpp
 )
 
 target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

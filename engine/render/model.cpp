@@ -46,7 +46,7 @@ void Model::loadModel(std::string path)
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
-        std::println("Error: could not import 3D model, reason: {}", import.GetErrorString());
+        ERROR("Could not import 3D model, reason: " << import.GetErrorString());
         return;
     }
     directory = path.substr(0, path.find_last_of('/'));
@@ -79,24 +79,24 @@ Node Model::processNode(aiNode *node, const aiScene *scene)
 
 Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
 {
-    std::vector<Vertex_t> vertices;
+    std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<Texture_t> textures;
 
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
-        Vertex_t vertex;
+        Vertex vertex;
         glm::vec3 vector;
         vector.x = mesh->mVertices[i].x;
         vector.y = mesh->mVertices[i].y;
         vector.z = mesh->mVertices[i].z;
-        vertex.Position = vector;
+        vertex.position = vector;
         if (mesh->HasNormals())
         {
             vector.x = mesh->mNormals[i].x;
             vector.y = mesh->mNormals[i].y;
             vector.z = mesh->mNormals[i].z;
-            vertex.Normal = vector;
+            vertex.normal = vector;
         }
         if (mesh->mTextureCoords[0])
         {
@@ -105,24 +105,24 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
             // use models where a vertex can have multiple texture coordinates so we always take the first set (0).
             vec.x = mesh->mTextureCoords[0][i].x;
             vec.y = mesh->mTextureCoords[0][i].y;
-            vertex.TexCoords = vec;
-            if (mesh->mTangents)
-            {
-                vector.x = mesh->mTangents[i].x;
-                vector.y = mesh->mTangents[i].y;
-                vector.z = mesh->mTangents[i].z;
-                vertex.Tangent = vector;
-            }
-            if (mesh->mBitangents)
-            {
-                vector.x = mesh->mBitangents[i].x;
-                vector.y = mesh->mBitangents[i].y;
-                vector.z = mesh->mBitangents[i].z;
-                vertex.Bitangent = vector;
-            }
+            vertex.tcoords = vec;
+            // if (mesh->mTangents)
+            // {
+            //     vector.x = mesh->mTangents[i].x;
+            //     vector.y = mesh->mTangents[i].y;
+            //     vector.z = mesh->mTangents[i].z;
+            //     vertex.Tangent = vector;
+            // }
+            // if (mesh->mBitangents)
+            // {
+            //     vector.x = mesh->mBitangents[i].x;
+            //     vector.y = mesh->mBitangents[i].y;
+            //     vector.z = mesh->mBitangents[i].z;
+            //     vertex.Bitangent = vector;
+            // }
         }
         else
-            vertex.TexCoords = glm::vec2(0.0f, 0.0f);
+            vertex.tcoords = glm::vec2(0.0f, 0.0f);
 
         vertices.push_back(vertex);
     }
@@ -218,7 +218,7 @@ std::optional<unsigned int> Model::TextureFromFile(const char *path, const std::
     }
     else
     {
-        std::println("Error: failed to load texture, param: {}", filename);
+        ERROR("Failed to load texture, param: " << filename);
         stbi_image_free(data);
         return {};
     }

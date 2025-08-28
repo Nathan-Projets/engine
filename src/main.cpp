@@ -1,12 +1,13 @@
 #include <print>
 
 #include <core/application.hpp>
+#include <helpers/log.hpp>
 
 int main(int argc, char const *argv[])
 {
     Application app;
     if (!app.Run())
     {
-        std::println("Application stopped unexpectedly!");
+        ERROR("Application stopped unexpectedly!");
     }
 }

@@ -8,6 +8,13 @@
 
 #define MAX_BONE_INFLUENCE 4
 
+struct Vertex
+{
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec2 tcoords;
+};
+
 struct Vertex_t
 {
     glm::vec3 Position;
@@ -36,12 +43,12 @@ enum class TextureType
 class Mesh
 {
 public:
-    std::vector<Vertex_t> vertices;
+    std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<Texture_t> textures;
 
     Mesh();
-    Mesh(std::vector<Vertex_t> vertices, std::vector<unsigned int> indices, std::vector<Texture_t> textures);
+    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture_t> textures);
     void Draw(Shader &shader) const;
 
 private:

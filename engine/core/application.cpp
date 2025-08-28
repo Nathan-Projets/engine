@@ -19,7 +19,7 @@ bool Application::Init()
     m_window = glfwCreateWindow(m_width, m_height, "Engine", nullptr, nullptr);
     if (m_window == nullptr)
     {
-        std::println("Error: GLFW window not created.");
+        ERROR("GLFW window not created.");
         glfwTerminate();
         return false;
     }
@@ -29,7 +29,7 @@ bool Application::Init()
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::println("Error: GLAD not initialized.");
+        ERROR("GLAD not initialized.");
         return false;
     }
 

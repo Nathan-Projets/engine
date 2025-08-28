@@ -5,6 +5,8 @@
 
 #include <glad/glad.h>
 
+#include "helpers/log.hpp"
+
 class Texture
 {
 public:

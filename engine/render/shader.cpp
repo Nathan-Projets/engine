@@ -26,7 +26,7 @@ GLuint Shader::compile(ShaderType iType, const std::string &iShaderData)
 {
     if (iShaderData.size() == 0)
     {
-        std::println("Error: shader not compiled, empty shader.");
+        ERROR("Shader not compiled, empty shader.");
         return -1;
     }
 
@@ -70,17 +70,17 @@ bool Shader::checkError(ShaderType iType, GLuint iShader)
     if (!aStatus && iType == ShaderType::Vertex)
     {
         glGetShaderInfoLog(iShader, 512, NULL, aInfoLog);
-        std::println("Error: vertex shader not compiled, reason: {}", aInfoLog);
+        ERROR("Vertex shader not compiled, reason: " << aInfoLog);
     }
     else if (!aStatus && iType == ShaderType::Fragment)
     {
         glGetShaderInfoLog(iShader, 512, NULL, aInfoLog);
-        std::println("Error: fragment shader not compiled, reason: {}", aInfoLog);
+        ERROR("Fragment shader not compiled, reason: " << aInfoLog);
     }
     else if (!aStatus && iType == ShaderType::Program)
     {
         glGetProgramInfoLog(iShader, 512, NULL, aInfoLog);
-        std::println("Error: vertex and fragment shaders not linked, reason: {}", aInfoLog);
+        ERROR("Vertex and Fragment shaders not linked, reason: " << aInfoLog);
     }
 
     return aStatus;

@@ -13,6 +13,8 @@
 #include "render/camera/camera_perspective.hpp"
 #include "render/model.hpp"
 #include "resources/manager.hpp"
+#include "resources/loaders/all.hpp"
+#include "helpers/log.hpp"
 
 class SceneLoadingTest : public Scene
 {

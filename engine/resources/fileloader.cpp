@@ -7,9 +7,9 @@
         if ((registered_vertices).find((vert).token) == (registered_vertices).end())                           \
         {                                                                                                      \
             (temp_vertices).push_back({                                                                        \
-                .Position = (positions)[(vert).v],                                                             \
-                .Normal = (normals)[(vert).vn],                                                                \
-                .TexCoords = (texcoords)[(vert).vt],                                                           \
+                .position = (positions)[(vert).v],                                                             \
+                .normal = (normals)[(vert).vn],                                                                \
+                .tcoords = (texcoords)[(vert).vt],                                                             \
             });                                                                                                \
             (registered_vertices)[(vert).token] = (temp_vertices).size() - 1;                                  \
             (temp_indices).push_back((temp_vertices).size() - 1);                                              \
@@ -31,7 +31,7 @@ struct FaceIndex
 struct Object
 {
     std::string name;
-    std::vector<Vertex_t> vertices;
+    std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 };
 
@@ -40,7 +40,7 @@ std::string tools::LoadFile(const std::string &iFilepath)
     std::ifstream aFrom(iFilepath);
     if (!aFrom.is_open())
     {
-        std::println("Error: File not read successfully, param: {}", iFilepath);
+        ERROR("File not read successfully, param: " << iFilepath);
         return "";
     }
 
@@ -56,7 +56,7 @@ std::vector<Mesh> tools::LoadFileOBJ(const std::string &iFilepath)
     std::ifstream aFrom(iFilepath);
     if (!aFrom.is_open())
     {
-        std::println("Error: File not read successfully, param: {}", iFilepath);
+        ERROR("File not read successfully, param: " << iFilepath);
         return {};
     }
 
@@ -70,7 +70,7 @@ std::vector<Mesh> tools::LoadFileOBJ(const std::string &iFilepath)
 
     std::unordered_map<std::string, int> registered_vertices = {};
 
-    std::println("Trying to load data from: {}", iFilepath);
+    // DEBUG("Trying to load data from: " << iFilepath);
     std::string line;
     while (std::getline(aFrom, line))
     {
@@ -117,7 +117,7 @@ std::vector<Mesh> tools::LoadFileOBJ(const std::string &iFilepath)
 
             if (faceVertices.size() < 3)
             {
-                std::println("Error: OBJ parsing failed, reason: Face with less than 3 vertices");
+                ERROR("OBJ parsing failed, reason: Face with less than 3 vertices");
                 return {};
             }
 
@@ -144,7 +144,7 @@ std::vector<Mesh> tools::LoadFileOBJ(const std::string &iFilepath)
 
         //         if (!std::filesystem::exists(path))
         //         {
-        //             std::println("Material file doesn't exist: {}", path.string());
+        //             ERROR("Material file doesn't exist: {}", path.string());
         //             continue;
         //         }
         //     }
@@ -155,12 +155,12 @@ std::vector<Mesh> tools::LoadFileOBJ(const std::string &iFilepath)
     {
         if (object.vertices.size() == 0 || object.indices.size() == 0)
         {
-            std::println("Error: vertices/indices are empty in object: {}", object.name);
+            ERROR("vertices/indices are empty in object: " << object.name);
             return {};
         }
         meshes.push_back(Mesh(object.vertices, object.indices, {}));
     }
-    std::println("{} meshes loaded", meshes.size());
+    // DEBUG(meshes.size() << " meshes loaded");
     return meshes;
 }
 

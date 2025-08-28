@@ -13,6 +13,7 @@
 
 #include "shader.hpp"
 #include "mesh.hpp"
+#include "helpers/log.hpp"
 
 struct Node
 {

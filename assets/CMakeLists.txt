@@ -5,7 +5,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/bin/Release/assets)
 else()
     message(WARNING "Unknown build type: ${CMAKE_BUILD_TYPE}, using default output directory")
-    set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/bin/Unknown/assets)
+    set(OUTPUT_DIR ${CMAKE_BINARY_DIR}/bin/Debug/assets)
 endif()
 
 # Collect all files recursively
