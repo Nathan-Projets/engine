@@ -3,13 +3,17 @@
 in VS_OUT {
     mat3 TBN;
     vec3 FragPos;
+    vec3 Normal;
     vec2 TexCoords;
+    float use_tbn;
 } fs_in;
 
 struct Material {
+    sampler2D ambient[16];
     sampler2D diffuse[16];
     sampler2D specular[16];
     sampler2D normal[16];
+    int ambientCount;
     int diffuseCount;
     int specularCount;
     int normalCount;
@@ -62,7 +66,7 @@ void main() {
     // Normals
     // ----------------
     vec3 norm;
-    if(material.normalCount > 0) {
+    if(material.normalCount > 0 && fs_in.use_tbn > 0.0) {
         vec3 tangentNormal = vec3(0.0);
         for(int i = 0; i < material.normalCount; i++) {
             tangentNormal += texture(material.normal[i], fs_in.TexCoords).rgb * 2.0 - 1.0;
@@ -71,7 +75,7 @@ void main() {
         norm = normalize(fs_in.TBN * tangentNormal);
     } else {
         // fallback: use mesh normal (Z axis of TBN basis is usually the interpolated normal)
-        norm = normalize(fs_in.TBN[2]);
+        norm = normalize(fs_in.Normal);
     }
 
     // ----------------

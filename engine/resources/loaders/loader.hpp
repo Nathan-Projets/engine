@@ -15,7 +15,7 @@ public:
     using LoaderFactory = std::function<std::unique_ptr<ILoader>()>;
     using Registry = std::unordered_map<std::string, LoaderFactory>;
 
-    static std::optional<Mesh> Load(const std::string &filepath)
+    static std::vector<Mesh> Load(const std::string &filepath)
     {
         auto extension = GetExtension(filepath);
         auto loader = CreateLoader(extension);

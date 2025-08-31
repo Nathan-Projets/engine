@@ -7,7 +7,6 @@
 #include "scene.hpp"
 
 #include "render/shader.hpp"
-#include "render/texture.hpp"
 #include "render/camera/camera_perspective.hpp"
 #include "render/model.hpp"
 #include "resources/manager.hpp"

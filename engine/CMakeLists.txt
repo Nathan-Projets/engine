@@ -7,7 +7,6 @@ add_library(
     core/scene_load_testing.cpp
     
     render/shader.cpp
-    render/texture.cpp
     render/camera/camera.hpp
     render/camera/camera_perspective.cpp
     render/mesh.cpp
@@ -15,6 +14,7 @@ add_library(
     
     resources/fileloader.cpp
     resources/registry.hpp
+    resources/stb_impl.cpp
     resources/loaders/all.hpp
     resources/loaders/iloader.hpp
     resources/loaders/loader.hpp

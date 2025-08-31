@@ -18,7 +18,7 @@
         }                                                                                              \
     }
 
-std::optional<Mesh> OBJLoader::Load(const std::string &path)
+std::vector<Mesh> OBJLoader::Load(const std::string &path)
 {
     std::ifstream stream(path);
     if (!stream.is_open())
@@ -34,20 +34,19 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
     std::vector<glm::vec2> texcoords;
 
     std::unordered_map<Triplet, int, TripletHash> registered_vertices = {};
+    std::unordered_map<std::string, Material> registered_materials = {};
 
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
+    std::vector<Mesh> meshes;
 
     INFO("Starting OBJ loading file at: " << path);
     int line = 1;
-    // TODO: copy first the whole file and then parse it using pointer instead of stream.get() each time
+    // TODO: optimize by copying first the whole file and then parse it using pointer instead of stream.get() each time
     char c = stream.get();
     while (!stream.fail())
     {
         // comment
         if (c == '#')
         {
-            // WARNING("Ignoring comment at line: " << line);
             skipLine(stream);
         }
         // object name
@@ -60,9 +59,11 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
                 ERROR("Needs a group name for keyword " << BOLD("o") << " at line: " << line);
                 return {};
             }
-
-            DEBUG("Group name: " << BOLD(readLine(stream)) << " at line: " << line);
+            meshes.push_back({});
+            Mesh &active = meshes.back();
+            active.name = readLine(stream);
         }
+        // vertices
         else if (c == 'v')
         {
             c = stream.get();
@@ -74,14 +75,13 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
                 if (vt)
                 {
                     texcoords.push_back(*vt);
-                    DEBUG("Texture vertex " << BOLD((*vt).x << ", " << (*vt).y) << " at line: " << line);
                 }
                 else
                 {
                     ERROR("Parsing geometric vertex failed at line: " << line);
                 }
             }
-            // vertex normals
+            // normals vertices
             else if (c == 'n')
             {
                 ignoreSpaces(stream);
@@ -89,7 +89,6 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
                 if (vn)
                 {
                     normals.push_back(*vn);
-                    DEBUG("Normal vertex " << BOLD((*vn).x << ", " << (*vn).y << ", " << (*vn).z) << " at line: " << line);
                 }
                 else
                 {
@@ -108,7 +107,6 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
                 if (v)
                 {
                     positions.push_back(*v);
-                    DEBUG("Geometric vertex " << BOLD((*v).x << ", " << (*v).y << ", " << (*v).z) << " at line: " << line);
                 }
                 else
                 {
@@ -124,6 +122,13 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
         // face
         else if (c == 'f')
         {
+            // in case no object name defined, we could stop there
+            if (meshes.empty())
+            {
+                meshes.push_back({});
+            }
+            Mesh &active = meshes.back();
+
             std::vector<Triplet> triplets;
             while (!stream.fail() && stream.peek() != '\n')
             {
@@ -149,16 +154,16 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
             // triangulate face
             for (size_t i = 1; i < triplets.size() - 1; ++i)
             {
-                REGISTER_VERTEX(indices, vertices, registered_vertices, triplets[0], positions, normals, texcoords);
-                REGISTER_VERTEX(indices, vertices, registered_vertices, triplets[i], positions, normals, texcoords);
-                REGISTER_VERTEX(indices, vertices, registered_vertices, triplets[i + 1], positions, normals, texcoords);
+                REGISTER_VERTEX(active.indices, active.vertices, registered_vertices, triplets[0], positions, normals, texcoords);
+                REGISTER_VERTEX(active.indices, active.vertices, registered_vertices, triplets[i], positions, normals, texcoords);
+                REGISTER_VERTEX(active.indices, active.vertices, registered_vertices, triplets[i + 1], positions, normals, texcoords);
             }
         }
         // smoothing group
         else if (c == 's')
         {
             ignoreSpaces(stream);
-            DEBUG("Smoothing group: " << BOLD(readLine(stream)) << " at line: " << line);
+            // DEBUG("Smoothing group: " << BOLD(readLine(stream)) << " at line: " << line);
             skipLine(stream);
         }
         else if (c == 'u')
@@ -167,7 +172,17 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
             if (readWord(stream) == "usemtl")
             {
                 ignoreSpaces(stream);
-                DEBUG("Material name: " << BOLD(readLine(stream)) << " at line: " << line);
+                std::string name = readLine(stream);
+                auto it = registered_materials.find(name);
+                if (it != registered_materials.end())
+                {
+                    if (meshes.empty())
+                    {
+                        meshes.push_back({});
+                    }
+                    Mesh &active = meshes.back();
+                    active.AddMaterial(it->second);
+                }
             }
             skipLine(stream);
         }
@@ -177,7 +192,26 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
             if (readWord(stream) == "mtllib")
             {
                 ignoreSpaces(stream);
-                DEBUG("Material library: " << BOLD(readLine(stream)) << " at line: " << line);
+
+                std::filesystem::path path = directory + "/" + readLine(stream);
+                if (!std::filesystem::exists(path))
+                {
+                    ERROR("Material file doesn't exist: " << path.string());
+                    continue;
+                }
+
+                DEBUG("Material library: " << BOLD(path.string()) << " at line: " << line);
+                for (Material &material : LoadMaterial(path.string()))
+                {
+                    if (registered_materials.find(material.name) == registered_materials.end())
+                    {
+                        registered_materials[material.name] = material;
+                    }
+                    else
+                    {
+                        DEBUG("Material already registered, name: " << material.name);
+                    }
+                }
             }
             skipLine(stream);
         }
@@ -188,7 +222,6 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
         else
         {
             // ignore line
-            // WARNING("Character not handled right now: " << c);
             skipLine(stream);
         }
 
@@ -197,7 +230,292 @@ std::optional<Mesh> OBJLoader::Load(const std::string &path)
 
     INFO("Finished loading mesh...");
 
-    return Mesh(vertices, indices, {});
+    for (Mesh &mesh : meshes)
+    {
+        mesh.SetupMesh();
+    }
+
+    return meshes;
+}
+
+std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
+{
+    std::ifstream stream(path);
+    if (!stream.is_open())
+    {
+        ERROR("File not read successfully, param: " << path);
+        return {};
+    }
+
+    std::string directory = path.substr(0, path.find_last_of('/'));
+
+    std::vector<Material> materials;
+
+    int line = 1;
+    char c = stream.get();
+    while (!stream.fail())
+    {
+        if (c == 'K')
+        {
+            if (materials.empty())
+            {
+                ERROR("Keyword newmtl mandatory");
+                return {};
+            }
+            c = stream.get();
+            // ambient color
+            if (c == 'a')
+            {
+                ignoreSpaces(stream);
+                std::optional<glm::vec3> color = readVec3(stream);
+                if (color)
+                {
+                    Material &active = materials.back();
+                    active.ambient_color = *color;
+                }
+                else
+                {
+                    return {};
+                }
+            }
+            // diffuse color
+            else if (c == 'd')
+            {
+                ignoreSpaces(stream);
+                std::optional<glm::vec3> color = readVec3(stream);
+                if (color)
+                {
+                    Material &active = materials.back();
+                    active.diffuse_color = *color;
+                }
+                else
+                {
+                    return {};
+                }
+            }
+            // emissive color
+            else if (c == 'e')
+            {
+                ignoreSpaces(stream);
+                std::optional<glm::vec3> color = readVec3(stream);
+                if (color)
+                {
+                    Material &active = materials.back();
+                    active.emissive_color = *color;
+                }
+                else
+                {
+                    return {};
+                }
+            }
+            // specular color
+            else if (c == 's')
+            {
+                ignoreSpaces(stream);
+                std::optional<glm::vec3> color = readVec3(stream);
+                if (color)
+                {
+                    Material &active = materials.back();
+                    active.specular_color = *color;
+                }
+                else
+                {
+                    return {};
+                }
+            }
+            else
+            {
+                ERROR("Unknown keyword " << BOLD("K" + c) << " at line: " << line);
+                return {};
+            }
+            skipLine(stream);
+        }
+        else if (c == 'n')
+        {
+            stream.unget();
+            if (readWord(stream) == "newmtl")
+            {
+                ignoreSpaces(stream);
+                Material material = {.name = readLine(stream)};
+                materials.push_back(material);
+            }
+            skipLine(stream);
+        }
+        else if (c == 'N')
+        {
+            if (materials.empty())
+            {
+                ERROR("Keyword newmtl mandatory");
+                return {};
+            }
+            c = stream.get();
+            // specular exponent
+            if (c == 's')
+            {
+                ignoreSpaces(stream);
+                std::optional<float> number = readNumber(stream);
+                if (number)
+                {
+                    Material &active = materials.back();
+                    active.specular_exponent = *number;
+                }
+                else
+                {
+                    return {};
+                }
+            }
+            // optic density
+            else if (c == 'i')
+            {
+                ignoreSpaces(stream);
+                std::optional<float> number = readNumber(stream);
+                if (number)
+                {
+                    Material &active = materials.back();
+                    active.optic_density = *number;
+                }
+                else
+                {
+                    return {};
+                }
+            }
+            else
+            {
+                ERROR("Unknown keyword " << BOLD("N" + c) << " at line: " << line);
+            }
+            skipLine(stream);
+        }
+        else if (c == 'd')
+        {
+            if (materials.empty())
+            {
+                ERROR("Keyword newmtl mandatory");
+                return {};
+            }
+            ignoreSpaces(stream);
+            std::optional<float> number = readNumber(stream);
+            if (number)
+            {
+                Material &active = materials.back();
+                active.alpha = *number;
+            }
+            else
+            {
+                return {};
+            }
+            skipLine(stream);
+        }
+        else if (c == 'm')
+        {
+            if (materials.empty())
+            {
+                ERROR("Keyword newmtl mandatory");
+                return {};
+            }
+            stream.unget();
+            std::string token = readWord(stream);
+            ignoreSpaces(stream);
+            Material &active = materials.back();
+            std::string texturePath;
+            if (token == "map_Kd" || token == "map_Ks" || token == "map_Ka" || token == "map_Bump")
+            {
+                std::filesystem::path texturePath = directory + "/" + readLine(stream);
+                if (!std::filesystem::exists(texturePath))
+                {
+                    ERROR("Texture file doesn't exist: " << texturePath.string());
+                    skipLine(stream);
+                    continue;
+                }
+                std::optional<Texture> texture = LoadTexture(texturePath.string());
+                if (texture)
+                {
+                    std::string type = token.substr(4);
+                    if (type == "Kd")
+                    {
+                        (*texture).type = TextureType::DIFFUSE;
+                        active.texture_diffuse = *texture;
+                    }
+                    else if (type == "Ks")
+                    {
+                        (*texture).type = TextureType::SPECULAR;
+                        active.texture_specular = *texture;
+                    }
+                    else if (type == "Ka")
+                    {
+                        (*texture).type = TextureType::AMBIENT;
+                        active.texture_ambiant = *texture;
+                    }
+                    else if (type == "Bump")
+                    {
+                        (*texture).type = TextureType::NORMAL;
+                        active.texture_normal = *texture;
+                    }
+                }
+            }
+            else
+            {
+                ERROR("Unknown keyword " << BOLD(token) << " at line: " << line);
+            }
+            skipLine(stream);
+        }
+        else if (c == '\n')
+        {
+            line++;
+        }
+        else
+        {
+            skipLine(stream);
+        }
+        c = stream.get();
+    }
+
+    INFO("Loaded " << materials.size() << " materials");
+
+    return materials;
+}
+
+std::optional<Texture> OBJLoader::LoadTexture(const std::string &path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    // stbi_set_flip_vertically_on_load(true); // not sure why I need to flip and sometimes no, we'll look into it later on
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path.c_str(), &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        stbi_image_free(data);
+
+        Texture texture;
+        texture.id = textureID;
+        texture.path = path;
+        return texture;
+    }
+    else
+    {
+        ERROR("Failed to load texture, param: " << path);
+        stbi_image_free(data);
+        return {};
+    }
 }
 
 std::optional<OBJLoader::Triplet> OBJLoader::readTriplet(std::ifstream &stream)

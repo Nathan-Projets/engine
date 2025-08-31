@@ -9,7 +9,6 @@
 #include "scene.hpp"
 
 #include "render/shader.hpp"
-#include "render/texture.hpp"
 #include "render/camera/camera_perspective.hpp"
 #include "render/model.hpp"
 #include "resources/manager.hpp"
@@ -33,4 +32,5 @@ private:
 
     PerspectiveCamera m_camera;
     std::vector<Mesh> m_meshes;
+    Mesh m_light;
 };

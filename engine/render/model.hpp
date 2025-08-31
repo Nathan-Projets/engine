@@ -39,7 +39,7 @@ public:
 
 private:
     // model data
-    std::vector<Texture_t> textures_loaded;
+    std::vector<Texture> textures_loaded;
     std::vector<Mesh> meshes;
     std::string directory;
     Node rootNode;
@@ -47,7 +47,7 @@ private:
     void loadModel(std::string path);
     Node processNode(aiNode *node, const aiScene *scene);
     Mesh processMesh(aiMesh *mesh, const aiScene *scene);
-    std::vector<Texture_t> loadMaterialTextures(const aiScene *scene, aiMaterial *mat, aiTextureType type, std::string typeName);
+    std::vector<Texture> loadMaterialTextures(const aiScene *scene, aiMaterial *mat, aiTextureType type, std::string typeName);
     std::optional<unsigned int> TextureFromFile(const char *path, const std::string &directory, const aiScene *scene, bool gamma = false);
     std::optional<unsigned int> TextureFromEmbedded(const char *path, const std::string &directory, const aiScene *scene, bool gamma = false);
 };

@@ -13,7 +13,6 @@
 #include "scene_backpack.hpp"
 #include "scene_load_testing.hpp"
 #include "render/shader.hpp"
-#include "render/texture.hpp"
 #include "render/camera/camera_perspective.hpp"
 #include "render/model.hpp"
 #include "resources/manager.hpp"

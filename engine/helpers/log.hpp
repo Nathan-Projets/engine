@@ -21,7 +21,7 @@
     std::cout << YELLOW << "[WARNING] " << STR << RESET << std::endl;
 
 // uncomment the following line to allow debug display
-// #define IS_DEBUG
+#define IS_DEBUG
 
 #ifdef IS_DEBUG
 #define DEBUG(STR) \

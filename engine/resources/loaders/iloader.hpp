@@ -10,5 +10,5 @@ class ILoader
 public:
     virtual ~ILoader() = default;
 
-    virtual std::optional<Mesh> Load(const std::string &path) = 0;
+    virtual std::vector<Mesh> Load(const std::string &path) = 0;
 };

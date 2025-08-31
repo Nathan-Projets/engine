@@ -4,8 +4,11 @@
 #include <fstream>
 #include <string>
 #include <optional>
+#include <filesystem>
 
 #include <glm/glm.hpp>
+
+#include <stb_image.h>
 
 #include "auto_loader.hpp"
 #include "render/mesh.hpp"
@@ -42,8 +45,29 @@ public:
         }
     };
 
+    // struct Material
+    // {
+    //     std::string name = "";                       // newmtl
+    //     glm::vec3 ambient_color = glm::vec3(-1.0f);  // Ka
+    //     glm::vec3 diffuse_color = glm::vec3(-1.0f);  // Kd
+    //     glm::vec3 emissive_color = glm::vec3(-1.0f); // Ke
+    //     glm::vec3 specular_color = glm::vec3(-1.0f); // Ks
+    //     float specular_exponent = -1.0f;             // Ns
+    //     float optic_density = -1.0f;                 // Ni
+    //     float alpha = -1.0f;                         // d
+
+    //     Texture texture_ambiant;  // map_Ka
+    //     Texture texture_diffuse;  // map_Kd
+    //     Texture texture_specular; // map_Ks
+    //     Texture texture_normal;   // map_Bump
+    //     Texture texture_disp;     // disp
+    //     Texture texture_stencil;  // decal
+    // };
+
 public:
-    std::optional<Mesh> Load(const std::string &path) override;
+    std::vector<Mesh> Load(const std::string &path) override;
+    std::vector<Material> LoadMaterial(const std::string &path);
+    std::optional<Texture> LoadTexture(const std::string &path);
 
 private:
     std::optional<OBJLoader::Triplet> readTriplet(std::ifstream & stream);
