@@ -10,6 +10,20 @@ add_library(
     input/keyboard_state.cpp
     input/mouse_state.cpp
     
+    ecs/entity.hpp
+    ecs/component.hpp
+    ecs/system.hpp
+    ecs/world.hpp
+    ecs/systems/transform_system.hpp
+    ecs/systems/render_system.hpp
+    
+    game/game_world.cpp
+    game/components/transform.hpp
+    game/components/mesh_renderer.hpp
+    game/components/light.hpp
+    game/components/camera.hpp
+    game/systems/rotating_light_system.hpp
+    
     render/shader.cpp
     render/camera/camera.hpp
     render/camera/camera_perspective.cpp

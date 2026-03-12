@@ -73,11 +73,9 @@ void Mesh::Draw(Shader &shader) const
     {
         shader.Upload("use_tbn", 0.0f);
     }
-    // shader.Upload("use_tbn", 0.0f);
 
     glActiveTexture(GL_TEXTURE0);
 
-    // draw mesh
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

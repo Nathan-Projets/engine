@@ -18,6 +18,7 @@
 #include "resources/manager.hpp"
 #include "helpers/log.hpp"
 #include "input/input_manager.hpp"
+#include "game/game_world.hpp"
 
 class Application
 {

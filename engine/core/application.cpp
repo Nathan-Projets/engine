@@ -53,20 +53,14 @@ bool Application::Run()
         return false;
     }
 
-    // timing
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
-    // resources/shaders
     ResourceManager resourceManager;
-    // scene with one backpack and one light
-    // m_scenes.push_back(std::make_unique<SceneBackpack>(m_window, m_width, m_height, &resourceManager));
-    // scene with one cube to test custom object loader
-    m_scenes.push_back(std::make_unique<SceneLoadingTest>(m_window, m_width, m_height, &resourceManager));
 
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(1.2f, 1.0f, 2.0f));
-    model = glm::scale(model, glm::vec3(0.1f));
+    GameWorld mainScene{m_width, m_height, &resourceManager};
+
+    mainScene.Init();
 
     const float cameraSpeed = 12.5f;
 
@@ -83,17 +77,13 @@ bool Application::Run()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // application controls
         if (InputManager::Get().IsKeyPressed(GLFW_KEY_ESCAPE))
         {
             Stop();
         }
 
-        // There should only ever be one scene in the vector but it's convenient to use for debug (un/comment scenes)
-        for (auto &scene : m_scenes)
-        {
-            scene->Render(deltaTime);
-        }
+        mainScene.Update(deltaTime);
+        mainScene.Render(deltaTime);
 
         InputManager::Get().ClearFrameState();
 
