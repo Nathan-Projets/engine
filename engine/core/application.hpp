@@ -17,6 +17,7 @@
 #include "render/model.hpp"
 #include "resources/manager.hpp"
 #include "helpers/log.hpp"
+#include "input/input_manager.hpp"
 
 class Application
 {

@@ -10,6 +10,7 @@
 #include "render/camera/camera_perspective.hpp"
 #include "render/model.hpp"
 #include "resources/manager.hpp"
+#include "input/input_manager.hpp"
 
 class SceneBackpack : public Scene
 {

@@ -6,6 +6,10 @@ add_library(
     core/scene_backpack.cpp
     core/scene_load_testing.cpp
     
+    input/input_manager.cpp
+    input/keyboard_state.cpp
+    input/mouse_state.cpp
+    
     render/shader.cpp
     render/camera/camera.hpp
     render/camera/camera_perspective.cpp

@@ -33,6 +33,14 @@ bool Application::Init()
         return false;
     }
 
+    InputManager::Get().AttachToWindow(m_window);
+
+    InputManager::Get().RegisterAction("move_forward", GLFW_KEY_W);
+    InputManager::Get().RegisterAction("move_backward", GLFW_KEY_S);
+    InputManager::Get().RegisterAction("move_left", GLFW_KEY_A);
+    InputManager::Get().RegisterAction("move_right", GLFW_KEY_D);
+    InputManager::Get().RegisterAction("jump", GLFW_KEY_SPACE);
+
     glEnable(GL_DEPTH_TEST);
 
     return true;
@@ -64,6 +72,10 @@ bool Application::Run()
 
     while (!glfwWindowShouldClose(m_window))
     {
+        InputManager::Get().Update();
+
+        glfwPollEvents();
+
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
@@ -72,10 +84,10 @@ bool Application::Run()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // application controls
-        if (glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        if (InputManager::Get().IsKeyPressed(GLFW_KEY_ESCAPE))
+        {
             Stop();
-        if (glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(m_window, true);
+        }
 
         // There should only ever be one scene in the vector but it's convenient to use for debug (un/comment scenes)
         for (auto &scene : m_scenes)
@@ -83,8 +95,9 @@ bool Application::Run()
             scene->Render(deltaTime);
         }
 
+        InputManager::Get().ClearFrameState();
+
         glfwSwapBuffers(m_window);
-        glfwPollEvents();
     }
 
     return true;

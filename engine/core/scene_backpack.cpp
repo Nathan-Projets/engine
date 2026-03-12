@@ -43,14 +43,14 @@ void SceneBackpack::Update(float deltaTime)
     const float cameraSpeed = 12.5f;
 
     // camera controls
-    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
+    if (InputManager::Get().IsActionActive("move_forward"))
         m_camera.MoveForward(cameraSpeed * deltaTime);
-    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
+    if (InputManager::Get().IsActionActive("move_backward"))
         m_camera.MoveBackward(cameraSpeed * deltaTime);
-    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
-        m_camera.MoveLeft(cameraSpeed * deltaTime * 3.0f);
-    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
-        m_camera.MoveRight(cameraSpeed * deltaTime * 3.0f);
+    if (InputManager::Get().IsActionActive("move_left"))
+        m_camera.MoveLeft(cameraSpeed * deltaTime);
+    if (InputManager::Get().IsActionActive("move_right"))
+        m_camera.MoveRight(cameraSpeed * deltaTime);
 }
 
 void SceneBackpack::Draw(float deltaTime)

@@ -14,6 +14,7 @@
 #include "resources/manager.hpp"
 #include "resources/loaders/all.hpp"
 #include "helpers/log.hpp"
+#include "input/input_manager.hpp"
 
 class SceneLoadingTest : public Scene
 {

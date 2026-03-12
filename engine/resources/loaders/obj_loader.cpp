@@ -41,6 +41,8 @@ std::vector<Mesh> OBJLoader::Load(const std::string &path)
     INFO("Starting OBJ loading file at: " << path);
     int line = 1;
     // TODO: optimize by copying first the whole file and then parse it using pointer instead of stream.get() each time
+    // TODO: support negative referencing number for faces (may need refacto)
+    // TODO: support parameter space vertices (free-forms/curves)
     char c = stream.get();
     while (!stream.fail())
     {
