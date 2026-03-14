@@ -23,5 +23,6 @@ add_subdirectory(external/stb)
 add_subdirectory(external/assimp)
 
 add_subdirectory(engine)
+add_subdirectory(game)
 
 add_subdirectory(src)

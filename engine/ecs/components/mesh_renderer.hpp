@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 
-#include "../ecs/component.hpp"
+#include "../component.hpp"
 
 class Mesh;
 class Shader;

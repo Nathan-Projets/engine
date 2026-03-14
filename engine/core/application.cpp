@@ -53,16 +53,13 @@ bool Application::Run()
         return false;
     }
 
+    if (m_scene)
+    {
+        m_scene->Init();
+    }
+
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
-
-    ResourceManager resourceManager;
-
-    GameWorld mainScene{m_width, m_height, &resourceManager};
-
-    mainScene.Init();
-
-    const float cameraSpeed = 12.5f;
 
     while (!glfwWindowShouldClose(m_window))
     {
@@ -82,8 +79,10 @@ bool Application::Run()
             Stop();
         }
 
-        mainScene.Update(deltaTime);
-        mainScene.Render(deltaTime);
+        if (m_scene)
+        {
+            m_scene->Render(deltaTime);
+        }
 
         InputManager::Get().ClearFrameState();
 

@@ -3,4 +3,5 @@ add_executable(
     main.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Engine)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(${PROJECT_NAME} PRIVATE Engine Game)

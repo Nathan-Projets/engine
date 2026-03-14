@@ -2,20 +2,21 @@
 
 #include <memory>
 
-#include "../ecs/world.hpp"
-#include "../resources/manager.hpp"
-#include "../render/camera/camera_perspective.hpp"
-#include "../render/mesh.hpp"
+#include "../engine/ecs/world.hpp"
+#include "../engine/resources/manager.hpp"
+#include "../engine/render/camera/camera_perspective.hpp"
+#include "../engine/render/mesh.hpp"
+#include "../engine/core/scene.hpp"
 
-class GameWorld
+class GameWorld : public Scene
 {
 public:
     GameWorld(int width, int height, ResourceManager *resourceManager);
     ~GameWorld();
 
-    void Init();
-    void Update(float deltaTime);
-    void Render(float deltaTime);
+    void Init() override;
+    void Update(float deltaTime) override;
+    void Draw(float deltaTime) override;
 
     World &GetWorld() { return m_world; }
     PerspectiveCamera &GetCamera() { return m_camera; }

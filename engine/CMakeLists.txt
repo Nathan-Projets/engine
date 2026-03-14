@@ -14,15 +14,14 @@ add_library(
     ecs/component.hpp
     ecs/system.hpp
     ecs/world.hpp
+    
     ecs/systems/physic_system.hpp
     ecs/systems/render_system.hpp
     
-    game/game_world.cpp
-    game/components/transform.hpp
-    game/components/mesh_renderer.hpp
-    game/components/light.hpp
-    game/components/camera.hpp
-    game/systems/rotating_light_system.hpp
+    ecs/components/transform.hpp
+    ecs/components/mesh_renderer.hpp
+    ecs/components/light.hpp
+    ecs/components/camera.hpp
     
     render/shader.cpp
     render/camera/camera.hpp

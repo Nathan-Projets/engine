@@ -2,13 +2,13 @@
 
 #include <string>
 
-#include "../ecs/systems/physic_system.hpp"
-#include "../ecs/systems/render_system.hpp"
-#include "../game/systems/rotating_light_system.hpp"
-#include "../game/components/light.hpp"
-#include "../game/components/camera.hpp"
-#include "../input/input_manager.hpp"
-#include "../resources/loaders/loader.hpp"
+#include "../engine/ecs/systems/physic_system.hpp"
+#include "../engine/ecs/systems/render_system.hpp"
+#include "systems/rotating_light_system.hpp"
+#include "../engine/ecs/components/light.hpp"
+#include "../engine/ecs/components/camera.hpp"
+#include "../engine/input/input_manager.hpp"
+#include "../engine/resources/loaders/loader.hpp"
 
 using Meshes = std::vector<Mesh>;
 
@@ -109,7 +109,7 @@ void GameWorld::Update(float deltaTime)
     m_world.UpdateSystems(deltaTime);
 }
 
-void GameWorld::Render(float deltaTime)
+void GameWorld::Draw(float deltaTime)
 {
     m_world.RenderSystems(deltaTime);
 }

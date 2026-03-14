@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../ecs/system.hpp"
-#include "../game/components/transform.hpp"
+#include "../system.hpp"
+#include "../components/transform.hpp"
 
 class PhysicSystem : public System
 {

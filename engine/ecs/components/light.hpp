@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-#include "../ecs/component.hpp"
+#include "../component.hpp"
 
 class Light : public Component
 {

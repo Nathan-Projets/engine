@@ -18,7 +18,6 @@
 #include "resources/manager.hpp"
 #include "helpers/log.hpp"
 #include "input/input_manager.hpp"
-#include "game/game_world.hpp"
 
 class Application
 {
@@ -30,12 +29,16 @@ public:
     bool Run();
     void Stop();
 
+    void SetScene(Scene* scene) { m_scene = scene; }
+
     static void ResizeCallback(GLFWwindow *window, int width, int height);
 
 private:
     GLFWwindow *m_window;
     int m_width, m_height;
     bool m_bShouldExit;
+
+    Scene* m_scene = nullptr;
 
     std::vector<std::unique_ptr<Scene>> m_scenes;
 };

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../ecs/system.hpp"
-#include "../game/components/transform.hpp"
-#include "../game/components/mesh_renderer.hpp"
-#include "../game/components/light.hpp"
-#include "../game/components/camera.hpp" // new camera component
-#include "../render/shader.hpp"
-#include "../render/mesh.hpp"
+#include "../system.hpp"
+#include "../components/transform.hpp"
+#include "../components/mesh_renderer.hpp"
+#include "../components/light.hpp"
+#include "../components/camera.hpp"
+#include "../../render/shader.hpp"
+#include "../../render/mesh.hpp"
 
 class RenderSystem : public System
 {
