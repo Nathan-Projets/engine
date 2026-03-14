@@ -37,11 +37,11 @@ public:
             Transform *transform = world.GetComponent<Transform>(entity);
             MeshRenderer *renderer = world.GetComponent<MeshRenderer>(entity);
 
-            if (!transform || !renderer || !renderer->GetShader() || renderer->GetMeshes().empty())
+            if (!transform || !renderer || !renderer->GetShader() || !renderer->GetMeshes() || renderer->GetMeshes()->empty())
                 continue;
 
             Shader &shader = *renderer->GetShader();
-            const std::vector<Mesh *> &meshes = renderer->GetMeshes();
+            std::shared_ptr<Meshes> meshes = renderer->GetMeshes();
 
             shader.Use();
             if (activeCamera)
@@ -65,10 +65,9 @@ public:
                 }
             }
 
-            for (Mesh *mesh : meshes)
+            for (Mesh &mesh : *meshes)
             {
-                if (mesh)
-                    mesh->Draw(shader);
+                mesh.Draw(shader);
             }
         }
     }

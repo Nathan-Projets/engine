@@ -1,12 +1,16 @@
 #include "game_world.hpp"
 
-#include "../ecs/systems/transform_system.hpp"
+#include <string>
+
+#include "../ecs/systems/physic_system.hpp"
 #include "../ecs/systems/render_system.hpp"
 #include "../game/systems/rotating_light_system.hpp"
 #include "../game/components/light.hpp"
 #include "../game/components/camera.hpp"
 #include "../input/input_manager.hpp"
 #include "../resources/loaders/loader.hpp"
+
+using Meshes = std::vector<Mesh>;
 
 GameWorld::GameWorld(int width, int height, ResourceManager *resourceManager)
     : m_camera({45.0f, (float)width, (float)height, 0.1f, 150.0f},
@@ -26,7 +30,7 @@ GameWorld::~GameWorld()
 void GameWorld::Init()
 {
     // Add engine systems
-    m_world.AddSystem<TransformSystem>();
+    m_world.AddSystem<PhysicSystem>();
     m_world.AddSystem<RenderSystem>();
 
     // Add game-specific systems, linked to the current scene
@@ -51,14 +55,12 @@ void GameWorld::Init()
     Entity backpack = m_world.CreateEntity();
     Transform *backpackTransform = m_world.AddComponent<Transform>(backpack, glm::vec3(0.0f, 0.0f, 0.0f));
 
-    m_backpackMeshes = Loader::Load("assets/meshes/backpack/backpack.obj");
-    if (!m_backpackMeshes.empty())
+    const std::string backpackMeshId = "assets/meshes/backpack/backpack.obj";
+    auto backpackMeshes = m_resourceManager->Load<Meshes>(backpackMeshId, Loader::Load(backpackMeshId));
+    if (!backpackMeshes->empty())
     {
         MeshRenderer *meshRenderer = m_world.AddComponent<MeshRenderer>(backpack);
-        for (auto &mesh : m_backpackMeshes)
-        {
-            meshRenderer->AddMesh(&mesh);
-        }
+        meshRenderer->SetMeshes(backpackMeshes);
         meshRenderer->SetShader(m_resourceManager->Get<Shader>("model").get());
     }
 
@@ -71,15 +73,12 @@ void GameWorld::Init()
     light->specular = glm::vec3(0.7f, 0.7f, 0.7f);
     light->position = lightTransform->position;
 
-    m_cubeMeshes = Loader::Load("assets/meshes/cube/cube.obj");
-    if (!m_cubeMeshes.empty())
+    const std::string cubeMeshId = "assets/meshes/cube/cube.obj";
+    auto cubeMeshes = m_resourceManager->Load<Meshes>(cubeMeshId, Loader::Load(cubeMeshId));
+    if (!cubeMeshes->empty())
     {
-        // TODO: look into loading meshes into a registry instead of having a copy on the stack which I need to add one by one like here
         MeshRenderer *meshRenderer = m_world.AddComponent<MeshRenderer>(lightEntity);
-        for (auto &mesh : m_cubeMeshes)
-        {
-            meshRenderer->AddMesh(&mesh);
-        }
+        meshRenderer->SetMeshes(cubeMeshes);
         meshRenderer->SetShader(m_resourceManager->Get<Shader>("light").get());
     }
 }

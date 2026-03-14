@@ -14,7 +14,7 @@ add_library(
     ecs/component.hpp
     ecs/system.hpp
     ecs/world.hpp
-    ecs/systems/transform_system.hpp
+    ecs/systems/physic_system.hpp
     ecs/systems/render_system.hpp
     
     game/game_world.cpp

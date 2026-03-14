@@ -26,9 +26,6 @@ private:
     PerspectiveCamera m_camera;
     ResourceManager *m_resourceManager;
 
-    std::vector<Mesh> m_backpackMeshes;
-    std::vector<Mesh> m_cubeMeshes;
-
     int m_width;
     int m_height;
 };
