@@ -37,6 +37,7 @@ private:
     GLFWwindow *m_window;
     int m_width, m_height;
     bool m_bShouldExit;
+    bool m_initialized;
 
     Scene* m_scene = nullptr;
 

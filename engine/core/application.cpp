@@ -1,6 +1,6 @@
 #include "application.hpp"
 
-Application::Application(int width, int height) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false)
+Application::Application(int width, int height) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false), m_initialized(false)
 {
 }
 
@@ -35,6 +35,8 @@ bool Application::Init()
 
     InputManager::Get().AttachToWindow(m_window);
 
+    m_initialized = true;
+
     InputManager::Get().RegisterAction("move_forward", GLFW_KEY_W);
     InputManager::Get().RegisterAction("move_backward", GLFW_KEY_S);
     InputManager::Get().RegisterAction("move_left", GLFW_KEY_A);
@@ -48,9 +50,12 @@ bool Application::Init()
 
 bool Application::Run()
 {
-    if (!Init())
+    if (!m_initialized)
     {
-        return false;
+        if (!Init())
+        {
+            return false;
+        }
     }
 
     if (m_scene)

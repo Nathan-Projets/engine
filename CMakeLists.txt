@@ -21,6 +21,7 @@ add_subdirectory(external/glfw)
 add_subdirectory(external/glm)
 add_subdirectory(external/stb)
 add_subdirectory(external/assimp)
+add_subdirectory(external/simdjson)
 
 add_subdirectory(engine)
 add_subdirectory(game)

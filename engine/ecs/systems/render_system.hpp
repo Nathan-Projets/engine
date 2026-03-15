@@ -50,7 +50,6 @@ public:
                 shader.Upload("projection", activeCamera->GetProjectionMatrix());
                 shader.Upload("viewPos", activeCamera->GetPosition());
             }
-            // TODO: the name is hard coded I need to check how to pass the name (maybe in the Shader class directly ?)
             shader.Upload("model", transform->GetMatrix());
 
             if (!lights.empty())
@@ -58,10 +57,16 @@ public:
                 Light *light = world.GetComponent<Light>(lights[0]);
                 if (light)
                 {
-                    shader.Upload("light.position", light->position);
                     shader.Upload("light.ambient", light->ambient);
                     shader.Upload("light.diffuse", light->diffuse);
                     shader.Upload("light.specular", light->specular);
+                    // shader.Upload("light.color", light->color);
+
+                    glm::vec3 position = light->position;
+                    Transform *transform = world.GetComponent<Transform>(lights[0]);
+                    if (transform)
+                        position += transform->position;
+                    shader.Upload("light.position", position);
                 }
             }
 

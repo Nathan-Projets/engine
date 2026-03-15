@@ -13,3 +13,6 @@
 [submodule "external/assimp"]
 	path = external/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "external/simdjson"]
+	path = external/simdjson
+	url = https://github.com/simdjson/simdjson.git

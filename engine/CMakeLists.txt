@@ -2,6 +2,7 @@ add_library(
     Engine
     
     core/application.cpp
+    core/declarative_scene.cpp
     core/scene.hpp
     core/scene_backpack.cpp
     core/scene_load_testing.cpp
@@ -37,10 +38,11 @@ add_library(
     resources/loaders/loader.hpp
     resources/loaders/auto_loader.hpp
     resources/loaders/obj_loader.cpp
+    resources/loaders/scene_loader.cpp
     resources/manager.hpp
     
     helpers/log.hpp
 )
 
 target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Engine PUBLIC glad glfw glm stb assimp)
+target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson)
