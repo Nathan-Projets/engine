@@ -6,11 +6,11 @@
 #include "../engine/ecs/systems/physic_system.hpp"
 #include "../engine/ecs/systems/render_system.hpp"
 
-class DeclarativeScene : public Scene
+class BaseScene : public Scene
 {
 public:
-    DeclarativeScene(World *world, ResourceManager *resourceManager);
-    ~DeclarativeScene() override = default;
+    BaseScene(World *world, ResourceManager *resourceManager);
+    ~BaseScene() override = default;
 
     void Init() override;
     void Update(float deltaTime) override;

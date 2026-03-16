@@ -27,7 +27,7 @@ public:
             CameraComponent *cameraComponent = world.GetComponent<CameraComponent>(cameraEntity);
             if (cameraComponent && cameraComponent->main)
             {
-                activeCamera = cameraComponent->camera;
+                activeCamera = &cameraComponent->GetCamera();
                 break;
             }
         }
@@ -60,7 +60,8 @@ public:
                     shader.Upload("light.ambient", light->ambient);
                     shader.Upload("light.diffuse", light->diffuse);
                     shader.Upload("light.specular", light->specular);
-                    // shader.Upload("light.color", light->color);
+                    shader.Upload("color", light->color);
+                    shader.Upload("material.shininess", 32.0f); // TODO: fix this also, by identifying where it should live
 
                     glm::vec3 position = light->position;
                     Transform *transform = world.GetComponent<Transform>(lights[0]);

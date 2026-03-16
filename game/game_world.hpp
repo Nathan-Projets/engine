@@ -19,12 +19,11 @@ public:
     void Draw(float deltaTime) override;
 
     World &GetWorld() { return m_world; }
-    PerspectiveCamera &GetCamera() { return m_camera; }
+    PerspectiveCamera &GetCamera();
     ResourceManager *GetResourceManager() const { return m_resourceManager; }
 
 private:
     World m_world;
-    PerspectiveCamera m_camera;
     ResourceManager *m_resourceManager;
 
     int m_width;

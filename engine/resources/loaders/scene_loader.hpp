@@ -8,7 +8,7 @@
 #include <glm/glm.hpp>
 
 #include "../../core/scene.hpp"
-#include "../../core/declarative_scene.hpp"
+#include "../../core/base_scene.hpp"
 #include "../../ecs/world.hpp"
 #include "../../resources/manager.hpp"
 #include "../engine/ecs/world.hpp"

@@ -26,8 +26,7 @@ int main(int argc, char const *argv[])
         ERROR("Failed to load the scene.");
         return EXIT_FAILURE;
     }
-    
-    scene->Init();
+
     app.SetScene(scene.get());
 
     if (!app.Run())

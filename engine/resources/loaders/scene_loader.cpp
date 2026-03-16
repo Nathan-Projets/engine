@@ -195,9 +195,7 @@ std::shared_ptr<Scene> SceneLoader::LoadScene(const std::string &filepath, World
                                 break;
                         }
 
-                        // TODO: IMPORTANT FIX THIS I JUST WANT TO SEE THE SCENE NOW
-                        static PerspectiveCamera camera = {frustrum, position, lookAt, upVector};
-                        world->AddComponent<CameraComponent>(entity, camera, true);
+                        world->AddComponent<CameraComponent>(entity, frustrum, position, lookAt, upVector, true);
                     }
                     else
                     {
@@ -216,5 +214,5 @@ std::shared_ptr<Scene> SceneLoader::LoadScene(const std::string &filepath, World
         DEBUG("No entities to load.");
     }
 
-    return std::make_shared<DeclarativeScene>(world, resourceManager);
+    return std::make_shared<BaseScene>(world, resourceManager);
 }

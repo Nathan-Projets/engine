@@ -1,0 +1,21 @@
+#include "base_scene.hpp"
+
+BaseScene::BaseScene(World *world, ResourceManager *resourceManager) : m_world(world), m_resourceManager(resourceManager)
+{
+}
+
+void BaseScene::Init()
+{
+    m_world->AddSystem<PhysicSystem>();
+    m_world->AddSystem<RenderSystem>();
+}
+
+void BaseScene::Update(float deltaTime)
+{
+    m_world->UpdateSystems(deltaTime);
+}
+
+void BaseScene::Draw(float deltaTime)
+{
+    m_world->RenderSystems(deltaTime);
+}
