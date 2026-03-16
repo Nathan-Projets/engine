@@ -41,6 +41,20 @@ public:
         return aResource;
     }
 
+    template <typename Factory>
+    std::shared_ptr<T> RegisterLazy(const std::string &iId, Factory &&factory)
+    {
+        auto aResourceIterator = m_resources.find(iId);
+        if (aResourceIterator != m_resources.end())
+        {
+            return aResourceIterator->second.Ref;
+        }
+
+        std::shared_ptr<T> aResource = std::forward<Factory>(factory)();
+        m_resources[iId] = ResourceEntry{aResource};
+        return aResource;
+    }
+
     /**
      * Unregister a resource from the registry by its ID.
      * If the resource is held somewhere else, it will not delete the resource in memory until no one else holds a reference to it.

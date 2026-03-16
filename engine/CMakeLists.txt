@@ -4,8 +4,6 @@ add_library(
     core/application.cpp
     core/base_scene.cpp
     core/scene.hpp
-    core/scene_backpack.cpp
-    core/scene_load_testing.cpp
     
     input/input_manager.cpp
     input/keyboard_state.cpp

@@ -2,9 +2,9 @@
 
 #include <GLFW/glfw3.h>
 
-#include "../../engine/ecs/system.hpp"
-#include "../../engine/ecs/components/transform.hpp"
-#include "../../engine/ecs/components/light.hpp"
+#include <ecs/system.hpp>
+#include <ecs/components/transform.hpp>
+#include <ecs/components/light.hpp>
 
 class RotatingLightSystem : public System
 {

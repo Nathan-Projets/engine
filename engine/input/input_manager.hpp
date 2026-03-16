@@ -37,6 +37,7 @@ public:
 
     void RegisterAction(const std::string &name, int key) { m_keyboardState.RegisterAction(name, key); }
     bool IsActionActive(const std::string &name) const { return m_keyboardState.IsActionActive(name); }
+    bool IsActionJustPressed(const std::string &name) const { return m_keyboardState.IsActionJustPressed(name); }
 
     // === Mouse ===
 

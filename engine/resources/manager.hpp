@@ -28,6 +28,24 @@ public:
         }
     }
 
+    // TODO: well not really here but when I will need mesh hot-reload this will need a refactor
+    template <typename T, typename Factory>
+    std::shared_ptr<T> LoadLazy(const std::string &iId, Factory &&factory)
+    {
+        auto aRegistryIterator = m_registries.find(typeid(T));
+        if (aRegistryIterator == m_registries.end())
+        {
+            m_registries[typeid(T)] = std::make_unique<ResourceRegistry<T>>();
+            ResourceRegistry<T> *aRegistry = static_cast<ResourceRegistry<T> *>(m_registries[typeid(T)].get());
+            return aRegistry->RegisterLazy(iId, std::forward<Factory>(factory));
+        }
+        else
+        {
+            ResourceRegistry<T> *aRegistry = static_cast<ResourceRegistry<T> *>(aRegistryIterator->second.get());
+            return aRegistry->RegisterLazy(iId, std::forward<Factory>(factory));
+        }
+    }
+
     template <typename T>
     void Unload(const std::string &iId)
     {

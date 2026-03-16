@@ -19,6 +19,7 @@ public:
 
     void RegisterAction(const std::string &name, int key);
     bool IsActionActive(const std::string &name) const;
+    bool IsActionJustPressed(const std::string &name) const;
 
     void OnKeyEvent(int key, int action);
     void Update();

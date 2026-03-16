@@ -2,24 +2,29 @@
 
 #include <core/application.hpp>
 #include <resources/manager.hpp>
+#include <resources/loaders/all.hpp>
 #include <resources/loaders/scene_loader.hpp>
-#include <game/game_world.hpp>
+#include <game/components/component_registration.hpp>
+#include <game/scene/game_scene.hpp>
 #include <helpers/log.hpp>
 
 #include <simdjson.h>
 
 int main(int argc, char const *argv[])
 {
+    constexpr const char *scenePath = "assets/scenes/level_1.json";
+
     Application app;
     if (!app.Init())
     {
         return EXIT_FAILURE;
     }
 
-    World world;
     ResourceManager resourceManager;
 
-    std::shared_ptr<Scene> scene = SceneLoader::LoadScene("assets/scenes/level_1.json", &world, &resourceManager);
+    GameSceneComponents::RegisterAll();
+
+    std::shared_ptr<Scene> scene = std::make_shared<GameScene>(scenePath, &resourceManager);
 
     if (!scene)
     {

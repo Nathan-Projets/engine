@@ -43,6 +43,21 @@ bool KeyboardState::IsActionActive(const std::string &name) const
     return false;
 }
 
+bool KeyboardState::IsActionJustPressed(const std::string &name) const
+{
+    auto it = m_actionMap.find(name);
+    if (it == m_actionMap.end())
+        return false;
+
+    for (int key : it->second)
+    {
+        if (IsKeyJustPressed(key))
+            return true;
+    }
+
+    return false;
+}
+
 void KeyboardState::OnKeyEvent(int key, int action)
 {
     bool isPressed = (action == GLFW_PRESS || action == GLFW_REPEAT);

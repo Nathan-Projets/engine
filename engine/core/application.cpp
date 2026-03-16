@@ -42,6 +42,7 @@ bool Application::Init()
     InputManager::Get().RegisterAction("move_left", GLFW_KEY_A);
     InputManager::Get().RegisterAction("move_right", GLFW_KEY_D);
     InputManager::Get().RegisterAction("jump", GLFW_KEY_SPACE);
+    InputManager::Get().RegisterAction("reload_scene", GLFW_KEY_R);
 
     glEnable(GL_DEPTH_TEST);
 

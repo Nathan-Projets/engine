@@ -3,6 +3,12 @@ add_library(
     
     game_world.cpp
     game_world.hpp
+    scene/game_scene.cpp
+    scene/game_scene.hpp
+    components/component_registration.cpp
+    components/component_registration.hpp
+    components/orbit_camera_controller.hpp
+    systems/orbit_camera_controller_system.hpp
     systems/rotating_light_system.hpp
 )
 

@@ -17,6 +17,11 @@ public:
     World() : m_nextEntityID(0) {}
     ~World() = default;
 
+    World(const World &) = delete;
+    World &operator=(const World &) = delete;
+    World(World &&) noexcept = default;
+    World &operator=(World &&) noexcept = default;
+
     // === Entity Management ===
 
     Entity CreateEntity()

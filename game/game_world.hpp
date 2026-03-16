@@ -2,11 +2,11 @@
 
 #include <memory>
 
-#include "../engine/ecs/world.hpp"
-#include "../engine/resources/manager.hpp"
-#include "../engine/render/camera/camera_perspective.hpp"
-#include "../engine/render/mesh.hpp"
-#include "../engine/core/scene.hpp"
+#include <ecs/world.hpp>
+#include <resources/manager.hpp>
+#include <render/camera/camera_perspective.hpp>
+#include <render/mesh.hpp>
+#include <core/scene.hpp>
 
 class GameWorld : public Scene
 {
