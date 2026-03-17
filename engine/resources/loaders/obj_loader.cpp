@@ -34,7 +34,7 @@ std::vector<Mesh> OBJLoader::Load(const std::string &path)
     std::vector<glm::vec2> texcoords;
 
     std::unordered_map<Triplet, int, TripletHash> registered_vertices = {};
-    std::unordered_map<std::string, Material> registered_materials = {};
+    std::unordered_map<std::string, MeshMaterial> registered_materials = {};
 
     std::vector<Mesh> meshes;
 
@@ -203,7 +203,7 @@ std::vector<Mesh> OBJLoader::Load(const std::string &path)
                 }
 
                 DEBUG("Material library: " << BOLD(path.string()) << " at line: " << line);
-                for (Material &material : LoadMaterial(path.string()))
+                for (MeshMaterial &material : LoadMaterial(path.string()))
                 {
                     if (registered_materials.find(material.name) == registered_materials.end())
                     {
@@ -240,7 +240,7 @@ std::vector<Mesh> OBJLoader::Load(const std::string &path)
     return meshes;
 }
 
-std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
+std::vector<MeshMaterial> OBJLoader::LoadMaterial(const std::string &path)
 {
     std::ifstream stream(path);
     if (!stream.is_open())
@@ -251,7 +251,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
 
     std::string directory = path.substr(0, path.find_last_of('/'));
 
-    std::vector<Material> materials;
+    std::vector<MeshMaterial> materials;
 
     int line = 1;
     char c = stream.get();
@@ -272,7 +272,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
                 std::optional<glm::vec3> color = readVec3(stream);
                 if (color)
                 {
-                    Material &active = materials.back();
+                    MeshMaterial &active = materials.back();
                     active.ambient_color = *color;
                 }
                 else
@@ -287,7 +287,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
                 std::optional<glm::vec3> color = readVec3(stream);
                 if (color)
                 {
-                    Material &active = materials.back();
+                    MeshMaterial &active = materials.back();
                     active.diffuse_color = *color;
                 }
                 else
@@ -302,7 +302,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
                 std::optional<glm::vec3> color = readVec3(stream);
                 if (color)
                 {
-                    Material &active = materials.back();
+                    MeshMaterial &active = materials.back();
                     active.emissive_color = *color;
                 }
                 else
@@ -317,7 +317,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
                 std::optional<glm::vec3> color = readVec3(stream);
                 if (color)
                 {
-                    Material &active = materials.back();
+                    MeshMaterial &active = materials.back();
                     active.specular_color = *color;
                 }
                 else
@@ -338,7 +338,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
             if (readWord(stream) == "newmtl")
             {
                 ignoreSpaces(stream);
-                Material material = {.name = readLine(stream)};
+                MeshMaterial material = {.name = readLine(stream)};
                 materials.push_back(material);
             }
             skipLine(stream);
@@ -358,7 +358,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
                 std::optional<float> number = readNumber(stream);
                 if (number)
                 {
-                    Material &active = materials.back();
+                    MeshMaterial &active = materials.back();
                     active.specular_exponent = *number;
                 }
                 else
@@ -373,7 +373,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
                 std::optional<float> number = readNumber(stream);
                 if (number)
                 {
-                    Material &active = materials.back();
+                    MeshMaterial &active = materials.back();
                     active.optic_density = *number;
                 }
                 else
@@ -398,7 +398,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
             std::optional<float> number = readNumber(stream);
             if (number)
             {
-                Material &active = materials.back();
+                MeshMaterial &active = materials.back();
                 active.alpha = *number;
             }
             else
@@ -417,7 +417,7 @@ std::vector<Material> OBJLoader::LoadMaterial(const std::string &path)
             stream.unget();
             std::string token = readWord(stream);
             ignoreSpaces(stream);
-            Material &active = materials.back();
+            MeshMaterial &active = materials.back();
             std::string texturePath;
             if (token == "map_Kd" || token == "map_Ks" || token == "map_Ka" || token == "map_Bump")
             {

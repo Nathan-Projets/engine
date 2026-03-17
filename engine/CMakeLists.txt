@@ -22,11 +22,15 @@ add_library(
     ecs/components/light.hpp
     ecs/components/camera.hpp
     
-    render/shader.cpp
     render/camera/camera_projection.hpp
     render/camera/perspective_projection.cpp
     render/mesh.cpp
     render/model.cpp
+    render/shader.cpp
+    render/shader_domain.hpp
+    render/material.cpp
+    render/uniform_buffer.cpp
+    render/renderer.cpp
     
     resources/fileloader.cpp
     resources/registry.hpp

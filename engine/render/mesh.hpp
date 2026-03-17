@@ -33,7 +33,7 @@ struct Texture
     std::string path = "";
 };
 
-struct Material
+struct MeshMaterial
 {
     glm::vec3 ambient_color = glm::vec3(-1.0f);
     glm::vec3 diffuse_color = glm::vec3(-1.0f);
@@ -58,15 +58,15 @@ class Mesh
 public:
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<Material> materials;
+    std::vector<MeshMaterial> materials;
     std::string name;
 
     Mesh();
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, bool computeTangents = false);
 
     void Draw(Shader &shader) const;
-    void AddMaterials(const std::vector<Material> &iMaterials);
-    void AddMaterial(const Material &iMaterial);
+    void AddMaterials(const std::vector<MeshMaterial> &iMaterials);
+    void AddMaterial(const MeshMaterial &iMaterial);
     void SetupMesh(bool computeTangents = false);
     void SetupTangents();
 

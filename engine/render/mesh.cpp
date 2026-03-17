@@ -25,7 +25,7 @@ void Mesh::Draw(Shader &shader) const
 
     for (unsigned int i = 0; i < materials.size(); i++)
     {
-        const Material &material = materials[i];
+        const MeshMaterial &material = materials[i];
         if (material.texture_ambiant.type != TextureType::UNKNOWN)
         {
             glActiveTexture(GL_TEXTURE0 + total);
@@ -81,12 +81,12 @@ void Mesh::Draw(Shader &shader) const
     glBindVertexArray(0);
 }
 
-void Mesh::AddMaterials(const std::vector<Material> &iMaterials)
+void Mesh::AddMaterials(const std::vector<MeshMaterial> &iMaterials)
 {
     materials.insert(materials.end(), iMaterials.begin(), iMaterials.end());
 }
 
-void Mesh::AddMaterial(const Material &iMaterial)
+void Mesh::AddMaterial(const MeshMaterial &iMaterial)
 {
     materials.push_back(iMaterial);
 }

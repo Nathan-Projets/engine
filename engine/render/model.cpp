@@ -137,12 +137,12 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
 
     // I did it without modifying much because it will be removed at some point no need to spend time on this
-    std::vector<Material> materials;
+    std::vector<MeshMaterial> materials;
     // diffuse maps
     std::vector<Texture> diffuseMaps = loadMaterialTextures(scene, material, aiTextureType_DIFFUSE, "diffuse");
     for (auto &elem : diffuseMaps)
     {
-        Material mat;
+        MeshMaterial mat;
         mat.texture_diffuse = elem;
         materials.push_back(mat);
     }
@@ -151,7 +151,7 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     std::vector<Texture> specularMaps = loadMaterialTextures(scene, material, aiTextureType_SPECULAR, "specular");
     for (auto &elem : specularMaps)
     {
-        Material mat;
+        MeshMaterial mat;
         mat.texture_specular = elem;
         materials.push_back(mat);
     }
@@ -160,7 +160,7 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     std::vector<Texture> normalMaps = loadMaterialTextures(scene, material, aiTextureType_HEIGHT, "normal");
     for (auto &elem : normalMaps)
     {
-        Material mat;
+        MeshMaterial mat;
         mat.texture_normal = elem;
         materials.push_back(mat);
     }

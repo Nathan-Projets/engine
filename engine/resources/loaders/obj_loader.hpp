@@ -66,7 +66,7 @@ public:
 
 public:
     std::vector<Mesh> Load(const std::string &path) override;
-    std::vector<Material> LoadMaterial(const std::string &path);
+    std::vector<MeshMaterial> LoadMaterial(const std::string &path);
     std::optional<Texture> LoadTexture(const std::string &path);
 
 private:

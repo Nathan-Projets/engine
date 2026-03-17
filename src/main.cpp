@@ -12,7 +12,11 @@
 
 int main(int argc, char const *argv[])
 {
-    constexpr const char *scenePath = "assets/scenes/level_1.json";
+    const char *scenePath = "assets/scenes/level_1.json";
+    if (argc > 1)
+    {
+        scenePath = argv[1];
+    }
 
     Application app;
     if (!app.Init())
