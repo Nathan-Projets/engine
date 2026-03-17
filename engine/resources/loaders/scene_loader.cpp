@@ -111,11 +111,10 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                     [](Entity entity, simdjson::ondemand::object componentJson, World &world, ResourceManager &resourceManager)
                     {
                         world.AddComponent<Camera>(entity,
-                                                            ReadFrustrum(componentJson),
-                                                            ReadVec3(componentJson, "position", glm::vec3(0.0f)),
-                                                            ReadVec3(componentJson, "lookAt", glm::vec3(0.0f)),
-                                                            ReadVec3(componentJson, "upVector", glm::vec3(0.0f, 1.0f, 0.0f)),
-                                                            true);
+                                                   ReadFrustrum(componentJson),
+                                                   ReadVec3(componentJson, "lookAt", glm::vec3(0.0f)),
+                                                   ReadVec3(componentJson, "upVector", glm::vec3(0.0f, 1.0f, 0.0f)),
+                                                   true);
                     });
 }
 

@@ -23,7 +23,6 @@ public:
 
 public:
     PerspectiveProjection(const PerspectiveProjection::Frustrum &frustrum = {45.0f, -1.0f, 1.0f, 1.0f, -1.0f},
-                      const glm::vec3 &position = glm::vec3(0.0f),
                       const glm::vec3 &lookAt = glm::vec3(-1.0f),
                       const glm::vec3 &upVector = glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -39,49 +38,42 @@ public:
     void SetFrustrum(const Frustrum &frustrum)
     {
         m_cameraFrustrum = frustrum;
-        RecalculateMatrix();
+        RecalculateProjection();
     }
 
     void SetLookAt(const glm::vec3 &lookAt)
     {
         m_lookAt = lookAt;
-        RecalculateMatrix();
     }
 
     void SetUpVector(const glm::vec3 &upVector)
     {
         m_upVector = upVector;
-        RecalculateMatrix();
     }
 
-    void MoveForward(float velocity)
+    const glm::vec3 &GetLookAt() const
     {
-        m_position += glm::normalize(m_lookAt - m_position) * velocity;
-        RecalculateMatrix();
+        return m_lookAt;
     }
 
-    void MoveBackward(float velocity)
+    const glm::vec3 &GetUpVector() const
     {
-        m_position -= glm::normalize(m_lookAt - m_position) * velocity;
-        RecalculateMatrix();
+        return m_upVector;
     }
 
-    void MoveLeft(float velocity)
+    // TODO: check if I can only build it when camera change or something, right now with the new changes it recalculates everything each frame
+    glm::mat4 BuildViewMatrix(const glm::vec3 &position) const
     {
-        glm::vec3 right = glm::normalize(glm::cross(m_lookAt - m_position, m_upVector));
-        m_position -= right * velocity;
-        RecalculateMatrix();
+        return glm::lookAt(position, m_lookAt, m_upVector);
     }
 
-    void MoveRight(float velocity)
+    glm::mat4 BuildViewProjectionMatrix(const glm::vec3 &position) const
     {
-        glm::vec3 right = glm::normalize(glm::cross(m_lookAt - m_position, m_upVector));
-        m_position += right * velocity;
-        RecalculateMatrix();
+        return m_projectionMatrix * BuildViewMatrix(position);
     }
 
 protected:
-    void RecalculateMatrix();
+    void RecalculateProjection() override;
 
 protected:
     glm::vec3 m_lookAt;

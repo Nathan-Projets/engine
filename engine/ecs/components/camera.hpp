@@ -15,10 +15,9 @@ public:
     }
 
     explicit Camera(const PerspectiveProjection::Frustrum &frustrum,
-                    const glm::vec3 &position = glm::vec3(0.0f),
                     const glm::vec3 &lookAt = glm::vec3(-1.0f),
                     const glm::vec3 &upVector = glm::vec3(0.0f, 1.0f, 0.0f),
-                    bool isMain = false) : projection(frustrum, position, lookAt, upVector), main(isMain)
+                    bool isMain = false) : projection(frustrum, lookAt, upVector), main(isMain)
     {
     }
 

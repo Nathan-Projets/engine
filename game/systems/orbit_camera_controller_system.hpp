@@ -6,6 +6,7 @@
 
 #include <ecs/system.hpp>
 #include <ecs/components/camera.hpp>
+#include <ecs/components/transform.hpp>
 #include <input/input_manager.hpp>
 
 #include "../components/orbit_camera_controller.hpp"
@@ -19,12 +20,13 @@ public:
             return;
 
         InputManager &input = InputManager::Get();
-        auto entities = world.GetEntitiesWith<Camera, OrbitCameraController>();
+        auto entities = world.GetEntitiesWith<Transform, Camera, OrbitCameraController>();
         for (Entity entity : entities)
         {
+            Transform *transform = world.GetComponent<Transform>(entity);
             Camera *camera = world.GetComponent<Camera>(entity);
             OrbitCameraController *controller = world.GetComponent<OrbitCameraController>(entity);
-            if (!camera || !controller)
+            if (!transform || !camera || !controller)
                 continue;
 
             PerspectiveProjection &projection = camera->GetProjection();
@@ -32,7 +34,7 @@ public:
             {
                 controller->orbitInitialized = true;
 
-                const glm::vec3 offset = projection.GetPosition() - controller->target;
+                const glm::vec3 offset = transform->position - controller->target;
                 const float distance = glm::length(offset);
 
                 if (distance > 0.0001f)
@@ -81,7 +83,7 @@ public:
                                                                 controller->radius * std::sin(controller->pitch),
                                                                 horizontalRadius * std::sin(controller->yaw));
 
-            projection.SetPosition(position);
+            transform->position = position;
             projection.SetLookAt(controller->target);
             projection.SetUpVector(controller->upVector);
         }

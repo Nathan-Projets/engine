@@ -21,13 +21,16 @@ public:
         auto entities = world.GetEntitiesWith<Transform, MeshRenderer>();
 
         const PerspectiveProjection *activeCameraProjection = nullptr;
+        const Transform *activeCameraTransform = nullptr;
         auto cameraEntities = world.GetEntitiesWith<Camera>();
         for (Entity cameraEntity : cameraEntities)
         {
             Camera *cameraComponent = world.GetComponent<Camera>(cameraEntity);
-            if (cameraComponent && cameraComponent->main)
+            Transform *cameraTransform = world.GetComponent<Transform>(cameraEntity);
+            if (cameraComponent && cameraTransform && cameraComponent->main)
             {
                 activeCameraProjection = &cameraComponent->GetProjection();
+                activeCameraTransform = cameraTransform;
                 break;
             }
         }
@@ -44,11 +47,11 @@ public:
             std::shared_ptr<Meshes> meshes = renderer->GetMeshes();
 
             shader.Use();
-            if (activeCameraProjection)
+            if (activeCameraProjection && activeCameraTransform)
             {
-                shader.Upload("view", activeCameraProjection->GetViewMatrix());
+                shader.Upload("view", activeCameraProjection->BuildViewMatrix(activeCameraTransform->position));
                 shader.Upload("projection", activeCameraProjection->GetProjectionMatrix());
-                shader.Upload("viewPos", activeCameraProjection->GetPosition());
+                shader.Upload("viewPos", activeCameraTransform->position);
             }
             shader.Upload("model", transform->GetMatrix());
 

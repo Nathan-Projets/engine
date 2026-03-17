@@ -39,9 +39,9 @@ void GameWorld::Init()
 
     // Set up main camera
     Entity cameraEntity = m_world.CreateEntity();
+    m_world.AddComponent<Transform>(cameraEntity, glm::vec3(0.0f, 0.0f, 9.0f));
     m_world.AddComponent<Camera>(cameraEntity,
                                           PerspectiveProjection::Frustrum{45.0f, (float)m_width, (float)m_height, 0.1f, 150.0f},
-                                          glm::vec3(0.0f, 0.0f, 9.0f),
                                           glm::vec3(0.0f, 0.0f, 0.0f),
                                           glm::vec3(0.0f, 1.0f, 0.0f),
                                           true);
@@ -86,28 +86,6 @@ void GameWorld::Init()
 
 void GameWorld::Update(float deltaTime)
 {
-    const float cameraSpeed = 12.5f;
-    PerspectiveProjection &projection = GetActiveProjection();
-
-    // Not sure where to put these controls with the current ecs set up
-    // I will probably need to rework the camera thing anyway
-
-    // Camera controls
-    if (InputManager::Get().IsActionActive("move_forward"))
-        projection.MoveForward(cameraSpeed * deltaTime);
-    if (InputManager::Get().IsActionActive("move_backward"))
-        projection.MoveBackward(cameraSpeed * deltaTime);
-    if (InputManager::Get().IsActionActive("move_left"))
-        projection.MoveLeft(cameraSpeed * deltaTime);
-    if (InputManager::Get().IsActionActive("move_right"))
-        projection.MoveRight(cameraSpeed * deltaTime);
-
-    // Scroll zoom
-    if (InputManager::Get().GetMouseScroll().y > 0)
-        projection.MoveForward(cameraSpeed * deltaTime * 2.0f);
-    if (InputManager::Get().GetMouseScroll().y < 0)
-        projection.MoveBackward(cameraSpeed * deltaTime * 2.0f);
-
     m_world.UpdateSystems(deltaTime);
 }
 
