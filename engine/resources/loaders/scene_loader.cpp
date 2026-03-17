@@ -8,24 +8,54 @@ ComponentLoaderMap &SceneLoader::GetComponentLoaders()
 
 float SceneLoader::ReadFloat(simdjson::ondemand::object componentJson, const char *fieldName, float defaultValue)
 {
-    simdjson::ondemand::value value = componentJson[fieldName];
-    if (value.is_null())
-        return defaultValue;
+    try
+    {
+        simdjson::simdjson_result<simdjson::ondemand::value> valueResult = componentJson[fieldName];
+        if (valueResult.error())
+            return defaultValue;
 
-    return static_cast<float>(double(value));
+        simdjson::ondemand::value value = valueResult.value();
+        if (value.is_null())
+            return defaultValue;
+
+        simdjson::simdjson_result<double> result = value.get_double();
+        if (result.error())
+            return defaultValue;
+
+        return static_cast<float>(result.value());
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+        return defaultValue;
+    }
 }
 
 glm::vec3 SceneLoader::ReadVec3(simdjson::ondemand::object componentJson, const char *fieldName, const glm::vec3 &defaultValue)
 {
     glm::vec3 result = defaultValue;
-    simdjson::ondemand::array values = componentJson[fieldName].get_array();
-    int index = 0;
-    for (double value : values)
+    try
     {
-        if (index >= 3)
-            break;
+        simdjson::simdjson_result<simdjson::ondemand::array> valuesResult = componentJson[fieldName].get_array();
+        if (valuesResult.error())
+            return result;
 
-        result[index++] = static_cast<float>(value);
+        simdjson::ondemand::array values = valuesResult.value();
+        int index = 0;
+        for (auto value : values)
+        {
+            if (index >= 3)
+                break;
+
+            simdjson::simdjson_result<double> number = value.get_double();
+            if (number.error())
+                continue;
+
+            result[index++] = static_cast<float>(number.value());
+        }
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+        return result;
     }
 
     return result;
@@ -34,13 +64,24 @@ glm::vec3 SceneLoader::ReadVec3(simdjson::ondemand::object componentJson, const 
 std::vector<float> SceneLoader::ReadFloatArray(simdjson::ondemand::array values, size_t maxValues, float defaultValue)
 {
     std::vector<float> result(maxValues, defaultValue);
-    size_t index = 0;
-    for (double value : values)
+    try
     {
-        if (index >= maxValues)
-            break;
+        size_t index = 0;
+        for (auto value : values)
+        {
+            if (index >= maxValues)
+                break;
 
-        result[index++] = static_cast<float>(value);
+            simdjson::simdjson_result<double> number = value.get_double();
+            if (number.error())
+                continue;
+
+            result[index++] = static_cast<float>(number.value());
+        }
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+        return result;
     }
 
     return result;
@@ -48,13 +89,32 @@ std::vector<float> SceneLoader::ReadFloatArray(simdjson::ondemand::array values,
 
 PerspectiveProjection::Frustrum SceneLoader::ReadFrustrum(simdjson::ondemand::object componentJson)
 {
-    const std::vector<float> values = ReadFloatArray(componentJson["frustrum"].get_array(), 5, 0.0f);
-    return {
-        values[0],
-        values[1],
-        values[2],
-        values[3],
-        values[4]};
+    const PerspectiveProjection::Frustrum defaultFrustrum{45.0f, 1.0f, 1.0f, 0.1f, 150.0f};
+
+    try
+    {
+        simdjson::simdjson_result<simdjson::ondemand::array> valuesResult = componentJson["frustrum"].get_array();
+        if (valuesResult.error())
+            return defaultFrustrum;
+
+        const std::vector<float> values = ReadFloatArray(valuesResult.value(), 5, 0.0f);
+        if (values.size() < 5)
+            return defaultFrustrum;
+
+        if (values[1] <= 0.0f || values[2] <= 0.0f || values[3] <= 0.0f || values[4] <= values[3])
+            return defaultFrustrum;
+
+        return {
+            values[0],
+            values[1],
+            values[2],
+            values[3],
+            values[4]};
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+        return defaultFrustrum;
+    }
 }
 
 void SceneLoader::RegisterBuiltInComponentLoaders()
@@ -95,6 +155,7 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                         MeshRenderer *meshRenderer = world.AddComponent<MeshRenderer>(entity);
                         meshRenderer->SetMeshes(meshes);
                         meshRenderer->SetShader(shader.get());
+                        meshRenderer->SetShininess(ReadFloat(componentJson, "shininess", 32.0f));
                     });
 
     loaders.emplace("Light",

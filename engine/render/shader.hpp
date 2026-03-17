@@ -75,5 +75,5 @@ private:
     void createProgramShader(GLuint iVertexShader, GLuint iFragmentShader);
     bool checkError(ShaderType iType, GLuint iShader);
 
-    GLuint m_id;
+    GLuint m_id = 0;
 };

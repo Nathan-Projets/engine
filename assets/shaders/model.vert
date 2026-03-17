@@ -35,10 +35,9 @@ void main() {
     vs_out.FragPos = fragPos;
     vs_out.TexCoords = aTexCoords;
     vs_out.use_tbn = use_tbn;
+    vs_out.Normal = normalize(normalMatrix * aNormal);
     if (use_tbn > 0.0) {
         vs_out.TBN = mat3(T, B, N);
-    } else {
-        vs_out.Normal = mat3(transpose(inverse(model))) * aNormal;
     }
 
     gl_Position = projection * view * model * vec4(aPos, 1.0);

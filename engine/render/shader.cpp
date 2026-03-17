@@ -4,8 +4,12 @@ Shader::Shader(const std::string &iVertexFilePath, const std::string &iFragmentF
 {
     GLuint aVertexShader = compile(ShaderType::Vertex, tools::LoadFile(iVertexFilePath));
     GLuint aFragmentShader = compile(ShaderType::Fragment, tools::LoadFile(iFragmentFilePath));
-    if (aVertexShader == -1 || aFragmentShader == -1)
+    if (aVertexShader == 0 || aFragmentShader == 0)
     {
+        if (aVertexShader != 0)
+            glDeleteShader(aVertexShader);
+        if (aFragmentShader != 0)
+            glDeleteShader(aFragmentShader);
         return;
     }
 
@@ -14,7 +18,8 @@ Shader::Shader(const std::string &iVertexFilePath, const std::string &iFragmentF
 
 Shader::~Shader()
 {
-    glDeleteProgram(m_id);
+    if (m_id != 0)
+        glDeleteProgram(m_id);
 }
 
 void Shader::Use() const
@@ -27,7 +32,7 @@ GLuint Shader::compile(ShaderType iType, const std::string &iShaderData)
     if (iShaderData.size() == 0)
     {
         ERROR("Shader not compiled, empty shader.");
-        return -1;
+        return 0;
     }
 
     const char *aData = iShaderData.data();
@@ -35,7 +40,13 @@ GLuint Shader::compile(ShaderType iType, const std::string &iShaderData)
     glShaderSource(aShader, 1, &aData, NULL);
     glCompileShader(aShader);
 
-    return checkError(iType, aShader) ? aShader : -1;
+    if (!checkError(iType, aShader))
+    {
+        glDeleteShader(aShader);
+        return 0;
+    }
+
+    return aShader;
 }
 
 void Shader::createProgramShader(GLuint iVertexShader, GLuint iFragmentShader)
@@ -46,11 +57,14 @@ void Shader::createProgramShader(GLuint iVertexShader, GLuint iFragmentShader)
     glAttachShader(m_id, iFragmentShader);
     glLinkProgram(m_id);
 
-    if (checkError(ShaderType::Program, m_id))
+    if (!checkError(ShaderType::Program, m_id))
     {
-        glDeleteShader(iVertexShader);
-        glDeleteShader(iFragmentShader);
+        glDeleteProgram(m_id);
+        m_id = 0;
     }
+
+    glDeleteShader(iVertexShader);
+    glDeleteShader(iFragmentShader);
 }
 
 bool Shader::checkError(ShaderType iType, GLuint iShader)

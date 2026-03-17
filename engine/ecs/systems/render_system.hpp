@@ -64,7 +64,7 @@ public:
                     shader.Upload("light.diffuse", light->diffuse);
                     shader.Upload("light.specular", light->specular);
                     shader.Upload("color", light->color);
-                    shader.Upload("material.shininess", 32.0f); // TODO: fix this also, by identifying where it should live
+                    shader.Upload("material.shininess", renderer->GetShininess());
                     
                     glm::vec3 position {0.0f};
                     Transform *transform = world.GetComponent<Transform>(lights[0]);
