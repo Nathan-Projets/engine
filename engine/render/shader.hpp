@@ -4,6 +4,7 @@
 #include <string>
 #include <format>
 #include <type_traits>
+#include <unordered_map>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -74,6 +75,8 @@ private:
     GLuint compile(ShaderType iType, const std::string &shaderSource);
     void createProgramShader(GLuint iVertexShader, GLuint iFragmentShader);
     bool checkError(ShaderType iType, GLuint iShader);
+    GLint GetLocation(const std::string &name) const;
 
     GLuint m_id = 0;
+    mutable std::unordered_map<std::string, GLint> m_locationCache;
 };

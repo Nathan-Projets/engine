@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <glm/glm.hpp>
 
 /**
@@ -44,6 +45,7 @@ struct CameraData
     float near = 0.1f;
     glm::vec2 _pad0 = {0.0f, 0.0f};
     float far = 1000.0f;
+    float _pad1 = 0.0f; // pads struct to 288 bytes to match std140 block size (multiple of 16)
 };
 
 /**
@@ -104,3 +106,11 @@ struct MaterialData
     unsigned int features = 0;
     glm::vec2 _pad0 = {0.0f, 0.0f};
 };
+
+// std140 UBO struct sizes must be multiples of the largest base alignment (16 bytes for mat4/vec4).
+// If any of these fail, a struct field is missing padding — update the struct and the matching GLSL block.
+static_assert(sizeof(FrameData)    ==  32, "FrameData size mismatch with std140 block");
+static_assert(sizeof(CameraData)   == 288, "CameraData size mismatch with std140 block");
+static_assert(sizeof(ObjectData)   == 144, "ObjectData size mismatch with std140 block");
+static_assert(sizeof(LightData)    == 112, "LightData size mismatch with std140 element");
+static_assert(sizeof(MaterialData) ==  48, "MaterialData size mismatch with std140 block");

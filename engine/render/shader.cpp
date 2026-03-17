@@ -27,6 +27,16 @@ void Shader::Use() const
     glUseProgram(m_id);
 }
 
+GLint Shader::GetLocation(const std::string &name) const
+{
+    auto it = m_locationCache.find(name);
+    if (it != m_locationCache.end())
+        return it->second;
+    GLint loc = glGetUniformLocation(m_id, name.c_str());
+    m_locationCache[name] = loc;
+    return loc;
+}
+
 GLuint Shader::compile(ShaderType iType, const std::string &iShaderData)
 {
     if (iShaderData.size() == 0)
@@ -102,42 +112,35 @@ bool Shader::checkError(ShaderType iType, GLuint iShader)
 
 void Shader::UploadUniformBool(const std::string &iName, const glm::uint &iValue)
 {
-    glUseProgram(m_id);
-    glUniform1i(glGetUniformLocation(m_id, iName.c_str()), iValue);
+    glUniform1i(GetLocation(iName), iValue);
 }
 
 void Shader::UploadUniformInt(const std::string &iName, const glm::uint &iValue)
 {
-    glUseProgram(m_id);
-    glUniform1i(glGetUniformLocation(m_id, iName.c_str()), iValue);
+    glUniform1i(GetLocation(iName), iValue);
 }
 
 void Shader::UploadUniformFloat1(const std::string &iName, const float &iVector)
 {
-    glUseProgram(m_id);
-    glUniform1f(glGetUniformLocation(m_id, iName.c_str()), iVector);
+    glUniform1f(GetLocation(iName), iVector);
 }
 
 void Shader::UploadUniformFloat2(const std::string &iName, const glm::vec2 &iVector)
 {
-    glUseProgram(m_id);
-    glUniform2f(glGetUniformLocation(m_id, iName.c_str()), iVector[0], iVector[1]);
+    glUniform2f(GetLocation(iName), iVector[0], iVector[1]);
 }
 
 void Shader::UploadUniformFloat3(const std::string &iName, const glm::vec3 &iVector)
 {
-    glUseProgram(m_id);
-    glUniform3f(glGetUniformLocation(m_id, iName.c_str()), iVector[0], iVector[1], iVector[2]);
+    glUniform3f(GetLocation(iName), iVector[0], iVector[1], iVector[2]);
 }
 
 void Shader::UploadUniformFloat4(const std::string &iName, const glm::vec4 &iVector)
 {
-    glUseProgram(m_id);
-    glUniform4f(glGetUniformLocation(m_id, iName.c_str()), iVector[0], iVector[1], iVector[2], iVector[3]);
+    glUniform4f(GetLocation(iName), iVector[0], iVector[1], iVector[2], iVector[3]);
 }
 
 void Shader::UploadUniformMatrixFloat4(const std::string &iName, const glm::mat4 &iVector)
 {
-    glUseProgram(m_id);
-    glUniformMatrix4fv(glGetUniformLocation(m_id, iName.c_str()), 1, GL_FALSE, value_ptr(iVector));
+    glUniformMatrix4fv(GetLocation(iName), 1, GL_FALSE, value_ptr(iVector));
 }

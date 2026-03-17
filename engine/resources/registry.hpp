@@ -73,7 +73,7 @@ public:
     {
         for (auto aResourceIterator = m_resources.begin(); aResourceIterator != m_resources.end();)
         {
-            if (aResourceIterator->second.Ref.use_count() == 0)
+            if (aResourceIterator->second.Ref.use_count() == 1) // 1 = only held by registry itself
             {
                 aResourceIterator = m_resources.erase(aResourceIterator);
             }

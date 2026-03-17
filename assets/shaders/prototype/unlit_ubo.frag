@@ -3,20 +3,8 @@
 in vec2 TexCoords;
 out vec4 FragColor;
 
-struct Material {
-    sampler2D ambient[16];
-    sampler2D diffuse[16];
-    sampler2D specular[16];
-    sampler2D normal[16];
-    int ambientCount;
-    int diffuseCount;
-    int specularCount;
-    int normalCount;
-    float shininess;
-};
-
-uniform Material material;
-uniform vec3 color;
+uniform sampler2D uDiffuse[16];
+uniform int uDiffuseCount;
 
 layout(std140, binding = 4) uniform MaterialDataBlock {
     vec3 uBaseColor;
@@ -31,12 +19,8 @@ layout(std140, binding = 4) uniform MaterialDataBlock {
 void main() {
     vec3 baseColor = uBaseColor;
 
-    if (material.diffuseCount > 0) {
-        baseColor = texture(material.diffuse[0], TexCoords).rgb;
-    }
-
-    if (length(color) > 0.0) {
-        baseColor *= color;
+    if (uDiffuseCount > 0) {
+        baseColor = texture(uDiffuse[0], TexCoords).rgb;
     }
 
     FragColor = vec4(baseColor + uEmissive, 1.0);

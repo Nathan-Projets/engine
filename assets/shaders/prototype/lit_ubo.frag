@@ -8,18 +8,14 @@ in VS_OUT {
     float use_tbn;
 } fs_in;
 
-struct Material {
-    sampler2D ambient[16];
-    sampler2D diffuse[16];
-    sampler2D specular[16];
-    sampler2D normal[16];
-    int ambientCount;
-    int diffuseCount;
-    int specularCount;
-    int normalCount;
-};
-
-uniform Material material;
+uniform sampler2D uAmbient[16];
+uniform int uAmbientCount;
+uniform sampler2D uDiffuse[16];
+uniform int uDiffuseCount;
+uniform sampler2D uSpecular[16];
+uniform int uSpecularCount;
+uniform sampler2D uNormal[16];
+uniform int uNormalCount;
 
 // Padding members keep this GLSL struct layout-compatible with the C++ LightData struct.
 // In std140, vec3 values are aligned to 16 bytes, so we add explicit pad fields to avoid
@@ -77,32 +73,32 @@ out vec4 FragColor;
 
 void main() {
     vec3 diffuseColor = vec3(1.0);
-    if(material.diffuseCount > 0) {
+    if(uDiffuseCount > 0) {
         diffuseColor = vec3(0.0);
-        for(int i = 0; i < material.diffuseCount; i++) {
-            diffuseColor += texture(material.diffuse[i], fs_in.TexCoords).rgb;
+        for(int i = 0; i < uDiffuseCount; i++) {
+            diffuseColor += texture(uDiffuse[i], fs_in.TexCoords).rgb;
         }
-        diffuseColor /= float(material.diffuseCount);
+        diffuseColor /= float(uDiffuseCount);
     } else {
         diffuseColor = uBaseColor;
     }
 
     vec3 specularColor = vec3(1.0);
-    if(material.specularCount > 0) {
+    if(uSpecularCount > 0) {
         specularColor = vec3(0.0);
-        for(int i = 0; i < material.specularCount; i++) {
-            specularColor += texture(material.specular[i], fs_in.TexCoords).rgb;
+        for(int i = 0; i < uSpecularCount; i++) {
+            specularColor += texture(uSpecular[i], fs_in.TexCoords).rgb;
         }
-        specularColor /= float(material.specularCount);
+        specularColor /= float(uSpecularCount);
     }
 
     vec3 norm;
-    if(material.normalCount > 0 && fs_in.use_tbn > 0.0) {
+    if(uNormalCount > 0 && fs_in.use_tbn > 0.0) {
         vec3 tangentNormal = vec3(0.0);
-        for(int i = 0; i < material.normalCount; i++) {
-            tangentNormal += texture(material.normal[i], fs_in.TexCoords).rgb * 2.0 - 1.0;
+        for(int i = 0; i < uNormalCount; i++) {
+            tangentNormal += texture(uNormal[i], fs_in.TexCoords).rgb * 2.0 - 1.0;
         }
-        tangentNormal = normalize(tangentNormal / float(material.normalCount));
+        tangentNormal = normalize(tangentNormal / float(uNormalCount));
         norm = normalize(fs_in.TBN * tangentNormal);
     } else {
         norm = normalize(fs_in.Normal);

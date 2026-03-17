@@ -15,8 +15,6 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, bool
 
 void Mesh::Draw(Shader &shader) const
 {
-    shader.Use();
-
     int total = 0;
     unsigned int ambientNr = 0;
     unsigned int diffuseNr = 0;
@@ -29,7 +27,7 @@ void Mesh::Draw(Shader &shader) const
         if (material.texture_ambiant.type != TextureType::UNKNOWN)
         {
             glActiveTexture(GL_TEXTURE0 + total);
-            shader.Upload(("material.ambient[" + std::to_string(ambientNr) + "]").c_str(), total);
+            shader.Upload("uAmbient[" + std::to_string(ambientNr) + "]", total);
             glBindTexture(GL_TEXTURE_2D, material.texture_ambiant.id);
             ambientNr++;
             total++;
@@ -37,7 +35,7 @@ void Mesh::Draw(Shader &shader) const
         if (material.texture_diffuse.type != TextureType::UNKNOWN)
         {
             glActiveTexture(GL_TEXTURE0 + total);
-            shader.Upload(("material.diffuse[" + std::to_string(diffuseNr) + "]").c_str(), total);
+            shader.Upload("uDiffuse[" + std::to_string(diffuseNr) + "]", total);
             glBindTexture(GL_TEXTURE_2D, material.texture_diffuse.id);
             diffuseNr++;
             total++;
@@ -45,7 +43,7 @@ void Mesh::Draw(Shader &shader) const
         if (material.texture_specular.type != TextureType::UNKNOWN)
         {
             glActiveTexture(GL_TEXTURE0 + total);
-            shader.Upload(("material.specular[" + std::to_string(specularNr) + "]").c_str(), total);
+            shader.Upload("uSpecular[" + std::to_string(specularNr) + "]", total);
             glBindTexture(GL_TEXTURE_2D, material.texture_specular.id);
             specularNr++;
             total++;
@@ -53,17 +51,17 @@ void Mesh::Draw(Shader &shader) const
         if (material.texture_normal.type != TextureType::UNKNOWN)
         {
             glActiveTexture(GL_TEXTURE0 + total);
-            shader.Upload(("material.normal[" + std::to_string(normalNr) + "]").c_str(), total);
+            shader.Upload("uNormal[" + std::to_string(normalNr) + "]", total);
             glBindTexture(GL_TEXTURE_2D, material.texture_normal.id);
             normalNr++;
             total++;
         }
     }
 
-    shader.Upload("material.ambientCount", ambientNr);
-    shader.Upload("material.diffuseCount", diffuseNr);
-    shader.Upload("material.specularCount", specularNr);
-    shader.Upload("material.normalCount", normalNr);
+    shader.Upload("uAmbientCount", ambientNr);
+    shader.Upload("uDiffuseCount", diffuseNr);
+    shader.Upload("uSpecularCount", specularNr);
+    shader.Upload("uNormalCount", normalNr);
 
     if (computedTangents)
     {
