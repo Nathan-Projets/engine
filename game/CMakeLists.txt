@@ -1,8 +1,6 @@
 add_library(
     Game
     
-    game_world.cpp
-    game_world.hpp
     scene/game_scene.cpp
     scene/game_scene.hpp
     components/component_registration.cpp

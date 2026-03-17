@@ -1,5 +1,7 @@
 #include "scene_loader.hpp"
 
+#include <algorithm>
+
 ComponentLoaderMap &SceneLoader::GetComponentLoaders()
 {
     static ComponentLoaderMap loaders;
@@ -59,6 +61,35 @@ glm::vec3 SceneLoader::ReadVec3(simdjson::ondemand::object componentJson, const 
     }
 
     return result;
+}
+
+RenderQueue SceneLoader::ReadRenderQueue(simdjson::ondemand::object componentJson, RenderQueue defaultValue)
+{
+    try
+    {
+        simdjson::simdjson_result<std::string_view> valueResult = componentJson["queue"].get_string();
+        if (valueResult.error())
+            return defaultValue;
+
+        std::string queueName(valueResult.value());
+        std::transform(queueName.begin(), queueName.end(), queueName.begin(),
+                       [](unsigned char c)
+                       { return static_cast<char>(std::tolower(c)); });
+
+        if (queueName == "opaque")
+            return RenderQueue::Opaque;
+        if (queueName == "transparent")
+            return RenderQueue::Transparent;
+        if (queueName == "unlit")
+            return RenderQueue::Unlit;
+        if (queueName == "debug")
+            return RenderQueue::Debug;
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+    }
+
+    return defaultValue;
 }
 
 std::vector<float> SceneLoader::ReadFloatArray(simdjson::ondemand::array values, size_t maxValues, float defaultValue)
@@ -155,7 +186,14 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                         MeshRenderer *meshRenderer = world.AddComponent<MeshRenderer>(entity);
                         meshRenderer->SetMeshes(meshes);
                         meshRenderer->SetShader(shader.get());
-                        meshRenderer->SetShininess(ReadFloat(componentJson, "shininess", 32.0f));
+                        MaterialData materialData = meshRenderer->GetMaterialData();
+                        materialData.roughness = std::clamp(ReadFloat(componentJson, "roughness", 0.5f), 0.02f, 1.0f);
+                        meshRenderer->SetMaterialData(materialData);
+
+                        RenderQueue inferredQueue = RenderQueue::Opaque;
+                        if (shaderLocation.find("unlit") != std::string::npos)
+                            inferredQueue = RenderQueue::Unlit;
+                        meshRenderer->SetQueue(ReadRenderQueue(componentJson, inferredQueue));
                     });
 
     loaders.emplace("Light",

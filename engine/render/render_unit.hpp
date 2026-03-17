@@ -3,12 +3,14 @@
 #include <glm/glm.hpp>
 
 #include "mesh.hpp"
-#include "material.hpp"
+#include "shader.hpp"
+#include "shader_domain.hpp"
 
 class RenderUnit
 {
 public:
-    Mesh *mesh;
-    Material *material;
-    glm::mat4 model;
+    Mesh *mesh = nullptr;
+    Shader *shader = nullptr;
+    glm::mat4 model = glm::mat4(1.0f);
+    MaterialData material = {};
 };

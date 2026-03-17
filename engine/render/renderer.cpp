@@ -2,6 +2,68 @@
 
 #include <algorithm>
 
+void Renderer::UploadCameraUbo(const CameraRenderData &camera)
+{
+    if (!m_uniformBufferManager)
+        return;
+
+    CameraData cameraData;
+    cameraData.view = camera.view;
+    cameraData.projection = camera.projection;
+    cameraData.viewProjection = camera.viewProjection;
+    cameraData.invViewProjection = camera.invViewProjection;
+    cameraData.cameraPosition = camera.position;
+    cameraData.near = camera.near;
+    cameraData.far = camera.far;
+
+    m_uniformBufferManager->UpdateCameraData(cameraData);
+}
+
+void Renderer::UploadLightsUbo(const std::vector<LightRenderData> &lights)
+{
+    if (!m_uniformBufferManager)
+        return;
+
+    std::vector<LightData> lightDataArray;
+    lightDataArray.reserve(lights.size());
+    for (const LightRenderData &renderLight : lights)
+    {
+        LightData lightData;
+        lightData.position = renderLight.position;
+        lightData.color = renderLight.color;
+        lightData.ambient = renderLight.ambient;
+        lightData.diffuse = renderLight.diffuse;
+        lightData.specular = renderLight.specular;
+        lightData.intensity = 1.0f;
+        lightDataArray.push_back(lightData);
+    }
+
+    m_uniformBufferManager->UpdateLightData(lightDataArray.data(), static_cast<unsigned int>(lightDataArray.size()));
+}
+
+void Renderer::UploadObjectUbo(const RenderUnit &unit)
+{
+    if (!m_uniformBufferManager)
+        return;
+
+    ObjectData objectData;
+    objectData.model = unit.model;
+    objectData.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(glm::mat3(unit.model)))));
+    objectData.objectId = 0;
+    objectData.materialIndex = 0;
+    m_uniformBufferManager->UpdateObjectData(objectData);
+}
+
+void Renderer::UploadMaterialUbo(const RenderUnit &unit) const
+{
+    if (!m_uniformBufferManager)
+        return;
+
+    MaterialData materialData = unit.material;
+    materialData.roughness = glm::clamp(materialData.roughness, 0.02f, 1.0f);
+    m_uniformBufferManager->UpdateMaterialData(materialData);
+}
+
 void RenderFrameSnapshot::Clear()
 {
     lights.clear();
@@ -19,9 +81,7 @@ void Renderer::Initialize(uint32_t width, uint32_t height, const RendererOptions
     m_initialized = true;
     m_frameOpen = false;
     m_buildingSnapshot.Clear();
-
-    // Create uniform buffer manager for standard layouts
-    m_uniformBufferManager = new UniformBufferManager();
+    m_uniformBufferManager = std::make_unique<UniformBufferManager>();
 }
 
 void Renderer::Shutdown()
@@ -29,12 +89,7 @@ void Renderer::Shutdown()
     m_initialized = false;
     m_frameOpen = false;
     m_buildingSnapshot.Clear();
-
-    if (m_uniformBufferManager)
-    {
-        delete m_uniformBufferManager;
-        m_uniformBufferManager = nullptr;
-    }
+    m_uniformBufferManager.reset(nullptr);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -145,7 +200,6 @@ void Renderer::ExecuteFrame(const RenderFrameSnapshot &snapshot)
 
 void Renderer::ExecuteDepthPrepass(const RenderFrameSnapshot &snapshot)
 {
-    (void)snapshot;
 }
 
 void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
@@ -153,69 +207,20 @@ void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
     if (!m_uniformBufferManager)
         return;
 
-    // Convert camera data to UBO format
-    CameraData cameraData;
-    cameraData.view = snapshot.camera.view;
-    cameraData.projection = snapshot.camera.projection;
-    cameraData.viewProjection = snapshot.camera.viewProjection;
-    cameraData.invViewProjection = snapshot.camera.invViewProjection;
-    cameraData.cameraPosition = snapshot.camera.position;
-    cameraData.near = snapshot.camera.near;
-    cameraData.far = snapshot.camera.far;
-
-    m_uniformBufferManager->UpdateCameraData(cameraData);
-
-    if (!snapshot.lights.empty())
-    {
-        std::vector<LightData> lightDataArray;
-        for (const LightRenderData &renderLight : snapshot.lights)
-        {
-            LightData lightData;
-            lightData.position = renderLight.position;
-            lightData.color = renderLight.color;
-            lightDataArray.push_back(lightData);
-        }
-        if (!lightDataArray.empty())
-        {
-            m_uniformBufferManager->UpdateLightData(lightDataArray.data(), static_cast<unsigned int>(lightDataArray.size()));
-        }
-    }
+    UploadCameraUbo(snapshot.camera);
+    UploadLightsUbo(snapshot.lights);
 
     m_uniformBufferManager->BindAllBuffers();
-
-    const LightRenderData *mainLight = snapshot.lights.empty() ? nullptr : &snapshot.lights[0];
-
     for (const RenderUnit &unit : snapshot.opaqueUnits)
     {
-        if (!unit.mesh || !unit.material || !unit.material->shader)
+        if (!unit.mesh || !unit.shader)
             continue;
 
-        Shader &shader = *unit.material->shader;
-        unit.material->Use();
+        Shader &shader = *unit.shader;
+        shader.Use();
 
-        // Convert object data to UBO format
-        ObjectData objectData;
-        objectData.model = unit.model;
-        objectData.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(glm::mat3(unit.model)))));
-        objectData.objectId = 0; // TODO: Set from entity handle
-        objectData.materialIndex = 0;
-        m_uniformBufferManager->UpdateObjectData(objectData);
-
-        // Legacy fallback: still upload via shader for compatibility (until shaders are migrated to UBO layout)
-        shader.Upload("view", snapshot.camera.view);
-        shader.Upload("projection", snapshot.camera.projection);
-        shader.Upload("viewPos", snapshot.camera.position);
-        shader.Upload("model", unit.model);
-
-        if (mainLight)
-        {
-            shader.Upload("light.position", mainLight->position);
-            shader.Upload("light.ambient", mainLight->ambient);
-            shader.Upload("light.diffuse", mainLight->diffuse);
-            shader.Upload("light.specular", mainLight->specular);
-            shader.Upload("color", mainLight->color);
-            shader.Upload("material.shininess", 32.0f);
-        }
+        UploadObjectUbo(unit);
+        UploadMaterialUbo(unit);
 
         unit.mesh->Draw(shader);
     }
@@ -223,15 +228,31 @@ void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
 
 void Renderer::ExecuteTransparentPass(const RenderFrameSnapshot &snapshot)
 {
-    (void)snapshot;
 }
 
 void Renderer::ExecuteUnlitPass(const RenderFrameSnapshot &snapshot)
 {
-    (void)snapshot;
+    if (!m_uniformBufferManager)
+        return;
+
+    UploadCameraUbo(snapshot.camera);
+    m_uniformBufferManager->BindAllBuffers();
+
+    for (const RenderUnit &unit : snapshot.unlitUnits)
+    {
+        if (!unit.mesh || !unit.shader)
+            continue;
+
+        Shader &shader = *unit.shader;
+        shader.Use();
+
+        UploadObjectUbo(unit);
+        UploadMaterialUbo(unit);
+
+        unit.mesh->Draw(shader);
+    }
 }
 
 void Renderer::ExecuteDebugPass(const RenderFrameSnapshot &snapshot)
 {
-    (void)snapshot;
 }

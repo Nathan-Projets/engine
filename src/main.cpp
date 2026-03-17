@@ -12,7 +12,7 @@
 
 int main(int argc, char const *argv[])
 {
-    const char *scenePath = "assets/scenes/level_1.json";
+    const char *scenePath = "assets/scenes/first_level.json";
     if (argc > 1)
     {
         scenePath = argv[1];

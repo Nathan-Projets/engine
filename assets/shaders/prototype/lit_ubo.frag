@@ -17,7 +17,6 @@ struct Material {
     int diffuseCount;
     int specularCount;
     int normalCount;
-    float shininess;
 };
 
 uniform Material material;
@@ -74,8 +73,6 @@ layout(std140, binding = 4) uniform MaterialDataBlock {
     vec2 _materialPad0;
 };
 
-uniform vec3 viewPos;
-
 out vec4 FragColor;
 
 void main() {
@@ -111,10 +108,10 @@ void main() {
         norm = normalize(fs_in.Normal);
     }
 
-    vec3 fallbackViewPos = (length(viewPos) > 0.0) ? viewPos : uCameraPosition;
-    vec3 viewDir = normalize(fallbackViewPos - fs_in.FragPos);
+    vec3 viewDir = normalize(uCameraPosition - fs_in.FragPos);
 
-    float shininess = (material.shininess > 0.0) ? material.shininess : 32.0;
+    float roughness = clamp(uRoughness, 0.02, 1.0);
+    float shininess = max(1.0, (2.0 / (roughness * roughness)) - 2.0);
     vec3 ambientSum = vec3(0.0);
     vec3 diffuseSum = vec3(0.0);
     vec3 specularSum = vec3(0.0);

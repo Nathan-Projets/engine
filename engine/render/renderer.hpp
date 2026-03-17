@@ -1,21 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #include <glm/glm.hpp>
 
 #include "render_unit.hpp"
+#include "render_queue.hpp"
 #include "uniform_buffer.hpp"
-#include "shader_domain.hpp"
-
-enum class RenderQueue : uint8_t
-{
-    Opaque,
-    Transparent,
-    Unlit,
-    Debug
-};
 
 struct CameraRenderData
 {
@@ -81,6 +74,10 @@ public:
 
 private:
     void SortQueues(RenderFrameSnapshot &snapshot) const;
+    void UploadCameraUbo(const CameraRenderData &camera);
+    void UploadLightsUbo(const std::vector<LightRenderData> &lights);
+    void UploadObjectUbo(const RenderUnit &unit);
+    void UploadMaterialUbo(const RenderUnit &unit) const;
 
     // Pipeline entry points.
     void ExecuteFrame(const RenderFrameSnapshot &snapshot);
@@ -98,5 +95,5 @@ private:
     bool m_frameOpen = false;
 
     RenderFrameSnapshot m_buildingSnapshot = {};
-    UniformBufferManager *m_uniformBufferManager = nullptr;
+    std::unique_ptr<UniformBufferManager> m_uniformBufferManager = nullptr;
 };

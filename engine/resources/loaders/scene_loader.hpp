@@ -41,6 +41,7 @@ public:
     static ComponentLoaderMap &GetComponentLoaders();
     static float ReadFloat(simdjson::ondemand::object componentJson, const char *fieldName, float defaultValue);
     static glm::vec3 ReadVec3(simdjson::ondemand::object componentJson, const char *fieldName, const glm::vec3 &defaultValue);
+    static RenderQueue ReadRenderQueue(simdjson::ondemand::object componentJson, RenderQueue defaultValue);
     static std::vector<float> ReadFloatArray(simdjson::ondemand::array values, size_t maxValues, float defaultValue);
     static PerspectiveProjection::Frustrum ReadFrustrum(simdjson::ondemand::object componentJson);
     static void RegisterBuiltInComponentLoaders();
