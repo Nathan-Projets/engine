@@ -1,6 +1,6 @@
-#include "camera_perspective.hpp"
+#include "perspective_projection.hpp"
 
-PerspectiveCamera::PerspectiveCamera(const PerspectiveCamera::Frustrum &frustrum, const glm::vec3 &position, const glm::vec3 &lookAt, const glm::vec3 &upVector)
+PerspectiveProjection::PerspectiveProjection(const PerspectiveProjection::Frustrum &frustrum, const glm::vec3 &position, const glm::vec3 &lookAt, const glm::vec3 &upVector)
 {
     m_cameraFrustrum = frustrum;
     m_position = position;
@@ -10,7 +10,7 @@ PerspectiveCamera::PerspectiveCamera(const PerspectiveCamera::Frustrum &frustrum
     RecalculateMatrix();
 }
 
-void PerspectiveCamera::RecalculateMatrix()
+void PerspectiveProjection::RecalculateMatrix()
 {
     m_projectionMatrix = glm::perspective(glm::radians(m_cameraFrustrum.angle), m_cameraFrustrum.width / m_cameraFrustrum.height, m_cameraFrustrum.near, m_cameraFrustrum.far);
     m_viewMatrix = glm::lookAt(m_position, m_lookAt, m_upVector);

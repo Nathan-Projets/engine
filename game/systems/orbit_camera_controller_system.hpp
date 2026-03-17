@@ -19,20 +19,20 @@ public:
             return;
 
         InputManager &input = InputManager::Get();
-        auto entities = world.GetEntitiesWith<CameraComponent, OrbitCameraController>();
+        auto entities = world.GetEntitiesWith<Camera, OrbitCameraController>();
         for (Entity entity : entities)
         {
-            CameraComponent *cameraComponent = world.GetComponent<CameraComponent>(entity);
+            Camera *camera = world.GetComponent<Camera>(entity);
             OrbitCameraController *controller = world.GetComponent<OrbitCameraController>(entity);
-            if (!cameraComponent || !controller)
+            if (!camera || !controller)
                 continue;
 
-            PerspectiveCamera &camera = cameraComponent->GetCamera();
+            PerspectiveProjection &projection = camera->GetProjection();
             if (!controller->orbitInitialized)
             {
                 controller->orbitInitialized = true;
 
-                const glm::vec3 offset = camera.GetPosition() - controller->target;
+                const glm::vec3 offset = projection.GetPosition() - controller->target;
                 const float distance = glm::length(offset);
 
                 if (distance > 0.0001f)
@@ -81,9 +81,9 @@ public:
                                                                 controller->radius * std::sin(controller->pitch),
                                                                 horizontalRadius * std::sin(controller->yaw));
 
-            camera.SetPosition(position);
-            camera.SetLookAt(controller->target);
-            camera.SetUpVector(controller->upVector);
+            projection.SetPosition(position);
+            projection.SetLookAt(controller->target);
+            projection.SetUpVector(controller->upVector);
         }
     }
 };

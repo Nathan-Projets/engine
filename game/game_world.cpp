@@ -3,7 +3,7 @@
 #include <string>
 #include <stdexcept>
 
-#include "../engine/ecs/systems/physic_system.hpp"
+#include "../engine/ecs/systems/physics_system.hpp"
 #include "../engine/ecs/systems/render_system.hpp"
 #include "systems/rotating_light_system.hpp"
 #include "../engine/ecs/components/light.hpp"
@@ -27,7 +27,7 @@ GameWorld::~GameWorld()
 void GameWorld::Init()
 {
     // Add engine systems
-    m_world.AddSystem<PhysicSystem>();
+    m_world.AddSystem<PhysicsSystem>();
     m_world.AddSystem<RenderSystem>();
 
     // Add game-specific systems, linked to the current scene
@@ -39,8 +39,8 @@ void GameWorld::Init()
 
     // Set up main camera
     Entity cameraEntity = m_world.CreateEntity();
-    m_world.AddComponent<CameraComponent>(cameraEntity,
-                                          PerspectiveCamera::Frustrum{45.0f, (float)m_width, (float)m_height, 0.1f, 150.0f},
+    m_world.AddComponent<Camera>(cameraEntity,
+                                          PerspectiveProjection::Frustrum{45.0f, (float)m_width, (float)m_height, 0.1f, 150.0f},
                                           glm::vec3(0.0f, 0.0f, 9.0f),
                                           glm::vec3(0.0f, 0.0f, 0.0f),
                                           glm::vec3(0.0f, 1.0f, 0.0f),
@@ -51,7 +51,7 @@ void GameWorld::Init()
     m_resourceManager->Get<Shader>("model")->Upload("material.shininess", 32.0f);
 
     m_resourceManager->Get<Shader>("light")->Use();
-    m_resourceManager->Get<Shader>("light")->Upload("projection", GetCamera().GetProjectionMatrix());
+    m_resourceManager->Get<Shader>("light")->Upload("projection", GetActiveProjection().GetProjectionMatrix());
     m_resourceManager->Get<Shader>("light")->Upload("color", glm::vec3(1.0f));
 
     Entity backpack = m_world.CreateEntity();
@@ -73,7 +73,6 @@ void GameWorld::Init()
     light->ambient = glm::vec3(0.2f, 0.2f, 0.2f);
     light->diffuse = glm::vec3(0.5f, 0.5f, 0.5f);
     light->specular = glm::vec3(0.7f, 0.7f, 0.7f);
-    light->position = lightTransform->position;
 
     const std::string cubeMeshId = "assets/meshes/cube/cube.obj";
     auto cubeMeshes = m_resourceManager->Load<Meshes>(cubeMeshId, Loader::Load(cubeMeshId));
@@ -88,26 +87,26 @@ void GameWorld::Init()
 void GameWorld::Update(float deltaTime)
 {
     const float cameraSpeed = 12.5f;
-    PerspectiveCamera &camera = GetCamera();
+    PerspectiveProjection &projection = GetActiveProjection();
 
     // Not sure where to put these controls with the current ecs set up
     // I will probably need to rework the camera thing anyway
 
     // Camera controls
     if (InputManager::Get().IsActionActive("move_forward"))
-        camera.MoveForward(cameraSpeed * deltaTime);
+        projection.MoveForward(cameraSpeed * deltaTime);
     if (InputManager::Get().IsActionActive("move_backward"))
-        camera.MoveBackward(cameraSpeed * deltaTime);
+        projection.MoveBackward(cameraSpeed * deltaTime);
     if (InputManager::Get().IsActionActive("move_left"))
-        camera.MoveLeft(cameraSpeed * deltaTime);
+        projection.MoveLeft(cameraSpeed * deltaTime);
     if (InputManager::Get().IsActionActive("move_right"))
-        camera.MoveRight(cameraSpeed * deltaTime);
+        projection.MoveRight(cameraSpeed * deltaTime);
 
     // Scroll zoom
     if (InputManager::Get().GetMouseScroll().y > 0)
-        camera.MoveForward(cameraSpeed * deltaTime * 2.0f);
+        projection.MoveForward(cameraSpeed * deltaTime * 2.0f);
     if (InputManager::Get().GetMouseScroll().y < 0)
-        camera.MoveBackward(cameraSpeed * deltaTime * 2.0f);
+        projection.MoveBackward(cameraSpeed * deltaTime * 2.0f);
 
     m_world.UpdateSystems(deltaTime);
 }
@@ -117,15 +116,15 @@ void GameWorld::Draw(float deltaTime)
     m_world.RenderSystems(deltaTime);
 }
 
-PerspectiveCamera &GameWorld::GetCamera()
+PerspectiveProjection &GameWorld::GetActiveProjection()
 {
-    auto cameraEntities = m_world.GetEntitiesWith<CameraComponent>();
+    auto cameraEntities = m_world.GetEntitiesWith<Camera>();
     for (Entity cameraEntity : cameraEntities)
     {
-        CameraComponent *cameraComponent = m_world.GetComponent<CameraComponent>(cameraEntity);
+        Camera *cameraComponent = m_world.GetComponent<Camera>(cameraEntity);
         if (cameraComponent && cameraComponent->main)
-            return cameraComponent->GetCamera();
+            return cameraComponent->GetProjection();
     }
 
-    throw std::runtime_error("Main camera was requested but no CameraComponent with main=true exists.");
+    throw std::runtime_error("Main camera was requested but no Camera with main=true exists.");
 }

@@ -10,8 +10,7 @@ public:
     Light() : ambient(0.2f, 0.2f, 0.2f),
               diffuse(0.5f, 0.5f, 0.5f),
               specular(0.7f, 0.7f, 0.7f),
-              color(1.0f, 1.0f, 1.0f),
-              position(0.0f, 0.0f, 0.0f)
+              color(1.0f, 1.0f, 1.0f)
     {
     }
 
@@ -19,6 +18,4 @@ public:
     glm::vec3 diffuse;
     glm::vec3 specular;
     glm::vec3 color;
-    // position offset from entity
-    glm::vec3 position;
 };

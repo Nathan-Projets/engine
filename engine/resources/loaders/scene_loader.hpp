@@ -20,7 +20,7 @@
 #include "../engine/ecs/components/light.hpp"
 #include "../engine/resources/manager.hpp"
 #include "../engine/resources/loaders/loader.hpp"
-#include "../engine/render/camera/camera_perspective.hpp"
+#include "../engine/render/camera/perspective_projection.hpp"
 #include "../engine/render/mesh.hpp"
 #include "../engine/helpers/log.hpp"
 
@@ -42,6 +42,6 @@ public:
     static float ReadFloat(simdjson::ondemand::object componentJson, const char *fieldName, float defaultValue);
     static glm::vec3 ReadVec3(simdjson::ondemand::object componentJson, const char *fieldName, const glm::vec3 &defaultValue);
     static std::vector<float> ReadFloatArray(simdjson::ondemand::array values, size_t maxValues, float defaultValue);
-    static PerspectiveCamera::Frustrum ReadFrustrum(simdjson::ondemand::object componentJson);
+    static PerspectiveProjection::Frustrum ReadFrustrum(simdjson::ondemand::object componentJson);
     static void RegisterBuiltInComponentLoaders();
 };

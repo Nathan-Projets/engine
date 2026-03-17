@@ -3,7 +3,7 @@
 #include "scene.hpp"
 #include "../ecs/world.hpp"
 #include "../resources/manager.hpp"
-#include "../engine/ecs/systems/physic_system.hpp"
+#include "../engine/ecs/systems/physics_system.hpp"
 #include "../engine/ecs/systems/render_system.hpp"
 
 class BaseScene : public Scene

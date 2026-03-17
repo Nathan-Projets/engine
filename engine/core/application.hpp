@@ -11,7 +11,7 @@
 
 #include "scene.hpp"
 #include "render/shader.hpp"
-#include "render/camera/camera_perspective.hpp"
+#include "render/camera/perspective_projection.hpp"
 #include "render/model.hpp"
 #include "resources/manager.hpp"
 #include "helpers/log.hpp"

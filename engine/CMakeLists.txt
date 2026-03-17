@@ -14,7 +14,7 @@ add_library(
     ecs/system.hpp
     ecs/world.hpp
     
-    ecs/systems/physic_system.hpp
+    ecs/systems/physics_system.hpp
     ecs/systems/render_system.hpp
     
     ecs/components/transform.hpp
@@ -23,8 +23,8 @@ add_library(
     ecs/components/camera.hpp
     
     render/shader.cpp
-    render/camera/camera.hpp
-    render/camera/camera_perspective.cpp
+    render/camera/camera_projection.hpp
+    render/camera/perspective_projection.cpp
     render/mesh.cpp
     render/model.cpp
     

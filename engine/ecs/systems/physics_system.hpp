@@ -3,7 +3,7 @@
 #include "../system.hpp"
 #include "../components/transform.hpp"
 
-class PhysicSystem : public System
+class PhysicsSystem : public System
 {
 public:
     // TODO: call here physics update when time's right

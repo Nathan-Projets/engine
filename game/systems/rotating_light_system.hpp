@@ -33,8 +33,6 @@ public:
 
             transform->position.x = 2.0f * cos(m_angle);
             transform->position.z = 2.0f * sin(m_angle);
-
-            light->position = transform->position;
         }
     }
 

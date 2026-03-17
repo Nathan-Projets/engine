@@ -3,13 +3,13 @@
 #include <string>
 #include <print>
 
-#include "camera.hpp"
+#include "camera_projection.hpp"
 
 #include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-class PerspectiveCamera : public Camera
+class PerspectiveProjection : public CameraProjection
 {
 public:
     struct Frustrum
@@ -22,19 +22,19 @@ public:
     };
 
 public:
-    PerspectiveCamera(const PerspectiveCamera::Frustrum &frustrum = {45.0f, -1.0f, 1.0f, 1.0f, -1.0f},
+    PerspectiveProjection(const PerspectiveProjection::Frustrum &frustrum = {45.0f, -1.0f, 1.0f, 1.0f, -1.0f},
                       const glm::vec3 &position = glm::vec3(0.0f),
                       const glm::vec3 &lookAt = glm::vec3(-1.0f),
                       const glm::vec3 &upVector = glm::vec3(0.0f, 1.0f, 0.0f));
 
-    PerspectiveCamera(const PerspectiveCamera &camera) : Camera(camera)
+    PerspectiveProjection(const PerspectiveProjection &camera) : CameraProjection(camera)
     {
         m_lookAt = camera.m_lookAt;
         m_upVector = camera.m_upVector;
         m_cameraFrustrum = camera.m_cameraFrustrum;
     }
 
-    ~PerspectiveCamera() = default;
+    ~PerspectiveProjection() = default;
 
     void SetFrustrum(const Frustrum &frustrum)
     {

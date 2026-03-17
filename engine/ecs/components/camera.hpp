@@ -1,39 +1,37 @@
 #pragma once
 
 #include "../component.hpp"
-#include "../../render/camera/camera.hpp"
-#include "../../render/camera/camera_perspective.hpp"
+#include "../../render/camera/camera_projection.hpp"
+#include "../../render/camera/perspective_projection.hpp"
 
-// Simple component wrapper around a PerspectiveCamera. Not sure if I will keep it like this, for now it will be good enough.
-// The renderer will look for the entity whose CameraComponent::main flag is set and use its view/projection matrices when drawing.
-class CameraComponent : public Component
+// TODO: extend this component for orthogonal projection, or refactor into two components PerspectiveCamera/OrthogonalCamera
+class Camera : public Component
 {
 public:
-    CameraComponent() = default;
+    Camera() = default;
 
-    explicit CameraComponent(const PerspectiveCamera &cam, bool isMain = false) : camera(cam), main(isMain)
+    explicit Camera(const PerspectiveProjection &projection, bool isMain = false) : projection(projection), main(isMain)
     {
     }
 
-    explicit CameraComponent(const PerspectiveCamera::Frustrum &frustrum,
-                             const glm::vec3 &position = glm::vec3(0.0f),
-                             const glm::vec3 &lookAt = glm::vec3(-1.0f),
-                             const glm::vec3 &upVector = glm::vec3(0.0f, 1.0f, 0.0f),
-                             bool isMain = false)
-        : camera(frustrum, position, lookAt, upVector), main(isMain)
+    explicit Camera(const PerspectiveProjection::Frustrum &frustrum,
+                    const glm::vec3 &position = glm::vec3(0.0f),
+                    const glm::vec3 &lookAt = glm::vec3(-1.0f),
+                    const glm::vec3 &upVector = glm::vec3(0.0f, 1.0f, 0.0f),
+                    bool isMain = false) : projection(frustrum, position, lookAt, upVector), main(isMain)
     {
     }
 
-    PerspectiveCamera &GetCamera()
+    PerspectiveProjection &GetProjection()
     {
-        return camera;
+        return projection;
     }
 
-    const PerspectiveCamera &GetCamera() const
+    const PerspectiveProjection &GetProjection() const
     {
-        return camera;
+        return projection;
     }
 
-    PerspectiveCamera camera;
+    PerspectiveProjection projection;
     bool main = false; // when true the render system uploads this camera
 };

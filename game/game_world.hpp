@@ -4,7 +4,7 @@
 
 #include <ecs/world.hpp>
 #include <resources/manager.hpp>
-#include <render/camera/camera_perspective.hpp>
+#include <render/camera/perspective_projection.hpp>
 #include <render/mesh.hpp>
 #include <core/scene.hpp>
 
@@ -19,7 +19,7 @@ public:
     void Draw(float deltaTime) override;
 
     World &GetWorld() { return m_world; }
-    PerspectiveCamera &GetCamera();
+    PerspectiveProjection &GetActiveProjection();
     ResourceManager *GetResourceManager() const { return m_resourceManager; }
 
 private:

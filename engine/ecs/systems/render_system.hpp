@@ -20,14 +20,14 @@ public:
         auto lights = world.GetEntitiesWith<Light>();
         auto entities = world.GetEntitiesWith<Transform, MeshRenderer>();
 
-        const PerspectiveCamera *activeCamera = nullptr;
-        auto cameraEntities = world.GetEntitiesWith<CameraComponent>();
+        const PerspectiveProjection *activeCameraProjection = nullptr;
+        auto cameraEntities = world.GetEntitiesWith<Camera>();
         for (Entity cameraEntity : cameraEntities)
         {
-            CameraComponent *cameraComponent = world.GetComponent<CameraComponent>(cameraEntity);
+            Camera *cameraComponent = world.GetComponent<Camera>(cameraEntity);
             if (cameraComponent && cameraComponent->main)
             {
-                activeCamera = &cameraComponent->GetCamera();
+                activeCameraProjection = &cameraComponent->GetProjection();
                 break;
             }
         }
@@ -44,11 +44,11 @@ public:
             std::shared_ptr<Meshes> meshes = renderer->GetMeshes();
 
             shader.Use();
-            if (activeCamera)
+            if (activeCameraProjection)
             {
-                shader.Upload("view", activeCamera->GetViewMatrix());
-                shader.Upload("projection", activeCamera->GetProjectionMatrix());
-                shader.Upload("viewPos", activeCamera->GetPosition());
+                shader.Upload("view", activeCameraProjection->GetViewMatrix());
+                shader.Upload("projection", activeCameraProjection->GetProjectionMatrix());
+                shader.Upload("viewPos", activeCameraProjection->GetPosition());
             }
             shader.Upload("model", transform->GetMatrix());
 
@@ -62,8 +62,8 @@ public:
                     shader.Upload("light.specular", light->specular);
                     shader.Upload("color", light->color);
                     shader.Upload("material.shininess", 32.0f); // TODO: fix this also, by identifying where it should live
-
-                    glm::vec3 position = light->position;
+                    
+                    glm::vec3 position {0.0f};
                     Transform *transform = world.GetComponent<Transform>(lights[0]);
                     if (transform)
                         position += transform->position;

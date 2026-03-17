@@ -46,7 +46,7 @@ std::vector<float> SceneLoader::ReadFloatArray(simdjson::ondemand::array values,
     return result;
 }
 
-PerspectiveCamera::Frustrum SceneLoader::ReadFrustrum(simdjson::ondemand::object componentJson)
+PerspectiveProjection::Frustrum SceneLoader::ReadFrustrum(simdjson::ondemand::object componentJson)
 {
     const std::vector<float> values = ReadFloatArray(componentJson["frustrum"].get_array(), 5, 0.0f);
     return {
@@ -105,13 +105,12 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                         light->diffuse = ReadVec3(componentJson, "diffuse", glm::vec3(1.0f));
                         light->specular = ReadVec3(componentJson, "specular", glm::vec3(1.0f));
                         light->color = ReadVec3(componentJson, "color", glm::vec3(1.0f));
-                        light->position = ReadVec3(componentJson, "position", glm::vec3(0.0f));
                     });
 
     loaders.emplace("Camera",
                     [](Entity entity, simdjson::ondemand::object componentJson, World &world, ResourceManager &resourceManager)
                     {
-                        world.AddComponent<CameraComponent>(entity,
+                        world.AddComponent<Camera>(entity,
                                                             ReadFrustrum(componentJson),
                                                             ReadVec3(componentJson, "position", glm::vec3(0.0f)),
                                                             ReadVec3(componentJson, "lookAt", glm::vec3(0.0f)),

@@ -2,7 +2,7 @@
 
 #include "../../engine/helpers/log.hpp"
 #include "../../engine/input/input_manager.hpp"
-#include "../../engine/ecs/systems/physic_system.hpp"
+#include "../../engine/ecs/systems/physics_system.hpp"
 #include "../../engine/ecs/systems/render_system.hpp"
 #include "../../engine/resources/loaders/scene_loader.hpp"
 #include "../systems/orbit_camera_controller_system.hpp"
@@ -49,7 +49,7 @@ void GameScene::ReloadScene()
 
 void GameScene::ConfigureSystems()
 {
-    m_world.AddSystem<PhysicSystem>();
+    m_world.AddSystem<PhysicsSystem>();
     m_world.AddSystem<OrbitCameraControllerSystem>();
     m_world.AddSystem<RotatingLightSystem>();
     m_world.AddSystem<RenderSystem>();

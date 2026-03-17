@@ -4,11 +4,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-class Camera
+class CameraProjection
 {
 public:
-    Camera() = default;
-    ~Camera() = default;
+    CameraProjection() = default;
+    ~CameraProjection() = default;
 
     const glm::mat4 &GetProjectionMatrix() const
     {
@@ -38,7 +38,7 @@ protected:
     virtual void RecalculateMatrix() = 0;
 
 protected:
-    Camera(const Camera &camera)
+    CameraProjection(const CameraProjection &camera)
     {
         m_projectionMatrix = camera.m_projectionMatrix;
         m_viewMatrix = camera.m_viewMatrix;

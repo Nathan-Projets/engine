@@ -6,7 +6,7 @@ BaseScene::BaseScene(World *world, ResourceManager *resourceManager) : m_world(w
 
 void BaseScene::Init()
 {
-    m_world->AddSystem<PhysicSystem>();
+    m_world->AddSystem<PhysicsSystem>();
     m_world->AddSystem<RenderSystem>();
 }
 
