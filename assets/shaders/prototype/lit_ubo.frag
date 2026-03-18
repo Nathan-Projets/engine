@@ -4,18 +4,23 @@ in VS_OUT {
     mat3 TBN;
     vec3 FragPos;
     vec3 Normal;
-    vec2 TexCoords;
+    vec2 TexCoords0;
+    vec2 TexCoords1;
     float use_tbn;
 } fs_in;
 
 uniform sampler2D uAmbient[16];
 uniform int uAmbientCount;
+uniform int uAmbientUV;
 uniform sampler2D uDiffuse[16];
 uniform int uDiffuseCount;
+uniform int uDiffuseUV;
 uniform sampler2D uSpecular[16];
 uniform int uSpecularCount;
+uniform int uSpecularUV;
 uniform sampler2D uNormal[16];
 uniform int uNormalCount;
+uniform int uNormalUV;
 
 // Padding members keep this GLSL struct layout-compatible with the C++ LightData struct.
 // In std140, vec3 values are aligned to 16 bytes, so we add explicit pad fields to avoid
@@ -71,12 +76,20 @@ layout(std140, binding = 4) uniform MaterialDataBlock {
 
 out vec4 FragColor;
 
+vec2 SelectTexCoords(int uvIndex) {
+    if (uvIndex == 1) {
+        return fs_in.TexCoords1;
+    }
+
+    return fs_in.TexCoords0;
+}
+
 void main() {
     vec3 diffuseColor = vec3(1.0);
     if(uDiffuseCount > 0) {
         diffuseColor = vec3(0.0);
         for(int i = 0; i < uDiffuseCount; i++) {
-            diffuseColor += texture(uDiffuse[i], fs_in.TexCoords).rgb;
+            diffuseColor += texture(uDiffuse[i], SelectTexCoords(uDiffuseUV)).rgb;
         }
         diffuseColor /= float(uDiffuseCount);
     } else {
@@ -87,7 +100,7 @@ void main() {
     if(uSpecularCount > 0) {
         specularColor = vec3(0.0);
         for(int i = 0; i < uSpecularCount; i++) {
-            specularColor += texture(uSpecular[i], fs_in.TexCoords).rgb;
+            specularColor += texture(uSpecular[i], SelectTexCoords(uSpecularUV)).rgb;
         }
         specularColor /= float(uSpecularCount);
     }
@@ -96,7 +109,7 @@ void main() {
     if(uNormalCount > 0 && fs_in.use_tbn > 0.0) {
         vec3 tangentNormal = vec3(0.0);
         for(int i = 0; i < uNormalCount; i++) {
-            tangentNormal += texture(uNormal[i], fs_in.TexCoords).rgb * 2.0 - 1.0;
+            tangentNormal += texture(uNormal[i], SelectTexCoords(uNormalUV)).rgb * 2.0 - 1.0;
         }
         tangentNormal = normalize(tangentNormal / float(uNormalCount));
         norm = normalize(fs_in.TBN * tangentNormal);

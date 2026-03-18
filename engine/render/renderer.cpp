@@ -2,6 +2,11 @@
 
 namespace
 {
+    size_t TextureSlotToIndex(resources::MaterialTextureSlot slot)
+    {
+        return static_cast<size_t>(slot);
+    }
+
     GLint GetUniformLocation(GLuint programId, const char *name)
     {
         return glGetUniformLocation(programId, name);
@@ -16,6 +21,14 @@ namespace
         }
     }
 
+    void SetTextureUvUniforms(GLuint programId, const RenderUnit &unit)
+    {
+        SetUniformInt(programId, "uDiffuseUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::BaseColor)]));
+        SetUniformInt(programId, "uNormalUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Normal)]));
+        SetUniformInt(programId, "uSpecularUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::MetallicRoughness)]));
+        SetUniformInt(programId, "uAmbientUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Occlusion)]));
+    }
+
     int BindTextureForSlot(
         const RenderUnit &unit,
         resources::ResourceManager *resourceManager,
@@ -24,7 +37,33 @@ namespace
     {
         if (!unit.resourceMaterial || !resourceManager)
         {
-            return 0;
+            const resources::Handle<resources::Texture> overrideHandle = unit.textureOverrides[TextureSlotToIndex(slot)];
+            if (!overrideHandle.IsValid())
+            {
+                return 0;
+            }
+
+            resources::Texture *overrideTexture = resourceManager ? resourceManager->Get(overrideHandle) : nullptr;
+            if (!overrideTexture || !overrideTexture->IsGpuReady())
+            {
+                return 0;
+            }
+
+            glActiveTexture(GL_TEXTURE0 + textureUnit);
+            glBindTexture(GL_TEXTURE_2D, overrideTexture->GetTextureId());
+            return 1;
+        }
+
+        const resources::Handle<resources::Texture> overrideHandle = unit.textureOverrides[TextureSlotToIndex(slot)];
+        if (overrideHandle.IsValid())
+        {
+            resources::Texture *overrideTexture = resourceManager->Get(overrideHandle);
+            if (overrideTexture && overrideTexture->IsGpuReady())
+            {
+                glActiveTexture(GL_TEXTURE0 + textureUnit);
+                glBindTexture(GL_TEXTURE_2D, overrideTexture->GetTextureId());
+                return 1;
+            }
         }
 
         const std::optional<resources::Handle<resources::Texture>> textureHandle = unit.resourceMaterial->GetTextureHandle(slot);
@@ -52,6 +91,7 @@ namespace
         }
 
         const GLuint programId = unit.resourceShader->GetProgramId();
+        SetTextureUvUniforms(programId, unit);
 
         int nextTextureUnit = 0;
 
@@ -90,7 +130,10 @@ namespace
         (void)nextTextureUnit;
     }
 
-    void DrawResourceUnit(const RenderUnit &unit, resources::ResourceManager *resourceManager)
+    void DrawResourceUnit(
+        const RenderUnit &unit,
+        resources::ResourceManager *resourceManager,
+        UniformBufferManager *uniformBufferManager)
     {
         if (!unit.resourceMesh || !unit.resourceShader)
         {
@@ -102,15 +145,41 @@ namespace
             return;
         }
 
+        auto uploadObjectUbo = [](UniformBufferManager *uniformBufferManager, const glm::mat4 &modelMatrix, uint32_t materialIndex)
+        {
+            if (!uniformBufferManager)
+            {
+                return;
+            }
+
+            ObjectData objectData;
+            objectData.model = modelMatrix;
+            objectData.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(glm::mat3(modelMatrix)))));
+            objectData.objectId = 0;
+            objectData.materialIndex = materialIndex;
+            uniformBufferManager->UpdateObjectData(objectData);
+        };
+
         glUseProgram(unit.resourceShader->GetProgramId());
         BindResourceMaterial(unit, resourceManager);
         glBindVertexArray(unit.resourceMesh->GetVao());
 
         const std::vector<resources::MeshPrimitive> &primitives = unit.resourceMesh->GetPrimitives();
-        if (!primitives.empty())
+        if (unit.primitiveIndex < primitives.size())
+        {
+            const resources::MeshPrimitive &primitive = primitives[unit.primitiveIndex];
+            uploadObjectUbo(uniformBufferManager, unit.model * unit.localTransform, unit.materialIndex);
+            glDrawElements(
+                GL_TRIANGLES,
+                static_cast<GLsizei>(primitive.indexCount),
+                GL_UNSIGNED_INT,
+                reinterpret_cast<const void *>(static_cast<size_t>(primitive.indexOffset) * sizeof(uint32_t)));
+        }
+        else if (!primitives.empty())
         {
             for (const resources::MeshPrimitive &primitive : primitives)
             {
+                uploadObjectUbo(uniformBufferManager, unit.model, unit.materialIndex);
                 glDrawElements(
                     GL_TRIANGLES,
                     static_cast<GLsizei>(primitive.indexCount),
@@ -120,6 +189,7 @@ namespace
         }
         else
         {
+            uploadObjectUbo(uniformBufferManager, unit.model * unit.localTransform, unit.materialIndex);
             glDrawElements(
                 GL_TRIANGLES,
                 static_cast<GLsizei>(unit.resourceMesh->GetIndices().size()),
@@ -176,10 +246,11 @@ void Renderer::UploadObjectUbo(const RenderUnit &unit)
         return;
 
     ObjectData objectData;
-    objectData.model = unit.model;
-    objectData.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(glm::mat3(unit.model)))));
+    const glm::mat4 objectModel = unit.model * unit.localTransform;
+    objectData.model = objectModel;
+    objectData.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(glm::mat3(objectModel)))));
     objectData.objectId = 0;
-    objectData.materialIndex = 0;
+    objectData.materialIndex = unit.materialIndex;
     m_uniformBufferManager->UpdateObjectData(objectData);
 }
 
@@ -373,8 +444,8 @@ void Renderer::SortQueues(RenderFrameSnapshot &snapshot) const
     const glm::vec3 cameraPosition = snapshot.camera.position;
     std::sort(snapshot.transparentUnits.begin(), snapshot.transparentUnits.end(), [&cameraPosition](const RenderUnit &a, const RenderUnit &b)
               {
-                  const glm::vec3 pa = glm::vec3(a.model[3]);
-                  const glm::vec3 pb = glm::vec3(b.model[3]);
+                  const glm::vec3 pa = glm::vec3((a.model * a.localTransform)[3]);
+                  const glm::vec3 pb = glm::vec3((b.model * b.localTransform)[3]);
                   const glm::vec3 deltaA = pa - cameraPosition;
                   const glm::vec3 deltaB = pb - cameraPosition;
                   const float da = glm::dot(deltaA, deltaA);
@@ -412,9 +483,8 @@ void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
     {
         if (unit.resourceMesh && unit.resourceShader)
         {
-            UploadObjectUbo(unit);
             UploadMaterialUbo(unit);
-            DrawResourceUnit(unit, m_resourceManager);
+            DrawResourceUnit(unit, m_resourceManager, m_uniformBufferManager.get());
         }
     }
 }
@@ -435,9 +505,8 @@ void Renderer::ExecuteUnlitPass(const RenderFrameSnapshot &snapshot)
     {
         if (unit.resourceMesh && unit.resourceShader)
         {
-            UploadObjectUbo(unit);
             UploadMaterialUbo(unit);
-            DrawResourceUnit(unit, m_resourceManager);
+            DrawResourceUnit(unit, m_resourceManager, m_uniformBufferManager.get());
         }
     }
 }
