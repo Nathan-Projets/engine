@@ -46,7 +46,6 @@ add_library(
 
     resources/loaders/scene_loader.cpp
     resources/loaders/material_loader.hpp
-    resources/loaders/mesh_loader.hpp
     resources/loaders/shader_loader.hpp
     resources/loaders/texture_loader.hpp
     

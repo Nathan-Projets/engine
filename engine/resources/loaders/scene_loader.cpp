@@ -198,7 +198,7 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
 
                         MeshRenderer *meshRenderer = world.AddComponent<MeshRenderer>(entity);
 
-                        meshRenderer->SetMeshHandle(resourceManager->Load<resources::Mesh>(fullModelPath));
+                        meshRenderer->SetModelHandle(resourceManager->Load<resources::Model>(fullModelPath));
 
                         if (!fullShaderPath.empty())
                         {

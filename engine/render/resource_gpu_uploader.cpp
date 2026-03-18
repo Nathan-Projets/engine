@@ -120,9 +120,9 @@ void ResourceGpuUploader::Upload(resources::Resource *resource)
         return;
     }
 
-    if (auto *mesh = dynamic_cast<resources::Mesh *>(resource))
+    if (auto *model = dynamic_cast<resources::Model *>(resource))
     {
-        UploadMesh(*mesh);
+        UploadModel(*model);
         return;
     }
 
@@ -146,9 +146,9 @@ void ResourceGpuUploader::Release(resources::Resource *resource)
         return;
     }
 
-    if (auto *mesh = dynamic_cast<resources::Mesh *>(resource))
+    if (auto *model = dynamic_cast<resources::Model *>(resource))
     {
-        ReleaseMesh(*mesh);
+        ReleaseModel(*model);
         return;
     }
 
@@ -163,6 +163,11 @@ void ResourceGpuUploader::Release(resources::Resource *resource)
         ReleaseTexture(*texture);
         return;
     }
+}
+
+void ResourceGpuUploader::UploadModel(resources::Model &model)
+{
+    UploadMesh(model.GetMesh());
 }
 
 void ResourceGpuUploader::UploadMesh(resources::Mesh &mesh)
@@ -332,6 +337,11 @@ void ResourceGpuUploader::ReleaseMesh(resources::Mesh &mesh)
     }
 
     mesh.SetGpuHandles(0, 0, 0);
+}
+
+void ResourceGpuUploader::ReleaseModel(resources::Model &model)
+{
+    ReleaseMesh(model.GetMesh());
 }
 
 void ResourceGpuUploader::ReleaseShader(resources::Shader &shader)

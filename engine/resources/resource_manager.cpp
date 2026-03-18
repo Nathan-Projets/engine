@@ -2,7 +2,7 @@
 
 namespace resources
 {
-    ResourceManager::ResourceManager(size_t numLoaderThreads) : m_meshPool(256), m_shaderPool(64), m_texturePool(256), m_materialPool(128)
+    ResourceManager::ResourceManager(size_t numLoaderThreads) : m_modelPool(256), m_shaderPool(64), m_texturePool(256), m_materialPool(128)
     {
         for (size_t i = 0; i < numLoaderThreads; ++i)
         {
@@ -135,7 +135,7 @@ namespace resources
         }
 
         // Clear all resources
-        m_meshPool.Clear();
+        m_modelPool.Clear();
         m_shaderPool.Clear();
         m_texturePool.Clear();
         m_materialPool.Clear();

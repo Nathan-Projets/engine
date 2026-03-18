@@ -6,11 +6,12 @@
 #include "resource_loader.hpp"
 
 #include "units/mesh.hpp"
+#include "units/model.hpp"
 #include "units/shader.hpp"
 #include "units/texture.hpp"
 #include "units/material.hpp"
 
-#include "loaders/mesh_loader.hpp"
+#include "loaders/model_loader.hpp"
 #include "loaders/shader_loader.hpp"
 #include "loaders/texture_loader.hpp"
 #include "loaders/material_loader.hpp"
@@ -247,9 +248,9 @@ namespace resources
         template <typename T>
         ResourcePool<T> &GetPool()
         {
-            if constexpr (std::is_same_v<T, Mesh>)
+            if constexpr (std::is_same_v<T, Model>)
             {
-                return m_meshPool;
+                return m_modelPool;
             }
             else if constexpr (std::is_same_v<T, Shader>)
             {
@@ -272,9 +273,9 @@ namespace resources
         template <typename T>
         const ResourcePool<T> &GetPool() const
         {
-            if constexpr (std::is_same_v<T, Mesh>)
+            if constexpr (std::is_same_v<T, Model>)
             {
-                return m_meshPool;
+                return m_modelPool;
             }
             else if constexpr (std::is_same_v<T, Shader>)
             {
@@ -360,7 +361,7 @@ namespace resources
         bool m_shutdown = false;
 
         // Resource pools
-        ResourcePool<Mesh> m_meshPool;
+        ResourcePool<Model> m_modelPool;
         ResourcePool<Shader> m_shaderPool;
         ResourcePool<Texture> m_texturePool;
         ResourcePool<Material> m_materialPool;

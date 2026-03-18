@@ -7,7 +7,7 @@
 #include <glm/glm.hpp>
 
 #include "shader_domain.hpp"
-#include "../resources/units/mesh.hpp"
+#include "../resources/units/model.hpp"
 #include "../resources/units/shader.hpp"
 #include "../resources/units/material.hpp"
 
@@ -16,7 +16,7 @@ class RenderUnit
 public:
     static constexpr size_t TextureSlotCount = 5;
 
-    resources::Mesh *resourceMesh = nullptr;
+    resources::Model *resourceModel = nullptr;
     resources::Shader *resourceShader = nullptr;
     resources::Material *resourceMaterial = nullptr;
     uint32_t primitiveIndex = std::numeric_limits<uint32_t>::max();
