@@ -9,6 +9,7 @@
 #include "../../resources/resource_manager.hpp"
 
 #include <algorithm>
+#include <array>
 #include <optional>
 #include <variant>
 
@@ -16,24 +17,24 @@
  * @class RenderSystem
  * @brief ECS system that drives rendering of all entities with render components
  * @details
- * 
+ *
  * The RenderSystem manages the material-driven rendering pipeline:
- * 
+ *
  * ## Key Responsibilities
  * - **Material Resolution**: For each entity with a material handle, resolves:
  *   - Shader handle (from material's shader path if not yet loaded)
  *   - Texture handles (from material's texture paths for each slot)
  *   - Material properties (roughness, metallic, baseColor, emissive) extracted from variant map
- * 
+ *
  * - **Render Unit Submission**: Builds RenderUnit structures containing:
  *   - Mesh pointer
  *   - Shader pointer
  *   - Material pointer
  *   - Synchronized material properties
  *   - World transform (model matrix)
- * 
+ *
  * - **Rendering Execution**: Renders all opaque and unlit passes via Renderer
- * 
+ *
  * ## Material Property Resolution
  * Material properties are stored as variant<bool, int32, uint32, float, vec2, vec3, vec4>.
  * The render system extracts typed properties using std::get_if:
@@ -41,14 +42,14 @@
  * - "metallic" → float
  * - "baseColor" → vec3
  * - "emissive" → vec3
- * 
+ *
  * Missing properties fall back to component-level defaults.
- * 
+ *
  * ## Texture Slot Binding
  * Textures are resolved lazily per frame for each material slot:
  * - BaseColor, Normal, MetallicRoughness, Occlusion, Emissive
  * Handles are cached on the material to avoid re-loading same textures.
- * 
+ *
  * @see Material for texture slot definitions
  * @see MeshRenderer for per-entity render state
  */
@@ -133,6 +134,12 @@ public:
                 continue;
 
             const glm::mat4 model = transform->GetMatrix();
+            const std::array<resources::MaterialTextureSlot, 5> slots = {
+                resources::MaterialTextureSlot::BaseColor,
+                resources::MaterialTextureSlot::Normal,
+                resources::MaterialTextureSlot::MetallicRoughness,
+                resources::MaterialTextureSlot::Occlusion,
+                resources::MaterialTextureSlot::Emissive};
 
             if (m_resourceManager && renderer->UsesResourcePipeline())
             {
@@ -167,12 +174,12 @@ public:
                 resources::Shader *shader = m_resourceManager->Get(renderer->GetShaderHandle());
                 if (mesh && shader)
                 {
-                    RenderUnit unit;
-                    unit.resourceMesh = mesh;
-                    unit.resourceShader = shader;
-                    unit.resourceMaterial = material;
-                    unit.model = model;
-                    unit.material = renderer->GetMaterialData();
+                    RenderUnit baseUnit;
+                    baseUnit.resourceMesh = mesh;
+                    baseUnit.resourceShader = shader;
+                    baseUnit.resourceMaterial = material;
+                    baseUnit.model = model;
+                    baseUnit.material = renderer->GetMaterialData();
 
                     if (material)
                     {
@@ -182,7 +189,7 @@ public:
                         {
                             if (const float *roughness = std::get_if<float>(&roughnessIt->second))
                             {
-                                unit.material.roughness = *roughness;
+                                baseUnit.material.roughness = *roughness;
                             }
                         }
 
@@ -191,7 +198,7 @@ public:
                         {
                             if (const float *metallic = std::get_if<float>(&metallicIt->second))
                             {
-                                unit.material.metallic = *metallic;
+                                baseUnit.material.metallic = *metallic;
                             }
                         }
 
@@ -200,7 +207,7 @@ public:
                         {
                             if (const glm::vec3 *baseColor = std::get_if<glm::vec3>(&baseColorIt->second))
                             {
-                                unit.material.baseColor = *baseColor;
+                                baseUnit.material.baseColor = *baseColor;
                             }
                         }
 
@@ -209,12 +216,64 @@ public:
                         {
                             if (const glm::vec3 *emissive = std::get_if<glm::vec3>(&emissiveIt->second))
                             {
-                                unit.material.emissive = *emissive;
+                                baseUnit.material.emissive = *emissive;
                             }
                         }
                     }
 
-                    m_renderer.Submit(unit, renderer->GetQueue());
+                    const auto &primitiveInstances = mesh->GetPrimitiveInstances();
+                    if (!primitiveInstances.empty())
+                    {
+                        for (const resources::MeshPrimitiveInstance &primitiveInstance : primitiveInstances)
+                        {
+                            RenderUnit unit = baseUnit;
+                            unit.primitiveIndex = primitiveInstance.primitiveIndex;
+                            unit.materialIndex = primitiveInstance.materialIndex;
+                            unit.localTransform = primitiveInstance.localTransform;
+
+                            if (mesh)
+                            {
+                                for (resources::MaterialTextureSlot slot : slots)
+                                {
+                                    if (material && material->HasTexturePath(slot))
+                                    {
+                                        continue;
+                                    }
+
+                                    const std::optional<std::string> importedTexturePath = mesh->GetImportedMaterialTexturePath(primitiveInstance.materialIndex, slot);
+                                    if (importedTexturePath.has_value())
+                                    {
+                                        unit.textureOverrides[static_cast<size_t>(slot)] = m_resourceManager->Load<resources::Texture>(importedTexturePath.value());
+                                        unit.textureUvIndices[static_cast<size_t>(slot)] = mesh->GetImportedMaterialTextureUvIndex(primitiveInstance.materialIndex, slot);
+                                    }
+                                }
+                            }
+
+                            m_renderer.Submit(unit, renderer->GetQueue());
+                        }
+                    }
+                    else
+                    {
+                        if (mesh)
+                        {
+                            for (resources::MaterialTextureSlot slot : slots)
+                            {
+                                if (material && material->HasTexturePath(slot))
+                                {
+                                    continue;
+                                }
+
+                                const std::optional<std::string> importedTexturePath = mesh->GetImportedMaterialTexturePath(0u, slot);
+                                if (importedTexturePath.has_value())
+                                {
+                                    baseUnit.textureOverrides[static_cast<size_t>(slot)] = m_resourceManager->Load<resources::Texture>(importedTexturePath.value());
+                                    baseUnit.textureUvIndices[static_cast<size_t>(slot)] = mesh->GetImportedMaterialTextureUvIndex(0u, slot);
+                                }
+                            }
+                        }
+
+                        m_renderer.Submit(baseUnit, renderer->GetQueue());
+                    }
                     continue;
                 }
             }

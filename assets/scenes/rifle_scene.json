@@ -3,34 +3,18 @@
     "version": "1.0",
     "entities": [
         {
-            "name": "PrototypeBackpack",
+            "name": "Rifle",
             "components": [
                 {
                     "type": "Transform",
                     "position": [0.0, -1.0, 0.0],
                     "rotation": [0.0, 0.0, 0.0],
-                    "scale": [1.0, 1.0, 1.0]
+                    "scale": [8.0, 8.0, 8.0]
                 },
                 {
                     "type": "Render",
-                    "model": "meshes/backpack/backpack.obj",
-                    "material": "materials/prototype/lit_backpack.json"
-                }
-            ]
-        },
-        {
-            "name": "SimpleCube",
-            "components": [
-                {
-                    "type": "Transform",
-                    "position": [3.5, -0.7, -1.5],
-                    "rotation": [-45.0, -20.0, -20.0],
-                    "scale": [0.5, 0.5, 0.5]
-                },
-                {
-                    "type": "Render",
-                    "model": "meshes/cube/cube.obj",
-                    "material": "materials/prototype/lit_cube.json"
+                    "model": "meshes/rifle/rifle.glb",
+                    "material": "materials/prototype/lit_rifle.json"
                 }
             ]
         },
@@ -39,7 +23,7 @@
             "components": [
                 {
                     "type": "Transform",
-                    "position": [2.5, 2.0, 2.0],
+                    "position": [2.5, 3.0, 2.0],
                     "rotation": [0.0, 0.0, 0.0],
                     "scale": [0.2, 0.2, 0.2]
                 },
@@ -63,7 +47,7 @@
             "components": [
                 {
                     "type": "Transform",
-                    "position": [2.5, -2.0, 2.0],
+                    "position": [2.5, -1.0, 2.0],
                     "rotation": [0.0, 0.0, 0.0],
                     "scale": [0.2, 0.2, 0.2]
                 },

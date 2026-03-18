@@ -4,12 +4,14 @@ layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoords;
 layout(location = 3) in vec3 aTangent;
 layout(location = 4) in vec3 aBitangent;
+layout(location = 5) in vec2 aTexCoords1;
 
 out VS_OUT {
     mat3 TBN;
     vec3 FragPos;
     vec3 Normal;
-    vec2 TexCoords;
+    vec2 TexCoords0;
+    vec2 TexCoords1;
     float use_tbn;
 } vs_out;
 
@@ -46,7 +48,8 @@ void main() {
 
     vec3 fragPos = vec3(uModel * vec4(aPos, 1.0));
     vs_out.FragPos = fragPos;
-    vs_out.TexCoords = aTexCoords;
+    vs_out.TexCoords0 = aTexCoords;
+    vs_out.TexCoords1 = aTexCoords1;
     vs_out.use_tbn = use_tbn;
     vs_out.Normal = normalize(normalMatrix * aNormal);
     if (use_tbn > 0.0) {
