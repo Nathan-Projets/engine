@@ -1,0 +1,152 @@
+# Doxyfile for FallGuysClone Engine
+# Generated for resource management refactoring documentation
+
+PROJECT_NAME           = "FallGuysClone Engine"
+PROJECT_NUMBER         = 0.1.0
+PROJECT_BRIEF          = "An OpenGL-based 3D game engine with material-driven rendering"
+PROJECT_LOGO           = 
+
+# Output directories
+OUTPUT_DIRECTORY       = docs/
+GENERATE_LATEX         = NO
+GENERATE_MAN           = YES
+GENERATE_XML           = YES
+
+# Input files
+INPUT                  = engine/ \
+                        src/main.cpp
+INPUT_FILTER           = 
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */build/* \
+                        */external/* \
+                        */.git/* \
+                        */\.vscode/* \
+                        *~
+EXCLUDE_SYMLINKS       = YES
+
+# Documentation extraction
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+EXTRACT_ANON_NSPACES   = NO
+
+# Source code references
+SHOW_FILES             = YES
+SHOW_NAMESPACES        = YES
+FULL_PATH_NAMES        = NO
+STRIP_FROM_PATH        = engine/ \
+                        src/
+STRIP_FROM_INC_PATH    = engine/ \
+                        src/
+
+# Preprocessing
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = NO
+EXPAND_ONLY_PREDEF     = NO
+
+# HTML output
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+HTML_COLORSTYLE_HUE    = 220
+HTML_COLORSTYLE_SAT    = 100
+HTML_COLORSTYLE_GAMMA  = 80
+HTML_TIMESTAMP         = YES
+HTML_DYNAMIC_SECTIONS  = YES
+DISABLE_INDEX          = NO
+GENERATE_TREEVIEW      = YES
+TREEVIEW_WIDTH         = 250
+EXT_LINKS_IN_WINDOW    = NO
+FORMULA_FONTSIZE       = 10
+FORMULA_TRANSPARENT    = YES
+USE_MATHJAX            = NO
+SEARCHENGINE           = YES
+
+# LaTeX output (disabled for now)
+GENERATE_LATEX         = NO
+
+# Man page output
+GENERATE_MAN           = YES
+MAN_OUTPUT             = man
+MAN_EXTENSION          = .3
+MAN_LINKS              = NO
+
+# RTF output (disabled)
+GENERATE_RTF           = NO
+
+# Diagrams
+HAVE_DOT               = NO
+CLASS_DIAGRAMS         = YES
+HIDE_UNDOC_RELATIONS   = YES
+HAVE_DOT               = NO
+
+# Doxygen behavior
+QUIET                  = NO
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_LACKED     = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = NO
+
+# File patterns
+FILE_PATTERNS          = *.c \
+                        *.cc \
+                        *.cxx \
+                        *.cpp \
+                        *.c++ \
+                        *.h \
+                        *.hh \
+                        *.hpp \
+                        *.h++ \
+                        *.md
+
+# Sorting
+SORT_MEMBER_DOCS       = YES
+SORT_BRIEF_DOCS        = NO
+SORT_MEMBERS_CTORS_1ST = NO
+SORT_GROUP_NAMES       = NO
+SORT_BY_SCOPE_NAME     = NO
+
+# Collaboration diagrams
+COLLABORATION_GRAPH    = YES
+GROUP_GRAPHS           = YES
+UML_LOOK               = NO
+
+# Advanced options
+BUILTIN_STL_SUPPORT    = YES
+CPP_CLI_SUPPORT        = NO
+SIP_SUPPORT            = NO
+IDL_SUPPORT            = NO
+INTERNAL_DOCS          = NO
+CASE_SENSE_FILENAMES   = NO
+HIDE_SCOPE_NAMES       = NO
+HIDE_COMPOUND_NAMES    = NO
+SHOW_INCLUDE_FILES     = YES
+FORCE_LOCAL_RANGE      = NO
+GENERATE_TODOLIST      = YES
+GENERATE_TESTLIST      = YES
+GENERATE_BUGLIST       = YES
+GENERATE_DEPRECATEDLIST = YES
+ENABLED_SECTIONS       = 
+
+# Aliases
+ALIASES                = 
+
+# Custom stylesheets
+HTML_EXTRA_STYLESHEET  = 
+
+# Bibliography
+CITE_BIB_FILES         = 
+
+# Miscellaneous
+MAX_INITIALIZERS       = 30
+OPTIMIZE_OUTPUT_FOR_C  = NO
+OPTIMIZE_OUTPUT_JAVA   = NO
+OPTIMIZE_FOR_FORTRAN   = NO
+OPTIMIZE_OUTPUT_VHDL   = NO
+EXTENSION_MAPPING      = hpp=C++ h=C++ cpp=C++
+DOTFILE_DIRS           = 
+MSCGEN_PATH            = 
+PLANTUML_JAR_PATH      = 
+CLANG_ASSISTED_PARSING = NO

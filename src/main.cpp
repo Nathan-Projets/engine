@@ -1,8 +1,7 @@
 #include <print>
 
 #include <core/application.hpp>
-#include <resources/manager.hpp>
-#include <resources/loaders/all.hpp>
+#include <resources/resource_manager.hpp>
 #include <resources/loaders/scene_loader.hpp>
 #include <game/components/component_registration.hpp>
 #include <game/scene/game_scene.hpp>
@@ -24,7 +23,7 @@ int main(int argc, char const *argv[])
         return EXIT_FAILURE;
     }
 
-    ResourceManager resourceManager;
+    resources::ResourceManager resourceManager;
 
     GameSceneComponents::RegisterAll();
 

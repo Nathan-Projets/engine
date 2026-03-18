@@ -1,0 +1,11 @@
+{
+    "shader": "../../shaders/prototype/lit_ubo",
+    "doubleSided": false,
+    "alphaBlend": false,
+    "properties": {
+        "baseColor": [0.95, 0.92, 0.88],
+        "roughness": 0.17,
+        "metallic": 0.02,
+        "emissive": [0.0, 0.0, 0.0]
+    }
+}

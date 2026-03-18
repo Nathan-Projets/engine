@@ -8,7 +8,7 @@
 #include "../systems/orbit_camera_controller_system.hpp"
 #include "../systems/rotating_light_system.hpp"
 
-GameScene::GameScene(std::string scenePath, ResourceManager *resourceManager)
+GameScene::GameScene(std::string scenePath, resources::ResourceManager *resourceManager)
     : m_resourceManager(resourceManager), m_scenePath(std::move(scenePath))
 {
 }
@@ -52,5 +52,5 @@ void GameScene::ConfigureSystems()
     m_world.AddSystem<PhysicsSystem>();
     m_world.AddSystem<OrbitCameraControllerSystem>();
     m_world.AddSystem<RotatingLightSystem>();
-    m_world.AddSystem<RenderSystem>();
+    m_world.AddSystem<RenderSystem>(m_resourceManager);
 }

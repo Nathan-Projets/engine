@@ -1,6 +1,135 @@
 #include "renderer.hpp"
 
-#include <algorithm>
+namespace
+{
+    GLint GetUniformLocation(GLuint programId, const char *name)
+    {
+        return glGetUniformLocation(programId, name);
+    }
+
+    void SetUniformInt(GLuint programId, const char *name, int value)
+    {
+        const GLint location = GetUniformLocation(programId, name);
+        if (location >= 0)
+        {
+            glUniform1i(location, value);
+        }
+    }
+
+    int BindTextureForSlot(
+        const RenderUnit &unit,
+        resources::ResourceManager *resourceManager,
+        resources::MaterialTextureSlot slot,
+        int textureUnit)
+    {
+        if (!unit.resourceMaterial || !resourceManager)
+        {
+            return 0;
+        }
+
+        const std::optional<resources::Handle<resources::Texture>> textureHandle = unit.resourceMaterial->GetTextureHandle(slot);
+        if (!textureHandle.has_value() || !textureHandle.value().IsValid())
+        {
+            return 0;
+        }
+
+        resources::Texture *texture = resourceManager->Get(textureHandle.value());
+        if (!texture || !texture->IsGpuReady())
+        {
+            return 0;
+        }
+
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
+        glBindTexture(GL_TEXTURE_2D, texture->GetTextureId());
+        return 1;
+    }
+
+    void BindResourceMaterial(const RenderUnit &unit, resources::ResourceManager *resourceManager)
+    {
+        if (!unit.resourceShader)
+        {
+            return;
+        }
+
+        const GLuint programId = unit.resourceShader->GetProgramId();
+
+        int nextTextureUnit = 0;
+
+        int diffuseCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::BaseColor, nextTextureUnit);
+        if (diffuseCount > 0)
+        {
+            SetUniformInt(programId, "uDiffuse[0]", nextTextureUnit);
+            ++nextTextureUnit;
+        }
+        SetUniformInt(programId, "uDiffuseCount", diffuseCount);
+
+        int normalCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::Normal, nextTextureUnit);
+        if (normalCount > 0)
+        {
+            SetUniformInt(programId, "uNormal[0]", nextTextureUnit);
+            ++nextTextureUnit;
+        }
+        SetUniformInt(programId, "uNormalCount", normalCount);
+
+        int ambientCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::Occlusion, nextTextureUnit);
+        if (ambientCount > 0)
+        {
+            SetUniformInt(programId, "uAmbient[0]", nextTextureUnit);
+            ++nextTextureUnit;
+        }
+        SetUniformInt(programId, "uAmbientCount", ambientCount);
+
+        int specularCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::MetallicRoughness, nextTextureUnit);
+        if (specularCount > 0)
+        {
+            SetUniformInt(programId, "uSpecular[0]", nextTextureUnit);
+            ++nextTextureUnit;
+        }
+        SetUniformInt(programId, "uSpecularCount", specularCount);
+
+        (void)nextTextureUnit;
+    }
+
+    void DrawResourceUnit(const RenderUnit &unit, resources::ResourceManager *resourceManager)
+    {
+        if (!unit.resourceMesh || !unit.resourceShader)
+        {
+            return;
+        }
+
+        if (!unit.resourceMesh->IsGpuReady() || !unit.resourceShader->IsGpuReady())
+        {
+            return;
+        }
+
+        glUseProgram(unit.resourceShader->GetProgramId());
+        BindResourceMaterial(unit, resourceManager);
+        glBindVertexArray(unit.resourceMesh->GetVao());
+
+        const std::vector<resources::MeshPrimitive> &primitives = unit.resourceMesh->GetPrimitives();
+        if (!primitives.empty())
+        {
+            for (const resources::MeshPrimitive &primitive : primitives)
+            {
+                glDrawElements(
+                    GL_TRIANGLES,
+                    static_cast<GLsizei>(primitive.indexCount),
+                    GL_UNSIGNED_INT,
+                    reinterpret_cast<const void *>(static_cast<size_t>(primitive.indexOffset) * sizeof(uint32_t)));
+            }
+        }
+        else
+        {
+            glDrawElements(
+                GL_TRIANGLES,
+                static_cast<GLsizei>(unit.resourceMesh->GetIndices().size()),
+                GL_UNSIGNED_INT,
+                nullptr);
+        }
+
+        glBindVertexArray(0);
+    }
+}
 
 void Renderer::UploadCameraUbo(const CameraRenderData &camera)
 {
@@ -82,14 +211,43 @@ void Renderer::Initialize(uint32_t width, uint32_t height, const RendererOptions
     m_frameOpen = false;
     m_buildingSnapshot.Clear();
     m_uniformBufferManager = std::make_unique<UniformBufferManager>();
+    m_resourceGpuUploader = std::make_unique<ResourceGpuUploader>();
+
+    if (m_resourceManager)
+    {
+        m_resourceManager->SetGPUUploadCallback(
+            [this](resources::Resource *resource)
+            {
+                if (m_resourceGpuUploader)
+                {
+                    m_resourceGpuUploader->Upload(resource);
+                }
+            });
+
+        m_resourceManager->SetGPUReleaseCallback(
+            [this](resources::Resource *resource)
+            {
+                if (m_resourceGpuUploader)
+                {
+                    m_resourceGpuUploader->Release(resource);
+                }
+            });
+    }
 }
 
 void Renderer::Shutdown()
 {
+    if (m_resourceManager)
+    {
+        m_resourceManager->SetGPUUploadCallback(nullptr);
+        m_resourceManager->SetGPUReleaseCallback(nullptr);
+    }
+
     m_initialized = false;
     m_frameOpen = false;
     m_buildingSnapshot.Clear();
     m_uniformBufferManager.reset(nullptr);
+    m_resourceGpuUploader.reset(nullptr);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -105,6 +263,12 @@ void Renderer::BeginFrame(const CameraRenderData &camera)
 
     m_buildingSnapshot.Clear();
     m_buildingSnapshot.camera = camera;
+
+    if (m_resourceManager)
+    {
+        m_resourceManager->ProcessGPUUploads();
+    }
+
     m_frameOpen = true;
 }
 
@@ -153,9 +317,42 @@ void Renderer::Render(const RenderFrameSnapshot &snapshot)
     if (!m_initialized)
         return;
 
+    if (m_resourceManager)
+    {
+        m_resourceManager->ProcessGPUUploads();
+    }
+
     RenderFrameSnapshot sortedSnapshot = snapshot;
     SortQueues(sortedSnapshot);
     ExecuteFrame(sortedSnapshot);
+}
+
+void Renderer::SetResourceManager(resources::ResourceManager *resourceManager)
+{
+    m_resourceManager = resourceManager;
+
+    if (!m_resourceManager)
+    {
+        return;
+    }
+
+    m_resourceManager->SetGPUUploadCallback(
+        [this](resources::Resource *resource)
+        {
+            if (m_resourceGpuUploader)
+            {
+                m_resourceGpuUploader->Upload(resource);
+            }
+        });
+
+    m_resourceManager->SetGPUReleaseCallback(
+        [this](resources::Resource *resource)
+        {
+            if (m_resourceGpuUploader)
+            {
+                m_resourceGpuUploader->Release(resource);
+            }
+        });
 }
 
 const RendererOptions &Renderer::GetOptions() const
@@ -213,16 +410,12 @@ void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
     m_uniformBufferManager->BindAllBuffers();
     for (const RenderUnit &unit : snapshot.opaqueUnits)
     {
-        if (!unit.mesh || !unit.shader)
-            continue;
-
-        Shader &shader = *unit.shader;
-        shader.Use();
-
-        UploadObjectUbo(unit);
-        UploadMaterialUbo(unit);
-
-        unit.mesh->Draw(shader);
+        if (unit.resourceMesh && unit.resourceShader)
+        {
+            UploadObjectUbo(unit);
+            UploadMaterialUbo(unit);
+            DrawResourceUnit(unit, m_resourceManager);
+        }
     }
 }
 
@@ -240,16 +433,12 @@ void Renderer::ExecuteUnlitPass(const RenderFrameSnapshot &snapshot)
 
     for (const RenderUnit &unit : snapshot.unlitUnits)
     {
-        if (!unit.mesh || !unit.shader)
-            continue;
-
-        Shader &shader = *unit.shader;
-        shader.Use();
-
-        UploadObjectUbo(unit);
-        UploadMaterialUbo(unit);
-
-        unit.mesh->Draw(shader);
+        if (unit.resourceMesh && unit.resourceShader)
+        {
+            UploadObjectUbo(unit);
+            UploadMaterialUbo(unit);
+            DrawResourceUnit(unit, m_resourceManager);
+        }
     }
 }
 

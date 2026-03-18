@@ -24,22 +24,31 @@ add_library(
     
     render/camera/camera_projection.hpp
     render/camera/perspective_projection.cpp
-    render/mesh.cpp
-    render/shader.cpp
+    render/resource_gpu_uploader.cpp
+    render/resource_gpu_uploader.hpp
     render/shader_domain.hpp
     render/uniform_buffer.cpp
     render/renderer.cpp
     
-    resources/fileloader.cpp
-    resources/registry.hpp
     resources/stb_impl.cpp
-    resources/loaders/all.hpp
-    resources/loaders/iloader.hpp
-    resources/loaders/loader.hpp
-    resources/loaders/auto_loader.hpp
-    resources/loaders/obj_loader.cpp
+
+    resources/handle.hpp
+    resources/resource.hpp
+    resources/resource_loader.hpp
+    resources/resource_manager.cpp
+    resources/resource_pool.hpp
+    resources/resource_state.hpp
+
+    resources/units/material.hpp
+    resources/units/mesh.hpp
+    resources/units/shader.hpp
+    resources/units/texture.hpp
+
     resources/loaders/scene_loader.cpp
-    resources/manager.hpp
+    resources/loaders/material_loader.hpp
+    resources/loaders/mesh_loader.hpp
+    resources/loaders/shader_loader.hpp
+    resources/loaders/texture_loader.hpp
     
     helpers/log.hpp
 )

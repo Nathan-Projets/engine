@@ -10,9 +10,7 @@
 #include <glm/glm.hpp>
 
 #include "scene.hpp"
-#include "render/shader.hpp"
 #include "render/camera/perspective_projection.hpp"
-#include "resources/manager.hpp"
 #include "helpers/log.hpp"
 #include "input/input_manager.hpp"
 

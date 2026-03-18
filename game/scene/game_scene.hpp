@@ -4,12 +4,12 @@
 
 #include <core/scene.hpp>
 #include <ecs/world.hpp>
-#include <resources/manager.hpp>
+#include <resources/resource_manager.hpp>
 
 class GameScene : public Scene
 {
 public:
-    GameScene(std::string scenePath, ResourceManager *resourceManager);
+    GameScene(std::string scenePath, resources::ResourceManager *resourceManager = nullptr);
     ~GameScene() override = default;
 
     void Init() override;
@@ -22,6 +22,6 @@ private:
 
 private:
     World m_world;
-    ResourceManager *m_resourceManager;
+    resources::ResourceManager *m_resourceManager;
     std::string m_scenePath;
 };

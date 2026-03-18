@@ -3,12 +3,21 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <algorithm>
+#include <optional>
 
 #include <glm/glm.hpp>
 
 #include "render_unit.hpp"
 #include "render_queue.hpp"
 #include "uniform_buffer.hpp"
+#include "resource_gpu_uploader.hpp"
+#include "resources/resource_manager.hpp"
+
+namespace resources
+{
+    class ResourceManager;
+}
 
 struct CameraRenderData
 {
@@ -69,6 +78,8 @@ public:
     // Snapshot API: provide the fully built frame data directly.
     void Render(const RenderFrameSnapshot &snapshot);
 
+    void SetResourceManager(resources::ResourceManager *resourceManager);
+
     const RendererOptions &GetOptions() const;
     void SetOptions(const RendererOptions &options);
 
@@ -96,4 +107,6 @@ private:
 
     RenderFrameSnapshot m_buildingSnapshot = {};
     std::unique_ptr<UniformBufferManager> m_uniformBufferManager = nullptr;
+    std::unique_ptr<ResourceGpuUploader> m_resourceGpuUploader = nullptr;
+    resources::ResourceManager *m_resourceManager = nullptr;
 };
