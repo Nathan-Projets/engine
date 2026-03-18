@@ -6,7 +6,7 @@
 #include "../../render/render_queue.hpp"
 #include "../../render/shader_domain.hpp"
 #include "../../resources/handle.hpp"
-#include "../../resources/units/mesh.hpp"
+#include "../../resources/units/model.hpp"
 #include "../../resources/units/shader.hpp"
 #include "../../resources/units/material.hpp"
 
@@ -15,8 +15,8 @@ class MeshRenderer : public Component
 public:
     MeshRenderer() : m_materialData(), m_queue(RenderQueue::Opaque) {}
 
-    resources::Handle<resources::Mesh> GetMeshHandle() const noexcept { return m_meshHandle; }
-    void SetMeshHandle(resources::Handle<resources::Mesh> meshHandle) noexcept { m_meshHandle = meshHandle; }
+    resources::Handle<resources::Model> GetModelHandle() const noexcept { return m_modelHandle; }
+    void SetModelHandle(resources::Handle<resources::Model> modelHandle) noexcept { m_modelHandle = modelHandle; }
 
     resources::Handle<resources::Shader> GetShaderHandle() const noexcept { return m_shaderHandle; }
     void SetShaderHandle(resources::Handle<resources::Shader> shaderHandle) noexcept { m_shaderHandle = shaderHandle; }
@@ -26,7 +26,7 @@ public:
 
     bool UsesResourcePipeline() const noexcept
     {
-        return m_meshHandle.IsValid() && (m_shaderHandle.IsValid() || m_materialHandle.IsValid());
+        return m_modelHandle.IsValid() && (m_shaderHandle.IsValid() || m_materialHandle.IsValid());
     }
 
     const MaterialData &GetMaterialData() const { return m_materialData; }
@@ -36,7 +36,7 @@ public:
     void SetQueue(RenderQueue queue) { m_queue = queue; }
 
 private:
-    resources::Handle<resources::Mesh> m_meshHandle;
+    resources::Handle<resources::Model> m_modelHandle;
     resources::Handle<resources::Shader> m_shaderHandle;
     resources::Handle<resources::Material> m_materialHandle;
     MaterialData m_materialData;

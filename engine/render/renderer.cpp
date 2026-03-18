@@ -135,12 +135,12 @@ namespace
         resources::ResourceManager *resourceManager,
         UniformBufferManager *uniformBufferManager)
     {
-        if (!unit.resourceMesh || !unit.resourceShader)
+        if (!unit.resourceModel || !unit.resourceShader)
         {
             return;
         }
 
-        if (!unit.resourceMesh->IsGpuReady() || !unit.resourceShader->IsGpuReady())
+        if (!unit.resourceModel->IsGpuReady() || !unit.resourceShader->IsGpuReady())
         {
             return;
         }
@@ -162,9 +162,9 @@ namespace
 
         glUseProgram(unit.resourceShader->GetProgramId());
         BindResourceMaterial(unit, resourceManager);
-        glBindVertexArray(unit.resourceMesh->GetVao());
+        glBindVertexArray(unit.resourceModel->GetVao());
 
-        const std::vector<resources::MeshPrimitive> &primitives = unit.resourceMesh->GetPrimitives();
+        const std::vector<resources::MeshPrimitive> &primitives = unit.resourceModel->GetPrimitives();
         if (unit.primitiveIndex < primitives.size())
         {
             const resources::MeshPrimitive &primitive = primitives[unit.primitiveIndex];
@@ -192,7 +192,7 @@ namespace
             uploadObjectUbo(uniformBufferManager, unit.model * unit.localTransform, unit.materialIndex);
             glDrawElements(
                 GL_TRIANGLES,
-                static_cast<GLsizei>(unit.resourceMesh->GetIndices().size()),
+                static_cast<GLsizei>(unit.resourceModel->GetIndices().size()),
                 GL_UNSIGNED_INT,
                 nullptr);
         }
@@ -481,7 +481,7 @@ void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
     m_uniformBufferManager->BindAllBuffers();
     for (const RenderUnit &unit : snapshot.opaqueUnits)
     {
-        if (unit.resourceMesh && unit.resourceShader)
+        if (unit.resourceModel && unit.resourceShader)
         {
             UploadMaterialUbo(unit);
             DrawResourceUnit(unit, m_resourceManager, m_uniformBufferManager.get());
@@ -503,7 +503,7 @@ void Renderer::ExecuteUnlitPass(const RenderFrameSnapshot &snapshot)
 
     for (const RenderUnit &unit : snapshot.unlitUnits)
     {
-        if (unit.resourceMesh && unit.resourceShader)
+        if (unit.resourceModel && unit.resourceShader)
         {
             UploadMaterialUbo(unit);
             DrawResourceUnit(unit, m_resourceManager, m_uniformBufferManager.get());
