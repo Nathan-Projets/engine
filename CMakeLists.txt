@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(FallGuysClone)
+project(Executable)
 
 # set(CMAKE_CXX_FLAGS_DEBUG "/O1")
 set(CMAKE_CXX_STANDARD 23)
