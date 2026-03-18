@@ -2,14 +2,14 @@
 
 #include "scene.hpp"
 #include "../ecs/world.hpp"
-#include "../resources/manager.hpp"
+#include "../resources/resource_manager.hpp"
 #include "../engine/ecs/systems/physics_system.hpp"
 #include "../engine/ecs/systems/render_system.hpp"
 
 class BaseScene : public Scene
 {
 public:
-    BaseScene(World *world, ResourceManager *resourceManager);
+    BaseScene(World *world, resources::ResourceManager *resourceManager = nullptr);
     ~BaseScene() override = default;
 
     void Init() override;
@@ -18,5 +18,5 @@ public:
 
 private:
     World *m_world;
-    ResourceManager *m_resourceManager;
+    resources::ResourceManager *m_resourceManager;
 };

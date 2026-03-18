@@ -1,13 +1,14 @@
 #include "base_scene.hpp"
 
-BaseScene::BaseScene(World *world, ResourceManager *resourceManager) : m_world(world), m_resourceManager(resourceManager)
+BaseScene::BaseScene(World *world, resources::ResourceManager *resourceManager)
+    : m_world(world), m_resourceManager(resourceManager)
 {
 }
 
 void BaseScene::Init()
 {
     m_world->AddSystem<PhysicsSystem>();
-    m_world->AddSystem<RenderSystem>();
+    m_world->AddSystem<RenderSystem>(m_resourceManager);
 }
 
 void BaseScene::Update(float deltaTime)

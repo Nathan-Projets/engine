@@ -16,8 +16,10 @@ namespace GameSceneComponents
                                              [](Entity entity,
                                                 simdjson::ondemand::object componentJson,
                                                 World &world,
-                                                ResourceManager &resourceManager)
+                                                resources::ResourceManager *resourceManager)
                                              {
+                                                 (void)resourceManager;
+
                                                  OrbitCameraController *controller = world.AddComponent<OrbitCameraController>(entity);
                                                  controller->target = SceneLoader::ReadVec3(componentJson, "target", glm::vec3(0.0f));
                                                  controller->upVector = SceneLoader::ReadVec3(componentJson, "upVector", glm::vec3(0.0f, 1.0f, 0.0f));

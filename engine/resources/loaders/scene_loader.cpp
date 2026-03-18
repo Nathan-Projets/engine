@@ -158,7 +158,7 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
     ComponentLoaderMap &loaders = GetComponentLoaders();
 
     loaders.emplace("Transform",
-                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, ResourceManager &resourceManager)
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
                     {
                         world.AddComponent<Transform>(entity,
                                                       ReadVec3(componentJson, "position", glm::vec3(0.0f)),
@@ -167,37 +167,61 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                     });
 
     loaders.emplace("Render",
-                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, ResourceManager &resourceManager)
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
                     {
+                        if (!resourceManager)
+                        {
+                            WARNING("Render component requires resources::ResourceManager in the new resource pipeline");
+                            return;
+                        }
+
                         const std::string modelLocation(componentJson["model"].get_string().value());
                         const std::string fullModelPath = "assets/" + modelLocation;
-                        std::shared_ptr<Meshes> meshes = resourceManager.LoadLazy<Meshes>(
-                            fullModelPath,
-                            [&fullModelPath]()
-                            {
-                                return std::make_shared<Meshes>(Loader::Load(fullModelPath));
-                            });
 
-                        const std::string shaderLocation(componentJson["shader"].get_string().value());
-                        const std::string vertPath = "assets/" + shaderLocation + ".vert";
-                        const std::string fragPath = "assets/" + shaderLocation + ".frag";
-                        std::shared_ptr<Shader> shader = resourceManager.Load<Shader>(shaderLocation, vertPath, fragPath);
+                        std::string shaderLocation;
+                        std::string fullShaderPath;
+                        simdjson::simdjson_result<std::string_view> shaderResult = componentJson["shader"].get_string();
+                        if (!shaderResult.error())
+                        {
+                            shaderLocation = std::string(shaderResult.value());
+                            fullShaderPath = "assets/" + shaderLocation;
+                        }
+
+                        std::string materialLocation;
+                        std::string fullMaterialPath;
+                        simdjson::simdjson_result<std::string_view> materialResult = componentJson["material"].get_string();
+                        if (!materialResult.error())
+                        {
+                            materialLocation = std::string(materialResult.value());
+                            fullMaterialPath = "assets/" + materialLocation;
+                        }
 
                         MeshRenderer *meshRenderer = world.AddComponent<MeshRenderer>(entity);
-                        meshRenderer->SetMeshes(meshes);
-                        meshRenderer->SetShader(shader.get());
+
+                        meshRenderer->SetMeshHandle(resourceManager->Load<resources::Mesh>(fullModelPath));
+
+                        if (!fullShaderPath.empty())
+                        {
+                            meshRenderer->SetShaderHandle(resourceManager->Load<resources::Shader>(fullShaderPath));
+                        }
+
+                        if (!fullMaterialPath.empty())
+                        {
+                            meshRenderer->SetMaterialHandle(resourceManager->Load<resources::Material>(fullMaterialPath));
+                        }
+
                         MaterialData materialData = meshRenderer->GetMaterialData();
                         materialData.roughness = std::clamp(ReadFloat(componentJson, "roughness", 0.5f), 0.02f, 1.0f);
                         meshRenderer->SetMaterialData(materialData);
 
                         RenderQueue inferredQueue = RenderQueue::Opaque;
-                        if (shaderLocation.find("unlit") != std::string::npos)
+                        if (!shaderLocation.empty() && shaderLocation.find("unlit") != std::string::npos)
                             inferredQueue = RenderQueue::Unlit;
                         meshRenderer->SetQueue(ReadRenderQueue(componentJson, inferredQueue));
                     });
 
     loaders.emplace("Light",
-                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, ResourceManager &resourceManager)
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
                     {
                         Light *light = world.AddComponent<Light>(entity);
                         light->ambient = ReadVec3(componentJson, "ambient", glm::vec3(1.0f));
@@ -207,7 +231,7 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                     });
 
     loaders.emplace("Camera",
-                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, ResourceManager &resourceManager)
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
                     {
                         world.AddComponent<Camera>(entity,
                                                    ReadFrustrum(componentJson),
@@ -223,7 +247,7 @@ void SceneLoader::RegisterComponentLoader(std::string_view type, ComponentLoader
     GetComponentLoaders()[std::string(type)] = std::move(loader);
 }
 
-bool SceneLoader::LoadIntoWorld(const std::string &filepath, World *world, ResourceManager *resourceManager)
+bool SceneLoader::LoadIntoWorld(const std::string &filepath, World *world, resources::ResourceManager *resourceManager)
 {
     RegisterBuiltInComponentLoaders();
 
@@ -258,7 +282,7 @@ bool SceneLoader::LoadIntoWorld(const std::string &filepath, World *world, Resou
                     }
 
                     DEBUG("\tAdding component: " << type);
-                    loaderIt->second(entity, componentJson, *world, *resourceManager);
+                    loaderIt->second(entity, componentJson, *world, resourceManager);
                 }
             }
             else
@@ -275,7 +299,7 @@ bool SceneLoader::LoadIntoWorld(const std::string &filepath, World *world, Resou
     return true;
 }
 
-std::shared_ptr<Scene> SceneLoader::LoadScene(const std::string &filepath, World *world, ResourceManager *resourceManager)
+std::shared_ptr<Scene> SceneLoader::LoadScene(const std::string &filepath, World *world, resources::ResourceManager *resourceManager)
 {
     if (!LoadIntoWorld(filepath, world, resourceManager))
         return nullptr;

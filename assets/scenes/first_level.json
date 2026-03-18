@@ -14,8 +14,7 @@
                 {
                     "type": "Render",
                     "model": "meshes/backpack/backpack.obj",
-                    "shader": "shaders/prototype/lit_ubo",
-                    "roughness": 0.17
+                    "material": "materials/prototype/lit_backpack.json"
                 }
             ]
         },
@@ -31,8 +30,7 @@
                 {
                     "type": "Render",
                     "model": "meshes/cube/cube.obj",
-                    "shader": "shaders/prototype/lit_ubo",
-                    "roughness": 0.33
+                    "material": "materials/prototype/lit_cube.json"
                 }
             ]
         },
@@ -48,7 +46,7 @@
                 {
                     "type": "Render",
                     "model": "meshes/cube/cube.obj",
-                    "shader": "shaders/prototype/unlit_ubo",
+                    "material": "materials/prototype/unlit_light.json",
                     "queue": "unlit"
                 },
                 {
@@ -72,7 +70,7 @@
                 {
                     "type": "Render",
                     "model": "meshes/cube/cube.obj",
-                    "shader": "shaders/prototype/unlit_ubo",
+                    "material": "materials/prototype/unlit_light.json",
                     "queue": "unlit"
                 },
                 {

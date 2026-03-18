@@ -1,28 +1,33 @@
 #pragma once
 
-#include <memory>
 #include <string>
 
 #include "../component.hpp"
 #include "../../render/render_queue.hpp"
 #include "../../render/shader_domain.hpp"
-
-class Mesh;
-class Shader;
-
-using Meshes = std::vector<Mesh>;
+#include "../../resources/handle.hpp"
+#include "../../resources/units/mesh.hpp"
+#include "../../resources/units/shader.hpp"
+#include "../../resources/units/material.hpp"
 
 class MeshRenderer : public Component
 {
 public:
-    MeshRenderer() : m_meshes(), m_shader(nullptr), m_materialData(), m_queue(RenderQueue::Opaque) {}
-    MeshRenderer(std::shared_ptr<Meshes> meshes, Shader *shader) : m_meshes(meshes), m_shader(shader), m_materialData(), m_queue(RenderQueue::Opaque) {}
+    MeshRenderer() : m_materialData(), m_queue(RenderQueue::Opaque) {}
 
-    std::shared_ptr<Meshes> GetMeshes() const { return m_meshes; }
-    void SetMeshes(std::shared_ptr<Meshes> meshes) { m_meshes = meshes; }
+    resources::Handle<resources::Mesh> GetMeshHandle() const noexcept { return m_meshHandle; }
+    void SetMeshHandle(resources::Handle<resources::Mesh> meshHandle) noexcept { m_meshHandle = meshHandle; }
 
-    Shader *GetShader() const { return m_shader; }
-    void SetShader(Shader *shader) { m_shader = shader; }
+    resources::Handle<resources::Shader> GetShaderHandle() const noexcept { return m_shaderHandle; }
+    void SetShaderHandle(resources::Handle<resources::Shader> shaderHandle) noexcept { m_shaderHandle = shaderHandle; }
+
+    resources::Handle<resources::Material> GetMaterialHandle() const noexcept { return m_materialHandle; }
+    void SetMaterialHandle(resources::Handle<resources::Material> materialHandle) noexcept { m_materialHandle = materialHandle; }
+
+    bool UsesResourcePipeline() const noexcept
+    {
+        return m_meshHandle.IsValid() && (m_shaderHandle.IsValid() || m_materialHandle.IsValid());
+    }
 
     const MaterialData &GetMaterialData() const { return m_materialData; }
     void SetMaterialData(const MaterialData &materialData) { m_materialData = materialData; }
@@ -31,8 +36,9 @@ public:
     void SetQueue(RenderQueue queue) { m_queue = queue; }
 
 private:
-    std::shared_ptr<Meshes> m_meshes;
-    Shader *m_shader;
+    resources::Handle<resources::Mesh> m_meshHandle;
+    resources::Handle<resources::Shader> m_shaderHandle;
+    resources::Handle<resources::Material> m_materialHandle;
     MaterialData m_materialData;
     RenderQueue m_queue;
 };

@@ -14,6 +14,25 @@ if (!OPENGL_FOUND)
     message("System does not have OpenGL installed.")
 endif (!OPENGL_FOUND)
 
+# Doxygen documentation target
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile")
+    if(EXISTS ${DOXYGEN_FILE})
+        add_custom_target(documentation
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_FILE}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Generating documentation with Doxygen..."
+            VERBATIM
+        )
+        message(STATUS "Doxygen found. Use 'cmake --build . -t documentation' to generate docs.")
+    else()
+        message(WARNING "Doxyfile not found at ${DOXYGEN_FILE}")
+    endif()
+else()
+    message(STATUS "Doxygen not found. Documentation generation will be skipped.")
+endif()
+
 add_subdirectory(assets)
 
 add_subdirectory(external/glad)
