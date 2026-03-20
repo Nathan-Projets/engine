@@ -1,11 +1,18 @@
 #include "application.hpp"
 
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+
 Application::Application(int width, int height) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false), m_initialized(false)
 {
 }
 
 Application::~Application()
 {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     glfwTerminate();
 }
 
@@ -34,6 +41,12 @@ bool Application::Init()
     }
 
     InputManager::Get().AttachToWindow(m_window);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
 
     m_initialized = true;
 
@@ -66,6 +79,13 @@ bool Application::Run()
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
+    float smoothedDeltaTime = 1.0f / 60.0f;
+    double fpsAccumulatedTime = 0.0;
+    int fpsAccumulatedFrames = 0;
+    int fpsStable = 60;
+    uint64_t totalFrameCount = 0;
+    bool showDebugOverlay = true;
+    const double startTime = glfwGetTime();
 
     while (!glfwWindowShouldClose(m_window))
     {
@@ -85,10 +105,60 @@ bool Application::Run()
             Stop();
         }
 
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_F1))
+        {
+            showDebugOverlay = !showDebugOverlay;
+        }
+
         if (m_scene)
         {
             m_scene->Render(deltaTime);
         }
+
+        // TODO: create abstraction or idk because these are nasty
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        smoothedDeltaTime += (deltaTime - smoothedDeltaTime) * 0.10f;
+        fpsAccumulatedTime += static_cast<double>(deltaTime);
+        ++fpsAccumulatedFrames;
+        ++totalFrameCount;
+        if (fpsAccumulatedTime >= 0.25)
+        {
+            fpsStable = static_cast<int>(static_cast<double>(fpsAccumulatedFrames) / fpsAccumulatedTime + 0.5);
+            fpsAccumulatedTime = 0.0;
+            fpsAccumulatedFrames = 0;
+        }
+
+        if (showDebugOverlay)
+        {
+            int framebufferWidth = 0;
+            int framebufferHeight = 0;
+            glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
+
+            const glm::vec2 mousePosition = InputManager::Get().GetMousePosition();
+            const double uptimeSeconds = glfwGetTime() - startTime;
+
+            ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowBgAlpha(0.85f);
+            ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                                            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;
+            ImGui::Begin("Debug Stats", nullptr, overlayFlags);
+            ImGui::Text("FPS: %d", fpsStable);
+            ImGui::Text("Frame time: %.2f ms", smoothedDeltaTime * 1000.0f);
+            ImGui::Separator();
+            ImGui::Text("Uptime: %.1f s", uptimeSeconds);
+            ImGui::Text("Frame: %llu", static_cast<unsigned long long>(totalFrameCount));
+            ImGui::Text("Viewport: %d x %d", framebufferWidth, framebufferHeight);
+            ImGui::Text("Mouse: (%.1f, %.1f)", mousePosition.x, mousePosition.y);
+            ImGui::Text("Scene bound: %s", m_scene ? "yes" : "no");
+            ImGui::Text("Toggle panel: F1");
+            ImGui::End();
+        }
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         InputManager::Get().ClearFrameState();
 
