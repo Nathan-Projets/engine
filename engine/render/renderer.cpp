@@ -27,6 +27,7 @@ namespace
         SetUniformInt(programId, "uNormalUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Normal)]));
         SetUniformInt(programId, "uSpecularUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::MetallicRoughness)]));
         SetUniformInt(programId, "uAmbientUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Occlusion)]));
+        SetUniformInt(programId, "uDisplacementUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Displacement)]));
     }
 
     int BindTextureForSlot(
@@ -126,6 +127,14 @@ namespace
             ++nextTextureUnit;
         }
         SetUniformInt(programId, "uSpecularCount", specularCount);
+
+        int displacementCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::Displacement, nextTextureUnit);
+        if (displacementCount > 0)
+        {
+            SetUniformInt(programId, "uDisplacement", nextTextureUnit);
+            ++nextTextureUnit;
+        }
+        SetUniformInt(programId, "uDisplacementCount", displacementCount);
 
         (void)nextTextureUnit;
     }
@@ -233,7 +242,14 @@ void Renderer::UploadLightsUbo(const std::vector<LightRenderData> &lights)
         lightData.ambient = renderLight.ambient;
         lightData.diffuse = renderLight.diffuse;
         lightData.specular = renderLight.specular;
-        lightData.intensity = 1.0f;
+        lightData.intensity = renderLight.intensity;
+        lightData.constant = renderLight.constant;
+        lightData.linear = renderLight.linear;
+        lightData.quadratic = renderLight.quadratic;
+        lightData.direction = renderLight.direction;
+        lightData.spotInnerCutoff = glm::cos(glm::radians(renderLight.innerCutoff));
+        lightData.spotOuterCutoff = glm::cos(glm::radians(renderLight.outerCutoff));
+        lightData.type = renderLight.type;
         lightDataArray.push_back(lightData);
     }
 

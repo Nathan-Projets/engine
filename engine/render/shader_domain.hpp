@@ -71,19 +71,19 @@ struct LightData
     float intensity = 0.0f;
 
     glm::vec3 color = {0.0f, 0.0f, 0.0f};
-    float range = 0.0f;
+    float constant = 1.0f;
 
     glm::vec3 ambient = {0.0f, 0.0f, 0.0f};
-    float _padAmbient = 0.0f;
+    float linear = 0.0f;
 
     glm::vec3 diffuse = {0.0f, 0.0f, 0.0f};
-    float _padDiffuse = 0.0f;
+    float quadratic = 0.0f;
 
     glm::vec3 specular = {0.0f, 0.0f, 0.0f};
-    float _padSpecular = 0.0f;
+    float spotInnerCutoff = 0.0f;
 
     glm::vec3 direction = {0.0f, -1.0f, 0.0f};
-    float spotFalloff = 1.0f;
+    float spotOuterCutoff = 0.0f;
 
     unsigned int type = 0;  // 0=point, 1=directional, 2=spot
     unsigned int flags = 0; // Cast shadow, etc.
@@ -104,7 +104,8 @@ struct MaterialData
 
     float alphaCutoff = 0.5f;
     unsigned int features = 0;
-    glm::vec2 _pad0 = {0.0f, 0.0f};
+    float displacementStrength = 0.0f;
+    float _materialPad0 = 0.0f;
 };
 
 // std140 UBO struct sizes must be multiples of the largest base alignment (16 bytes for mat4/vec4).

@@ -37,6 +37,14 @@ struct LightRenderData
     glm::vec3 diffuse = glm::vec3(0.5f);
     glm::vec3 specular = glm::vec3(0.7f);
     glm::vec3 color = glm::vec3(1.0f);
+    float intensity = 1.0f;
+    float constant = 1.0f;
+    float linear = 0.0f;
+    float quadratic = 0.0f;
+    glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
+    float innerCutoff = 12.5f;
+    float outerCutoff = 17.5f;
+    unsigned int type = 0; // 0 = point, 1 = directional, 2 = spot
 };
 
 struct RendererOptions

@@ -14,7 +14,7 @@
 class RenderUnit
 {
 public:
-    static constexpr size_t TextureSlotCount = 5;
+    static constexpr size_t TextureSlotCount = 6;
 
     resources::Model *resourceModel = nullptr;
     resources::Shader *resourceShader = nullptr;

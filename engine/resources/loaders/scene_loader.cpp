@@ -148,6 +148,76 @@ PerspectiveProjection::Frustrum SceneLoader::ReadFrustrum(simdjson::ondemand::ob
     }
 }
 
+LightType SceneLoader::ReadLightType(simdjson::ondemand::object componentJson, LightType defaultValue)
+{
+    try
+    {
+        simdjson::simdjson_result<std::string_view> typeResult = componentJson["lightType"].get_string();
+        if (typeResult.error())
+            return defaultValue;
+
+        std::string_view lightType = typeResult.value();
+
+        if (lightType == "directional")
+        {
+            return LightType::Directional;
+        }
+        else if (lightType == "point")
+        {
+            return LightType::Point;
+        }
+        else if (lightType == "spot" || lightType == "spotlight")
+        {
+            return LightType::Spot;
+        }
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+    }
+    return defaultValue;
+}
+
+std::array<float, 3> SceneLoader::ReadLightAttenuation(simdjson::ondemand::object componentJson)
+{
+    try
+    {
+        simdjson::simdjson_result<simdjson::ondemand::object> attenuationResult = componentJson["attenuation"].get_object();
+        if (!attenuationResult.error())
+        {
+            // default values cover distance of 50
+            simdjson::ondemand::object attenuationJson = attenuationResult.value();
+            float constant = ReadFloat(attenuationJson, "constant", 1.0);
+            float linear = ReadFloat(attenuationJson, "linear", 0.09);
+            float quadratic = ReadFloat(attenuationJson, "quadratic", 0.032);
+            return {constant, linear, quadratic};
+        }
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+    }
+    return {1.0f, 0.09f, 0.032f};
+}
+
+std::array<float, 2> SceneLoader::ReadSpotValues(simdjson::ondemand::object componentJson)
+{
+    try
+    {
+        simdjson::simdjson_result<simdjson::ondemand::object> spotResult = componentJson["spot"].get_object();
+        if (!spotResult.error())
+        {
+            simdjson::ondemand::object spotJson = spotResult.value();
+            float innerCutoff = ReadFloat(spotJson, "innerCutoff", 12.5f);
+            float outerCutoff = ReadFloat(spotJson, "outerCutoff", 17.5f);
+            return {innerCutoff, outerCutoff};
+        }
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+    }
+
+    return {12.5f, 17.5f};
+}
+
 void SceneLoader::RegisterBuiltInComponentLoaders()
 {
     static bool registered = false;
@@ -223,11 +293,23 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
     loaders.emplace("Light",
                     [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
                     {
+                        (void)resourceManager;
+
                         Light *light = world.AddComponent<Light>(entity);
-                        light->ambient = ReadVec3(componentJson, "ambient", glm::vec3(1.0f));
-                        light->diffuse = ReadVec3(componentJson, "diffuse", glm::vec3(1.0f));
-                        light->specular = ReadVec3(componentJson, "specular", glm::vec3(1.0f));
+                        light->ambient = ReadVec3(componentJson, "ambient", glm::vec3(0.2f));
+                        light->diffuse = ReadVec3(componentJson, "diffuse", glm::vec3(0.5f));
+                        light->specular = ReadVec3(componentJson, "specular", glm::vec3(0.7f));
                         light->color = ReadVec3(componentJson, "color", glm::vec3(1.0f));
+                        light->intensity = ReadFloat(componentJson, "intensity", 1.0f);
+                        light->direction = ReadVec3(componentJson, "direction", glm::vec3(0.0f, -1.0f, 0.0f));
+                        light->type = ReadLightType(componentJson, LightType::Point);
+                        std::array<float, 3> attenuation = ReadLightAttenuation(componentJson);
+                        light->constant = attenuation[0];
+                        light->linear = attenuation[1];
+                        light->quadratic = attenuation[2];
+                        std::array<float, 2> spotValues = ReadSpotValues(componentJson);
+                        light->innerCutoff = spotValues[0];
+                        light->outerCutoff = spotValues[1];
                     });
 
     loaders.emplace("Camera",

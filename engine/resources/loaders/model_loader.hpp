@@ -13,6 +13,7 @@
 
 #include "../units/model.hpp"
 #include "../resource_loader.hpp"
+#include "../../helpers/log.hpp"
 
 namespace resources
 {
@@ -83,7 +84,10 @@ namespace resources
             const std::filesystem::path &meshDirectory,
             const std::string &meshPath)
         {
-            if (!material || material->GetTextureCount(textureType) == 0)
+            if (!material)
+                return std::nullopt;
+            uint32_t texCount = material->GetTextureCount(textureType);
+            if (texCount == 0)
                 return std::nullopt;
             aiString texturePath;
             unsigned int uvIndex = 0;
@@ -111,8 +115,13 @@ namespace resources
             const std::string &meshPath)
         {
             for (aiTextureType t : types)
+            {
+                auto texCount = material->GetTextureCount(t);
                 if (auto r = ResolveMaterialTexturePath(material, t, meshDirectory, meshPath))
+                {
                     return r;
+                }
+            }
             return std::nullopt;
         }
     }
@@ -229,29 +238,46 @@ namespace resources
                 if (auto t = detail::ResolveFirstAvailableTexturePath(src,
                                                                       {aiTextureType_BASE_COLOR, aiTextureType_DIFFUSE},
                                                                       meshDirectory, path))
+                {
                     model->SetImportedMaterialTextureInfo(mi, MaterialTextureSlot::BaseColor, t->path, t->uvIndex);
+                }
 
                 if (auto t = detail::ResolveFirstAvailableTexturePath(src,
-                                                                      {aiTextureType_NORMALS, aiTextureType_HEIGHT},
+                                                                      {aiTextureType_NORMALS, aiTextureType_NORMAL_CAMERA, aiTextureType_HEIGHT},
                                                                       meshDirectory, path))
+                {
                     model->SetImportedMaterialTextureInfo(mi, MaterialTextureSlot::Normal, t->path, t->uvIndex);
+                }
 
                 if (auto t = detail::ResolveFirstAvailableTexturePath(src,
                                                                       {aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_METALNESS,
-                                                                       aiTextureType_SPECULAR, aiTextureType_UNKNOWN},
+                                                                       aiTextureType_SPECULAR},
                                                                       meshDirectory, path))
+                {
                     model->SetImportedMaterialTextureInfo(mi, MaterialTextureSlot::MetallicRoughness, t->path, t->uvIndex);
+                }
 
                 if (auto t = detail::ResolveFirstAvailableTexturePath(src,
                                                                       {aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP,
                                                                        aiTextureType_AMBIENT},
                                                                       meshDirectory, path))
+                {
                     model->SetImportedMaterialTextureInfo(mi, MaterialTextureSlot::Occlusion, t->path, t->uvIndex);
+                }
 
                 if (auto t = detail::ResolveFirstAvailableTexturePath(src,
                                                                       {aiTextureType_EMISSIVE, aiTextureType_EMISSION_COLOR},
                                                                       meshDirectory, path))
+                {
                     model->SetImportedMaterialTextureInfo(mi, MaterialTextureSlot::Emissive, t->path, t->uvIndex);
+                }
+
+                if (auto t = detail::ResolveFirstAvailableTexturePath(src,
+                                                                      {aiTextureType_DISPLACEMENT, aiTextureType_HEIGHT},
+                                                                      meshDirectory, path))
+                {
+                    model->SetImportedMaterialTextureInfo(mi, MaterialTextureSlot::Displacement, t->path, t->uvIndex);
+                }
             }
         }
 

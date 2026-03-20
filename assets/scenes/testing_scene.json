@@ -1,0 +1,234 @@
+{
+    "name": "Scene for testing",
+    "version": "1.0",
+    "entities": [
+        {
+            "name": "Sphere_00",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [-4.0, 3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_01",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_02",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [4.0, 3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_10",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [-4.0, 0.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_11",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 0.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_12",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [4.0, 0.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_20",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [-4.0, -3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_21",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "Sphere_22",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [4.0, -3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "SunLight",
+            "components": [
+                {
+                    "type": "Light",
+                    "lightType": "directional",
+                    "direction": [0.3, -1.0, -0.5],
+                    "color": [1.0, 0.95, 0.88],
+                    "intensity": 0.2,
+                    "ambient": [0.01, 0.01, 0.015],
+                    "diffuse": [0.18, 0.18, 0.18],
+                    "specular": [0.2, 0.2, 0.2]
+                }
+            ]
+        },
+        {
+            "name": "PointLight",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [2.5, 2.0, 2.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.2, 0.2, 0.2]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/unlit_light.json",
+                    "queue": "unlit"
+                },
+                {
+                    "type": "Light",
+                    "lightType": "point",
+                    "color": [1.0, 0.78, 0.52],
+                    "intensity": 2.5,
+                    "attenuation": {
+                        "constant": 1.0,
+                        "linear": 0.14,
+                        "quadratic": 0.07
+                    },
+                    "ambient": [0.08, 0.06, 0.04],
+                    "diffuse": [1.0, 0.9, 0.7],
+                    "specular": [1.0, 0.95, 0.85]
+                },
+                {
+                    "type": "LightOrbitController",
+                    "center": [0.0, 0.5, 1.5],
+                    "radiusXZ": 4.0,
+                    "radiusY": 2.0,
+                    "speedXZ": 1.1,
+                    "speedY": 1.7,
+                    "phaseXZ": 0.0,
+                    "phaseY": 0.8
+                }
+            ]
+        },
+        {
+            "name": "PrototypeCamera",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 1.0, 15.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Camera",
+                    "frustrum": [45.0, 800.0, 800.0, 0.1, 250.0],
+                    "lookAt": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0]
+                },
+                {
+                    "type": "OrbitCameraController",
+                    "target": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0],
+                    "radius": 10.0,
+                    "yaw": 0.2,
+                    "pitch": 0.1,
+                    "yawSpeed": 3.0,
+                    "pitchSpeed": 3.0,
+                    "maxPitch": 1.2
+                }
+            ]
+        }
+    ]
+}

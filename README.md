@@ -1,4 +1,4 @@
-# FallGuysClone Engine
+# 3D Engine
 
 A modern OpenGL-based 3D game engine with a material-driven rendering pipeline, entity component system (ECS), and async resource management.
 
@@ -34,7 +34,7 @@ cmake --build . --config Debug
 ```bash
 # From the build directory
 cmake --build . --config Debug
-./bin/Debug/FallGuysClone.exe
+./bin/Debug/Executable.exe
 ```
 
 ## Documentation
