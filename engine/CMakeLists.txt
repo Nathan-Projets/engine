@@ -53,4 +53,4 @@ add_library(
 )
 
 target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson)
+target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson imgui)

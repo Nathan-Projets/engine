@@ -41,6 +41,7 @@ add_subdirectory(external/glm)
 add_subdirectory(external/stb)
 add_subdirectory(external/assimp)
 add_subdirectory(external/simdjson)
+include(cmake/imgui.cmake)
 
 add_subdirectory(engine)
 add_subdirectory(game)
