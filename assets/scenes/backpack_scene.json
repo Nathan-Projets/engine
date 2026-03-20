@@ -14,7 +14,23 @@
                 {
                     "type": "Render",
                     "model": "meshes/backpack/backpack.obj",
-                    "material": "materials/prototype/lit_backpack.json"
+                    "material": "materials/lit_backpack.json"
+                }
+            ]
+        },
+        {
+            "name": "Pavement",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/pavement/pavement.glb",
+                    "material": "materials/lit_pavement.json"
                 }
             ]
         },
@@ -30,7 +46,7 @@
                 {
                     "type": "Render",
                     "model": "meshes/cube/cube.obj",
-                    "material": "materials/prototype/lit_cube.json"
+                    "material": "materials/lit_cube.json"
                 }
             ]
         },
@@ -46,7 +62,7 @@
                 {
                     "type": "Render",
                     "model": "meshes/cube/cube.obj",
-                    "material": "materials/prototype/unlit_light.json",
+                    "material": "materials/unlit_light.json",
                     "queue": "unlit"
                 },
                 {
@@ -70,7 +86,7 @@
                 {
                     "type": "Render",
                     "model": "meshes/cube/cube.obj",
-                    "material": "materials/prototype/unlit_light.json",
+                    "material": "materials/unlit_light.json",
                     "queue": "unlit"
                 },
                 {

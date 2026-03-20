@@ -5,11 +5,10 @@
 #include "../../engine/ecs/systems/physics_system.hpp"
 #include "../../engine/ecs/systems/render_system.hpp"
 #include "../../engine/resources/loaders/scene_loader.hpp"
+#include "../systems/light_orbit_controller_system.hpp"
 #include "../systems/orbit_camera_controller_system.hpp"
-#include "../systems/rotating_light_system.hpp"
 
-GameScene::GameScene(std::string scenePath, resources::ResourceManager *resourceManager)
-    : m_resourceManager(resourceManager), m_scenePath(std::move(scenePath))
+GameScene::GameScene(std::string scenePath, resources::ResourceManager *resourceManager) : m_resourceManager(resourceManager), m_scenePath(std::move(scenePath))
 {
 }
 
@@ -51,6 +50,6 @@ void GameScene::ConfigureSystems()
 {
     m_world.AddSystem<PhysicsSystem>();
     m_world.AddSystem<OrbitCameraControllerSystem>();
-    m_world.AddSystem<RotatingLightSystem>();
+    m_world.AddSystem<LightOrbitControllerSystem>();
     m_world.AddSystem<RenderSystem>(m_resourceManager);
 }

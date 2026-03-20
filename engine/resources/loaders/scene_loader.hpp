@@ -31,7 +31,7 @@ using ComponentLoaderMap = std::unordered_map<std::string, ComponentLoader>;
  * @class SceneLoader
  * @brief Loads scene definitions from JSON files and populates a World with entities
  * @details
- * 
+ *
  * ## Scene Format
  * Scenes are JSON files containing an array of entity definitions:
  * ```json
@@ -44,20 +44,20 @@ using ComponentLoaderMap = std::unordered_map<std::string, ComponentLoader>;
  *   ]
  * }
  * ```
- * 
+ *
  * ## Material Resolution
  * When a Render component specifies a "material" field, the material is loaded asynchronously:
  * - Material JSON defines shader path and properties
  * - Shader path uses auto-discovery: "shaders/proto/lit" finds lit.vert + lit.frag
  * - Texture paths and properties are extracted from material JSON
  * - All resources are loaded via the ResourceManager with deduplication
- * 
+ *
  * ## Built-in Component Loaders
  * - Transform: position, rotation (Euler), scale
  * - Render: mesh, shader (optional), material (optional), queue
  * - Light: color, ambient, diffuse, specular
  * - Camera: fov, znear, zfar, aspect, main flag
- * 
+ *
  * ## Custom Component Loaders
  * Use RegisterComponentLoader() to add support for custom components.
  */
@@ -100,6 +100,15 @@ public:
 
     /// @brief Helper: Parse camera frustum parameters from JSON
     static PerspectiveProjection::Frustrum ReadFrustrum(simdjson::ondemand::object componentJson);
+
+    /// @brief Helper: Read light type from JSON with default fallback
+    static LightType ReadLightType(simdjson::ondemand::object componentJson, LightType defaultValue);
+
+    /// @brief Helper: Read attenuation attributes constant, linear, and quadratic, returned in this specific order
+    static std::array<float, 3> ReadLightAttenuation(simdjson::ondemand::object componentJson);
+
+    /// @brief Helper: Read spotlight attributes innerCutoff and outerCutoff, returned in this specific order
+    static std::array<float, 2> ReadSpotValues(simdjson::ondemand::object componentJson);
 
     /// @brief Register all built-in component loaders (Transform, Render, Light, Camera)
     static void RegisterBuiltInComponentLoaders();

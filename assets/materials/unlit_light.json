@@ -1,0 +1,11 @@
+{
+    "shader": "../shaders/unlit_ubo",
+    "doubleSided": false,
+    "alphaBlend": false,
+    "properties": {
+        "baseColor": [1.0, 0.98, 0.93],
+        "roughness": 1.0,
+        "metallic": 0.0,
+        "emissive": [0.0, 0.0, 0.0]
+    }
+}

@@ -5,7 +5,9 @@ add_library(
     scene/game_scene.hpp
     components/component_registration.cpp
     components/component_registration.hpp
+    components/light_orbit_controller.hpp
     components/orbit_camera_controller.hpp
+    systems/light_orbit_controller_system.hpp
     systems/orbit_camera_controller_system.hpp
     systems/rotating_light_system.hpp
 )

@@ -7,6 +7,10 @@
 #include "../components/camera.hpp"
 #include "../../render/renderer.hpp"
 #include "../../resources/resource_manager.hpp"
+#include "../../input/input_manager.hpp"
+#include "../../helpers/log.hpp"
+
+#include <GLFW/glfw3.h>
 
 #include <algorithm>
 #include <array>
@@ -22,6 +26,50 @@ public:
 
     void Render(World &world, float deltaTime) override
     {
+        bool debugModeChanged = false;
+
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_F3))
+        {
+            m_debugViewMode = (m_debugViewMode + 1u) % 6u;
+            debugModeChanged = true;
+        }
+
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_1))
+        {
+            m_debugViewMode = 0u; // lit view
+            debugModeChanged = true;
+        }
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_2))
+        {
+            m_debugViewMode = 1u; // unlit view
+            debugModeChanged = true;
+        }
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_3))
+        {
+            m_debugViewMode = 2u; // normals view
+            debugModeChanged = true;
+        }
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_4))
+        {
+            m_debugViewMode = 3u; // roughness view
+            debugModeChanged = true;
+        }
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_5))
+        {
+            m_debugViewMode = 4u; // metallic view
+            debugModeChanged = true;
+        }
+        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_6))
+        {
+            m_debugViewMode = 5u; // ambient_occlusion view
+            debugModeChanged = true;
+        }
+
+        if (debugModeChanged)
+        {
+            INFO("Debug view mode [" << m_debugViewMode << "]: " << GetDebugViewModeName(m_debugViewMode));
+        }
+
         if (!m_rendererInitialized)
         {
             m_renderer.SetResourceManager(m_resourceManager);
@@ -75,15 +123,24 @@ public:
             lightData.diffuse = light->diffuse;
             lightData.specular = light->specular;
             lightData.color = light->color;
+            lightData.intensity = light->intensity;
+            lightData.constant = light->constant;
+            lightData.linear = light->linear;
+            lightData.quadratic = light->quadratic;
+            lightData.direction = light->direction;
+            lightData.innerCutoff = light->innerCutoff;
+            lightData.outerCutoff = light->outerCutoff;
+            lightData.type = static_cast<unsigned int>(light->type);
             m_renderer.SubmitLight(lightData);
         }
 
-        const std::array<resources::MaterialTextureSlot, 5> slots = {
+        const std::array<resources::MaterialTextureSlot, 6> slots = {
             resources::MaterialTextureSlot::BaseColor,
             resources::MaterialTextureSlot::Normal,
             resources::MaterialTextureSlot::MetallicRoughness,
             resources::MaterialTextureSlot::Occlusion,
-            resources::MaterialTextureSlot::Emissive};
+            resources::MaterialTextureSlot::Emissive,
+            resources::MaterialTextureSlot::Displacement};
 
         for (Entity entity : entities)
         {
@@ -128,6 +185,7 @@ public:
                     baseUnit.resourceMaterial = material;
                     baseUnit.model = modelMatrix;
                     baseUnit.material = renderer->GetMaterialData();
+                    baseUnit.material.features = m_debugViewMode;
 
                     if (material)
                     {
@@ -144,6 +202,9 @@ public:
                         if (auto it = props.find("emissive"); it != props.end())
                             if (const glm::vec3 *v = std::get_if<glm::vec3>(&it->second))
                                 baseUnit.material.emissive = *v;
+                        if (auto it = props.find("displacementStrength"); it != props.end())
+                            if (const float *v = std::get_if<float>(&it->second))
+                                baseUnit.material.displacementStrength = *v;
                     }
 
                     const auto &primitiveInstances = model->GetPrimitiveInstances();
@@ -194,7 +255,29 @@ public:
     }
 
 private:
+    static const char *GetDebugViewModeName(uint32_t mode)
+    {
+        switch (mode)
+        {
+        case 0:
+            return "Lit";
+        case 1:
+            return "Albedo";
+        case 2:
+            return "Normals";
+        case 3:
+            return "Roughness";
+        case 4:
+            return "Metallic";
+        case 5:
+            return "AO";
+        default:
+            return "Unknown";
+        }
+    }
+
     Renderer m_renderer = {};
     bool m_rendererInitialized = false;
     resources::ResourceManager *m_resourceManager = nullptr;
+    uint32_t m_debugViewMode = 0;
 };

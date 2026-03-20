@@ -59,9 +59,12 @@ namespace
         GLint logLength = 0;
         glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &logLength);
 
-        std::string log;
-        log.resize(static_cast<size_t>(logLength));
-        glGetProgramInfoLog(programId, logLength, nullptr, log.data());
+        std::string log = "Unknown link error (no info log available)";
+        if (logLength > 1)
+        {
+            log.resize(static_cast<size_t>(logLength));
+            glGetProgramInfoLog(programId, logLength, nullptr, log.data());
+        }
 
         throw std::runtime_error("Shader program link failed: " + log);
     }

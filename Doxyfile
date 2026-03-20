@@ -1,7 +1,7 @@
-# Doxyfile for FallGuysClone Engine
+# Doxyfile for 3D Engine
 # Generated for resource management refactoring documentation
 
-PROJECT_NAME           = "FallGuysClone Engine"
+PROJECT_NAME           = "3D Engine"
 PROJECT_NUMBER         = 0.1.0
 PROJECT_BRIEF          = "An OpenGL-based 3D game engine with material-driven rendering"
 PROJECT_LOGO           = 

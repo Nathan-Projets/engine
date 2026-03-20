@@ -1,0 +1,5 @@
+{
+    "shader": "../shaders/lit_ubo",
+    "doubleSided": false,
+    "alphaBlend": false
+}

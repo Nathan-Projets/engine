@@ -20,11 +20,12 @@ namespace resources
     /// @brief Standard PBR texture slots supported by materials
     enum class MaterialTextureSlot
     {
-        BaseColor,           ///< Base color / albedo texture
-        Normal,              ///< Normal map for surface detail
-        MetallicRoughness,   ///< Metallic (R) and roughness (G) in packed texture
-        Occlusion,           ///< Ambient occlusion texture
-        Emissive             ///< Emissive/self-illumination texture
+        BaseColor,         ///< Base color / albedo texture
+        Normal,            ///< Normal map for surface detail
+        MetallicRoughness, ///< Metallic (R) and roughness (G) in packed texture
+        Occlusion,         ///< Ambient occlusion texture
+        Emissive,            ///< Emissive/self-illumination texture
+        Displacement         ///< Displacement/height map for vertex deformation
     };
 
     struct MaterialTextureSlotHash
