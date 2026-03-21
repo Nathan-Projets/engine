@@ -123,7 +123,7 @@ bool Application::Run()
         int framebufferHeight = 0;
         glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
 
-        FrameStats stats;
+        FrameStats stats; 
         stats.fps = fpsStable;
         stats.frameTimeMs = smoothedDeltaTime * 1000.0f;
         stats.totalFrames = totalFrameCount;

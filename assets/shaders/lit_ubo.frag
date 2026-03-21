@@ -184,8 +184,8 @@ void main() {
         float diff = max(dot(norm, lightDir), 0.0);
         diffuseSum += uLights[i].diffuse * diff * diffuseColor * lightColor;
 
-        vec3 reflectDir = reflect(-lightDir, norm);
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+        vec3 halfwayDir = normalize(lightDir + viewDir); // blinn-phong
+        float spec = pow(max(dot(norm, halfwayDir), 0.0), shininess);
         specularSum += uLights[i].specular * spec * specularColor * lightColor;
     }
 
