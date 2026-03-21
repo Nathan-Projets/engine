@@ -1,18 +1,12 @@
 #include "application.hpp"
 
-#include <imgui.h>
-#include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_opengl3.h>
-
 Application::Application(int width, int height) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false), m_initialized(false)
 {
 }
 
 Application::~Application()
 {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    m_debugUI.Shutdown();
     glfwTerminate();
 }
 
@@ -32,6 +26,8 @@ bool Application::Init()
     }
 
     glfwMakeContextCurrent(m_window);
+    glfwSwapInterval(0); // 0 = vsync off, 1 = vsync on (capped to monitor refresh rate)
+    glfwSetWindowUserPointer(m_window, this);
     glfwSetFramebufferSizeCallback(m_window, Application::ResizeCallback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -42,11 +38,8 @@ bool Application::Init()
 
     InputManager::Get().AttachToWindow(m_window);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(m_window, true);
-    ImGui_ImplOpenGL3_Init("#version 330");
+    m_debugUI.Init(m_window);
+    m_debugUI.AddPanel(&m_statsPanel);
 
     m_initialized = true;
 
@@ -84,7 +77,6 @@ bool Application::Run()
     int fpsAccumulatedFrames = 0;
     int fpsStable = 60;
     uint64_t totalFrameCount = 0;
-    bool showDebugOverlay = true;
     const double startTime = glfwGetTime();
 
     while (!glfwWindowShouldClose(m_window))
@@ -107,7 +99,7 @@ bool Application::Run()
 
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_F1))
         {
-            showDebugOverlay = !showDebugOverlay;
+            m_statsPanel.visible = !m_statsPanel.visible;
         }
 
         if (m_scene)
@@ -116,10 +108,6 @@ bool Application::Run()
         }
 
         // TODO: create abstraction or idk because these are nasty
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
         smoothedDeltaTime += (deltaTime - smoothedDeltaTime) * 0.10f;
         fpsAccumulatedTime += static_cast<double>(deltaTime);
         ++fpsAccumulatedFrames;
@@ -131,34 +119,24 @@ bool Application::Run()
             fpsAccumulatedFrames = 0;
         }
 
-        if (showDebugOverlay)
-        {
-            int framebufferWidth = 0;
-            int framebufferHeight = 0;
-            glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
 
-            const glm::vec2 mousePosition = InputManager::Get().GetMousePosition();
-            const double uptimeSeconds = glfwGetTime() - startTime;
+        FrameStats stats;
+        stats.fps = fpsStable;
+        stats.frameTimeMs = smoothedDeltaTime * 1000.0f;
+        stats.totalFrames = totalFrameCount;
+        stats.uptimeSeconds = glfwGetTime() - startTime;
+        stats.viewportWidth = framebufferWidth;
+        stats.viewportHeight = framebufferHeight;
+        stats.mousePosition = InputManager::Get().GetMousePosition();
+        stats.sceneLoaded = m_scene != nullptr;
+        m_statsPanel.SetStats(stats);
 
-            ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
-            ImGui::SetNextWindowBgAlpha(0.85f);
-            ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
-                                            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;
-            ImGui::Begin("Debug Stats", nullptr, overlayFlags);
-            ImGui::Text("FPS: %d", fpsStable);
-            ImGui::Text("Frame time: %.2f ms", smoothedDeltaTime * 1000.0f);
-            ImGui::Separator();
-            ImGui::Text("Uptime: %.1f s", uptimeSeconds);
-            ImGui::Text("Frame: %llu", static_cast<unsigned long long>(totalFrameCount));
-            ImGui::Text("Viewport: %d x %d", framebufferWidth, framebufferHeight);
-            ImGui::Text("Mouse: (%.1f, %.1f)", mousePosition.x, mousePosition.y);
-            ImGui::Text("Scene bound: %s", m_scene ? "yes" : "no");
-            ImGui::Text("Toggle panel: F1");
-            ImGui::End();
-        }
-
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        m_debugUI.BeginFrame();
+        m_debugUI.DrawPanels();
+        m_debugUI.EndFrame();
 
         InputManager::Get().ClearFrameState();
 
@@ -176,4 +154,12 @@ void Application::Stop()
 void Application::ResizeCallback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
+
+    Application *app = static_cast<Application *>(glfwGetWindowUserPointer(window));
+    if (app && app->m_scene)
+    {
+        app->m_width = width;
+        app->m_height = height;
+        app->m_scene->OnResize(width, height);
+    }
 }

@@ -10,9 +10,10 @@
 #include <glm/glm.hpp>
 
 #include "scene.hpp"
-#include "render/camera/perspective_projection.hpp"
 #include "helpers/log.hpp"
 #include "input/input_manager.hpp"
+#include "ui/debug/debug_ui.hpp"
+#include "ui/debug/panels/debug_stats_panel.hpp"
 
 class Application
 {
@@ -35,6 +36,9 @@ private:
     bool m_initialized;
 
     Scene* m_scene = nullptr;
+
+    DebugUI m_debugUI;
+    DebugStatsPanel m_statsPanel;
 
     std::vector<std::unique_ptr<Scene>> m_scenes;
 };

@@ -2,6 +2,7 @@
 
 #include "../../engine/helpers/log.hpp"
 #include "../../engine/input/input_manager.hpp"
+#include "../../engine/ecs/components/camera.hpp"
 #include "../../engine/ecs/systems/physics_system.hpp"
 #include "../../engine/ecs/systems/render_system.hpp"
 #include "../../engine/resources/loaders/scene_loader.hpp"
@@ -30,6 +31,19 @@ void GameScene::Update(float deltaTime)
 void GameScene::Draw(float deltaTime)
 {
     m_world.RenderSystems(deltaTime);
+}
+
+void GameScene::OnResize(int width, int height)
+{
+    for (Entity entity : m_world.GetEntitiesWith<Camera>())
+    {
+        Camera *cam = m_world.GetComponent<Camera>(entity);
+        if (cam && cam->main)
+        {
+            cam->GetProjection().SetViewportSize(static_cast<float>(width), static_cast<float>(height));
+            break;
+        }
+    }
 }
 
 void GameScene::ReloadScene()

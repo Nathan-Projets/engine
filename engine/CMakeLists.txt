@@ -48,6 +48,9 @@ add_library(
     resources/loaders/material_loader.hpp
     resources/loaders/shader_loader.hpp
     resources/loaders/texture_loader.hpp
+
+    ui/debug/debug_ui.cpp
+    ui/debug/panels/debug_stats_panel.cpp
     
     helpers/log.hpp
 )
