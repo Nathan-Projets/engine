@@ -2,3 +2,4 @@ build
 .vscode
 external/*
 docs/
+TODO.md

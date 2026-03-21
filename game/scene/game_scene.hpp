@@ -15,6 +15,7 @@ public:
     void Init() override;
     void Update(float deltaTime) override;
     void Draw(float deltaTime) override;
+    void OnResize(int width, int height) override;
 
 private:
     void ReloadScene();

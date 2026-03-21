@@ -12,6 +12,7 @@ public:
     virtual void Init() = 0;
     virtual void Update(float deltaTime) = 0;
     virtual void Draw(float deltaTime) = 0;
+    virtual void OnResize(int width, int height) {}
 
     void Render(float deltaTime)
     {

@@ -41,6 +41,13 @@ public:
         RecalculateProjection();
     }
 
+    void SetViewportSize(float width, float height)
+    {
+        m_cameraFrustrum.width = width;
+        m_cameraFrustrum.height = height;
+        RecalculateProjection();
+    }
+
     void SetLookAt(const glm::vec3 &lookAt)
     {
         m_lookAt = lookAt;
