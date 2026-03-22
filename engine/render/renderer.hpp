@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <optional>
+#include <string>
 
 #include <glm/glm.hpp>
 
@@ -49,7 +51,11 @@ struct LightRenderData
 
 struct RendererOptions
 {
-    bool depthPrepass = false;
+    bool shadowPass = true;
+    std::string shadowMaterialPath = "assets/materials/shadow_depth.json";
+    std::string pointShadowMaterialPath = "assets/materials/shadow_point_depth.json";
+    float pointShadowFarPlane = 50.0f;
+    unsigned int maxPointShadowLights = 4;
     bool frustumCulling = false;
     bool sortTransparentBackToFront = true;
 };
@@ -70,6 +76,8 @@ struct RenderFrameSnapshot
 class Renderer
 {
 public:
+    static constexpr unsigned int kMaxPointShadowLights = 4;
+
     Renderer() = default;
     ~Renderer() = default;
 
@@ -97,14 +105,49 @@ private:
     void UploadLightsUbo(const std::vector<LightRenderData> &lights);
     void UploadObjectUbo(const RenderUnit &unit);
     void UploadMaterialUbo(const RenderUnit &unit) const;
+    void InitializeShadowResources();
+    void InitializeDirectionalShadowResources();
+    void InitializePointShadowResources();
+    void ReleaseShadowResources();
+    void ReleaseDirectionalShadowResources();
+    void ReleasePointShadowResources();
 
     // Pipeline entry points.
     void ExecuteFrame(const RenderFrameSnapshot &snapshot);
-    void ExecuteDepthPrepass(const RenderFrameSnapshot &snapshot);
+    void ExecuteShadowPass(const RenderFrameSnapshot &snapshot);
+    void ExecutePointShadowPass(const RenderFrameSnapshot &snapshot);
     void ExecuteLitPass(const RenderFrameSnapshot &snapshot);
     void ExecuteTransparentPass(const RenderFrameSnapshot &snapshot);
     void ExecuteUnlitPass(const RenderFrameSnapshot &snapshot);
     void ExecuteDebugPass(const RenderFrameSnapshot &snapshot);
+
+private:
+    struct DirectionalShadowState
+    {
+        unsigned int framebuffer = 0;
+        unsigned int depthTexture = 0;
+        resources::Handle<resources::Material> materialHandle = {};
+        resources::Handle<resources::Shader> shaderHandle = {};
+        glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
+        bool dataValid = false;
+        bool invalidDirectionWarningLogged = false;
+        int mapSize = 2048;
+    };
+
+    struct PointShadowState
+    {
+        unsigned int framebuffer = 0;
+        std::array<unsigned int, kMaxPointShadowLights> depthCubemaps = {};
+        resources::Handle<resources::Material> materialHandle = {};
+        resources::Handle<resources::Shader> shaderHandle = {};
+        std::array<glm::vec3, kMaxPointShadowLights> lightPositions = {};
+        std::array<float, kMaxPointShadowLights> farPlanes = {};
+        unsigned int casterCount = 0;
+        unsigned int maxLights = kMaxPointShadowLights;
+        bool dataValid = false;
+        int mapSize = 1024;
+        float farPlane = 50.0f;
+    };
 
 private:
     RendererOptions m_options = {};
@@ -117,4 +160,7 @@ private:
     std::unique_ptr<UniformBufferManager> m_uniformBufferManager = nullptr;
     std::unique_ptr<ResourceGpuUploader> m_resourceGpuUploader = nullptr;
     resources::ResourceManager *m_resourceManager = nullptr;
+
+    DirectionalShadowState m_directionalShadow = {};
+    PointShadowState m_pointShadow = {};
 };

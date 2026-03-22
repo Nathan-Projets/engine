@@ -274,7 +274,18 @@ namespace resources
 
             if (resource)
             {
-                gpuUploadCallback(resource);
+                try
+                {
+                    gpuUploadCallback(resource);
+                }
+                catch (const std::exception &e)
+                {
+                    WARNING("GPU upload failed for resource '" << resource->GetPath() << "': " << e.what());
+                }
+                catch (...)
+                {
+                    WARNING("GPU upload failed for resource '" << resource->GetPath() << "' with unknown error");
+                }
             }
         }
     }

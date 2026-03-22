@@ -3,6 +3,7 @@
 in VS_OUT {
     mat3 TBN;
     vec3 FragPos;
+    vec4 FragPosLightSpace;
     vec3 Normal;
     vec2 TexCoords0;
     vec2 TexCoords1;
@@ -21,6 +22,13 @@ uniform int uSpecularUV;
 uniform sampler2D uNormal[16];
 uniform int uNormalCount;
 uniform int uNormalUV;
+uniform sampler2D uShadowMap;
+uniform int uShadowEnabled;
+uniform samplerCube uPointShadowMaps[4];
+uniform int uPointShadowEnabled;
+uniform int uPointShadowCount;
+uniform vec3 uPointShadowLightPositions[4];
+uniform float uPointShadowFarPlanes[4];
 
 // Padding members keep this GLSL struct layout-compatible with the C++ LightData struct.
 // In std140, vec3 values are aligned to 16 bytes, so we add explicit pad fields to avoid
@@ -76,6 +84,88 @@ layout(std140, binding = 4) uniform MaterialDataBlock {
 };
 
 out vec4 FragColor;
+
+// ref. https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
+float CalculateDirectionalShadow(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir) {
+    vec3 projCoords = fragPosLightSpace.xyz / max(fragPosLightSpace.w, 0.0001);
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if(projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) {
+        return 0.0;
+    }
+
+    float currentDepth = projCoords.z;
+    vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
+    float ndotl = max(dot(normalize(normal), normalize(lightDir)), 0.0);
+    if(ndotl <= 0.0) {
+        return 0.0;
+    }
+
+    float slopeBias = 0.0025 * (1.0 - ndotl);
+    float normalBias = 0.00035;
+    float texelBias = max(texelSize.x, texelSize.y) * 0.75;
+    float bias = max(slopeBias, normalBias) + texelBias;
+
+    float shadow = 0.0;
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth - bias > pcfDepth) ? 1.0 : 0.0;
+        }
+    }
+
+    return shadow / 9.0;
+}
+
+float SamplePointShadowDepth(int shadowIndex, vec3 direction) {
+    if(shadowIndex == 0) {
+        return texture(uPointShadowMaps[0], direction).r;
+    }
+    if(shadowIndex == 1) {
+        return texture(uPointShadowMaps[1], direction).r;
+    }
+    if(shadowIndex == 2) {
+        return texture(uPointShadowMaps[2], direction).r;
+    }
+    if(shadowIndex == 3) {
+        return texture(uPointShadowMaps[3], direction).r;
+    }
+
+    return 1.0;
+}
+
+// ref. https://learnopengl.com/Advanced-Lighting/Shadows/Point-Shadows
+float CalculatePointShadow(int shadowIndex, vec3 fragPos, vec3 normal, vec3 lightDir, vec3 lightPos, float farPlane) {
+    vec3 fragToLight = fragPos - lightPos;
+    float currentDepth = length(fragToLight);
+    if(currentDepth >= farPlane) {
+        return 0.0;
+    }
+
+    float ndotl = max(dot(normalize(normal), normalize(lightDir)), 0.0);
+    if(ndotl <= 0.0) {
+        return 0.0;
+    }
+
+    float bias = max(0.03 * (1.0 - ndotl), 0.003);
+
+    vec3 sampleOffsetDirections[20] = vec3[](vec3(1.0, 1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(-1.0, -1.0, 1.0), vec3(-1.0, 1.0, 1.0), vec3(1.0, 1.0, -1.0), vec3(1.0, -1.0, -1.0), vec3(-1.0, -1.0, -1.0), vec3(-1.0, 1.0, -1.0), vec3(1.0, 1.0, 0.0), vec3(1.0, -1.0, 0.0), vec3(-1.0, -1.0, 0.0), vec3(-1.0, 1.0, 0.0), vec3(1.0, 0.0, 1.0), vec3(-1.0, 0.0, 1.0), vec3(1.0, 0.0, -1.0), vec3(-1.0, 0.0, -1.0), vec3(0.0, 1.0, 1.0), vec3(0.0, -1.0, 1.0), vec3(0.0, -1.0, -1.0), vec3(0.0, 1.0, -1.0));
+
+    float viewDistance = length(uCameraPosition - fragPos);
+    float diskRadius = (1.0 + (viewDistance / max(farPlane, 0.0001))) / 25.0;
+
+    float shadow = 0.0;
+    for(int i = 0; i < 20; ++i) {
+        float closestDepth = SamplePointShadowDepth(shadowIndex, fragToLight + sampleOffsetDirections[i] * diskRadius);
+        if(closestDepth >= 0.9999) {
+            continue;
+        }
+        closestDepth *= farPlane;
+        shadow += (currentDepth - bias > closestDepth) ? 1.0 : 0.0;
+    }
+
+    return shadow / 20.0;
+}
 
 vec2 SelectTexCoords(int uvIndex) {
     if(uvIndex == 1) {
@@ -165,8 +255,8 @@ void main() {
             lightDir = normalize(lightOffset);
 
             float attenuationDenominator = uLights[i].constant +
-                                           uLights[i].linear * distance +
-                                           uLights[i].quadratic * (distance * distance);
+                uLights[i].linear * distance +
+                uLights[i].quadratic * (distance * distance);
             attenuation = 1.0 / max(attenuationDenominator, 0.0001);
 
             if(uLights[i].type == 2u) {
@@ -178,15 +268,31 @@ void main() {
             }
         }
         vec3 lightColor = uLights[i].color * uLights[i].intensity * attenuation;
+        float shadow = 0.0;
+        if(uShadowEnabled > 0 && uLights[i].type == 1u) {
+            shadow = CalculateDirectionalShadow(fs_in.FragPosLightSpace, norm, lightDir);
+        } else if(uPointShadowEnabled > 0 && uLights[i].type == 0u && uPointShadowCount > 0) {
+            int shadowIndex = -1;
+            for(int pointIndex = 0; pointIndex < uPointShadowCount; ++pointIndex) {
+                if(distance(uPointShadowLightPositions[pointIndex], uLights[i].position) < 0.05) {
+                    shadowIndex = pointIndex;
+                    break;
+                }
+            }
+
+            if(shadowIndex >= 0) {
+                shadow = CalculatePointShadow(shadowIndex, fs_in.FragPos, norm, lightDir, uLights[i].position, uPointShadowFarPlanes[shadowIndex]);
+            }
+        }
 
         ambientSum += uLights[i].ambient * diffuseColor * lightColor;
 
         float diff = max(dot(norm, lightDir), 0.0);
-        diffuseSum += uLights[i].diffuse * diff * diffuseColor * lightColor;
+        diffuseSum += uLights[i].diffuse * diff * diffuseColor * lightColor * (1.0 - shadow);
 
         vec3 halfwayDir = normalize(lightDir + viewDir); // blinn-phong
         float spec = pow(max(dot(norm, halfwayDir), 0.0), shininess);
-        specularSum += uLights[i].specular * spec * specularColor * lightColor;
+        specularSum += uLights[i].specular * spec * specularColor * lightColor * (1.0 - shadow);
     }
 
     vec3 finalColor = ambientSum + diffuseSum + specularSum + uEmissive;

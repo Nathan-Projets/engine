@@ -9,6 +9,7 @@ layout(location = 5) in vec2 aTexCoords1;
 out VS_OUT {
     mat3 TBN;
     vec3 FragPos;
+    vec4 FragPosLightSpace;
     vec3 Normal;
     vec2 TexCoords0;
     vec2 TexCoords1;
@@ -50,6 +51,7 @@ uniform int uDisplacementCount;
 uniform int uDisplacementUV;
 
 uniform float use_tbn;
+uniform mat4 uLightSpaceMatrix;
 
 vec2 SelectTexCoords(int uvIndex) {
     if (uvIndex == 1) {
@@ -78,6 +80,7 @@ void main() {
 
     vec3 fragPos = vec3(uModel * vec4(displacedPos, 1.0));
     vs_out.FragPos = fragPos;
+    vs_out.FragPosLightSpace = uLightSpaceMatrix * vec4(fragPos, 1.0);
     vs_out.TexCoords0 = aTexCoords;
     vs_out.TexCoords1 = aTexCoords1;
     vs_out.use_tbn = use_tbn;
