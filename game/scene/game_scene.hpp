@@ -26,4 +26,6 @@ private:
     World m_world;
     resources::ResourceManager *m_resourceManager;
     std::string m_scenePath;
+    int m_viewportWidth = 0;
+    int m_viewportHeight = 0;
 };

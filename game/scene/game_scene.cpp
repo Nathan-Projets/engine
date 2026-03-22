@@ -40,6 +40,14 @@ void GameScene::Draw(float deltaTime)
 
 void GameScene::OnResize(int width, int height)
 {
+    m_viewportWidth = width;
+    m_viewportHeight = height;
+
+    if (width <= 0 || height <= 0)
+    {
+        return;
+    }
+
     for (Entity entity : m_world.GetEntitiesWith<Camera>())
     {
         Camera *cam = m_world.GetComponent<Camera>(entity);
@@ -72,6 +80,12 @@ void GameScene::ReloadScene(bool clearResourceCache)
 
     m_world = std::move(reloadedWorld);
     ConfigureSystems();
+
+    if (m_viewportWidth > 0 && m_viewportHeight > 0)
+    {
+        OnResize(m_viewportWidth, m_viewportHeight);
+    }
+
     INFO("Reloaded scene: " << m_scenePath);
 }
 
