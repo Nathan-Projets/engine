@@ -1,0 +1,136 @@
+{
+    "name": "Prototype UBO Pipeline (Two Point Shadows)",
+    "version": "1.0",
+    "entities": [
+        {
+            "name": "Backpack",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -1.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/backpack/backpack.obj",
+                    "material": "materials/lit_backpack.json"
+                }
+            ]
+        },
+        {
+            "name": "Pavement",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/pavement/pavement.glb",
+                    "material": "materials/lit_pavement.json"
+                }
+            ]
+        },
+        {
+            "name": "SimpleCube",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [3.5, -0.7, -1.5],
+                    "rotation": [-45.0, -20.0, -20.0],
+                    "scale": [0.5, 0.5, 0.5]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/cube/cube.obj",
+                    "material": "materials/lit_cube.json"
+                }
+            ]
+        },
+        {
+            "name": "PointLight_Left",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [-3.5, 2.8, 2.2],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.25, 0.25, 0.25]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/unlit_light.json",
+                    "queue": "unlit"
+                },
+                {
+                    "type": "Light",
+                    "lightType": "point",
+                    "color": [1.0, 0.7, 0.45],
+                    "intensity": 1.6,
+                    "ambient": [0.03, 0.02, 0.02],
+                    "diffuse": [1.0, 0.75, 0.5],
+                    "specular": [1.0, 0.75, 0.5],
+                    "attenuation": [1.0, 0.09, 0.032]
+                }
+            ]
+        },
+        {
+            "name": "PointLight_Right",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [3.8, 2.4, -2.8],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.25, 0.25, 0.25]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/unlit_light.json",
+                    "queue": "unlit"
+                },
+                {
+                    "type": "Light",
+                    "lightType": "point",
+                    "color": [0.45, 0.7, 1.0],
+                    "intensity": 1.7,
+                    "ambient": [0.02, 0.02, 0.03],
+                    "diffuse": [0.5, 0.75, 1.0],
+                    "specular": [0.5, 0.75, 1.0],
+                    "attenuation": [1.0, 0.09, 0.032]
+                }
+            ]
+        },
+        {
+            "name": "PrototypeCamera",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 1.0, 10.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Camera",
+                    "frustrum": [45.0, 1280.0, 720.0, 0.1, 250.0],
+                    "lookAt": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0]
+                },
+                {
+                    "type": "OrbitCameraController",
+                    "target": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0],
+                    "radius": 10.0,
+                    "yaw": 0.2,
+                    "pitch": 0.1,
+                    "yawSpeed": 3.0,
+                    "pitchSpeed": 3.0,
+                    "maxPitch": 1.2
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,5 @@
+{
+    "shader": "../shaders/shadow_point_depth",
+    "doubleSided": false,
+    "alphaBlend": false
+}

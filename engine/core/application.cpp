@@ -76,7 +76,7 @@ bool Application::Run()
         glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
         m_scene->OnResize(framebufferWidth, framebufferHeight);
     }
- 
+
     m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
 
     float deltaTime = 0.0f;
@@ -99,7 +99,6 @@ bool Application::Run()
         lastFrame = currentFrame;
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (InputManager::Get().IsKeyPressed(GLFW_KEY_ESCAPE))
         {
