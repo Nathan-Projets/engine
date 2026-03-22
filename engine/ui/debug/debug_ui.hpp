@@ -7,7 +7,7 @@ struct IDebugPanel
 {
     virtual ~IDebugPanel() = default;
     virtual void Draw() = 0;
-    bool visible = true;
+    bool visible = false;
 };
 
 class DebugUI

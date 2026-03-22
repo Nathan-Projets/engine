@@ -70,8 +70,13 @@ bool Application::Run()
     if (m_scene)
     {
         m_scene->Init();
-    }
 
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
+        m_scene->OnResize(framebufferWidth, framebufferHeight);
+    }
+ 
     m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
 
     float deltaTime = 0.0f;
