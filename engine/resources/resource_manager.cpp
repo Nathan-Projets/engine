@@ -43,6 +43,7 @@ namespace resources
                     continue;
                 }
 
+                m_activeLoaderCount.fetch_add(1, std::memory_order_acq_rel);
                 job = std::move(m_loadJobs.front());
                 m_loadJobs.pop();
             }
@@ -61,6 +62,8 @@ namespace resources
             }
 
             MarkJobFinished(threadIndex, succeeded);
+            m_activeLoaderCount.fetch_sub(1, std::memory_order_acq_rel);
+            m_loaderIdleCV.notify_all();
         }
     }
 
@@ -239,47 +242,30 @@ namespace resources
 
     bool ResourceManager::AreLoadersIdle()
     {
-        {
-            std::lock_guard<std::mutex> queueLock(m_jobQueueMutex);
-            if (!m_loadJobs.empty())
-            {
-                return false;
-            }
-        }
-
-        {
-            std::lock_guard<std::mutex> debugLock(m_debugMutex);
-            for (const ActiveThreadDebugState &threadState : m_activeThreadDebugStates)
-            {
-                if (threadState.active)
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        std::lock_guard<std::mutex> queueLock(m_jobQueueMutex);
+        return m_loadJobs.empty() && m_activeLoaderCount.load(std::memory_order_acquire) == 0;
     }
 
     bool ResourceManager::ResetForCleanReload()
     {
         constexpr auto kLoaderDrainTimeout = std::chrono::seconds(2);
-        constexpr auto kLoaderPollInterval = std::chrono::milliseconds(1);
-
-        const auto deadline = std::chrono::steady_clock::now() + kLoaderDrainTimeout;
-        while (!AreLoadersIdle())
         {
-            if (std::chrono::steady_clock::now() >= deadline)
+            std::unique_lock<std::mutex> queueLock(m_jobQueueMutex);
+            const auto deadline = std::chrono::steady_clock::now() + kLoaderDrainTimeout;
+            const bool drained = m_loaderIdleCV.wait_until(
+                queueLock,
+                deadline,
+                [this]()
+                {
+                    return m_loadJobs.empty() && m_activeLoaderCount.load(std::memory_order_acquire) == 0;
+                });
+
+            if (!drained)
             {
                 WARNING("ResetForCleanReload timed out waiting for loader threads to become idle");
                 return false;
             }
 
-            std::this_thread::sleep_for(kLoaderPollInterval);
-        }
-
-        {
-            std::lock_guard<std::mutex> queueLock(m_jobQueueMutex);
             while (!m_loadJobs.empty())
             {
                 m_loadJobs.pop();
