@@ -30,6 +30,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <deque>
+#include <atomic>
 #include <typeinfo>
 #include <type_traits>
 
@@ -474,6 +475,8 @@ namespace resources
         std::queue<LoadJob> m_loadJobs;
         std::mutex m_jobQueueMutex;
         std::condition_variable m_jobCV;
+        std::condition_variable m_loaderIdleCV;
+        std::atomic<size_t> m_activeLoaderCount{0};
 
         // Debug state for async loading
         mutable std::mutex m_debugMutex;
