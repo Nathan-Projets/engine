@@ -74,7 +74,9 @@ namespace resources
         {
             std::lock_guard<std::mutex> lock(m_debugMutex);
             snapshot.queuedItems.assign(m_debugQueuedJobs.begin(), m_debugQueuedJobs.end());
+            snapshot.recentHistory.assign(m_debugRecentHistory.begin(), m_debugRecentHistory.end());
             snapshot.threads.reserve(m_activeThreadDebugStates.size());
+            snapshot.aggregateStats.reserve(m_debugLoadAggregates.size());
 
             const auto now = std::chrono::steady_clock::now();
             for (size_t index = 0; index < m_activeThreadDebugStates.size(); ++index)
@@ -102,6 +104,22 @@ namespace resources
             snapshot.queuedJobCount = m_debugQueuedJobCount;
             snapshot.completedJobCount = m_debugCompletedJobCount;
             snapshot.failedJobCount = m_debugFailedJobCount;
+
+            for (const auto &[key, aggregate] : m_debugLoadAggregates)
+            {
+                (void)key;
+                DebugLoadAggregate exported;
+                exported.resourceType = aggregate.resourceType;
+                exported.path = aggregate.path;
+                exported.sampleCount = aggregate.sampleCount;
+                exported.successCount = aggregate.successCount;
+                exported.failureCount = aggregate.failureCount;
+                exported.avgMs = aggregate.sampleCount > 0 ? (aggregate.totalMs / static_cast<double>(aggregate.sampleCount)) : 0.0;
+                exported.minMs = aggregate.minMs;
+                exported.maxMs = aggregate.maxMs;
+                exported.lastMs = aggregate.lastMs;
+                snapshot.aggregateStats.push_back(std::move(exported));
+            }
         }
 
         {
@@ -159,6 +177,58 @@ namespace resources
         }
 
         ActiveThreadDebugState &threadState = m_activeThreadDebugStates[threadIndex];
+        const double elapsedMs = std::chrono::duration<double, std::milli>(
+                                     std::chrono::steady_clock::now() - threadState.startedAt)
+                                     .count();
+
+        DebugLoadEntry historyEntry;
+        historyEntry.jobId = threadState.jobId;
+        historyEntry.resourceType = threadState.resourceType;
+        historyEntry.path = threadState.path;
+        historyEntry.stage = succeeded ? "Completed" : "Failed";
+        historyEntry.progress = succeeded ? 1.0f : 0.0f;
+        historyEntry.elapsedMs = elapsedMs;
+        m_debugRecentHistory.push_front(std::move(historyEntry));
+        if (m_debugRecentHistory.size() > DEBUG_HISTORY_LIMIT)
+        {
+            m_debugRecentHistory.pop_back();
+        }
+
+        const std::string aggregateKey = threadState.resourceType + ":" + threadState.path;
+        auto aggregateIt = m_debugLoadAggregates.find(aggregateKey);
+        if (aggregateIt == m_debugLoadAggregates.end())
+        {
+            DebugLoadAggregateInternal aggregate;
+            aggregate.resourceType = threadState.resourceType;
+            aggregate.path = threadState.path;
+            aggregate.sampleCount = 1;
+            aggregate.successCount = succeeded ? 1 : 0;
+            aggregate.failureCount = succeeded ? 0 : 1;
+            aggregate.totalMs = elapsedMs;
+            aggregate.minMs = elapsedMs;
+            aggregate.maxMs = elapsedMs;
+            aggregate.lastMs = elapsedMs;
+            m_debugLoadAggregates.emplace(aggregateKey, std::move(aggregate));
+        }
+        else
+        {
+            DebugLoadAggregateInternal &aggregate = aggregateIt->second;
+            ++aggregate.sampleCount;
+            if (succeeded)
+            {
+                ++aggregate.successCount;
+            }
+            else
+            {
+                ++aggregate.failureCount;
+            }
+
+            aggregate.totalMs += elapsedMs;
+            aggregate.minMs = std::min(aggregate.minMs, elapsedMs);
+            aggregate.maxMs = std::max(aggregate.maxMs, elapsedMs);
+            aggregate.lastMs = elapsedMs;
+        }
+
         if (succeeded)
         {
             ++m_debugCompletedJobCount;
@@ -246,6 +316,13 @@ namespace resources
         return m_loadJobs.empty() && m_activeLoaderCount.load(std::memory_order_acquire) == 0;
     }
 
+    void ResourceManager::ClearDebugLoadHistory() noexcept
+    {
+        std::lock_guard<std::mutex> lock(m_debugMutex);
+        m_debugRecentHistory.clear();
+        m_debugLoadAggregates.clear();
+    }
+
     bool ResourceManager::ResetForCleanReload()
     {
         constexpr auto kLoaderDrainTimeout = std::chrono::seconds(2);
@@ -275,6 +352,8 @@ namespace resources
         {
             std::lock_guard<std::mutex> debugLock(m_debugMutex);
             m_debugQueuedJobs.clear();
+            m_debugRecentHistory.clear();
+            m_debugLoadAggregates.clear();
         }
 
         {
@@ -381,6 +460,8 @@ namespace resources
         {
             std::lock_guard<std::mutex> lock(m_debugMutex);
             m_debugQueuedJobs.clear();
+            m_debugRecentHistory.clear();
+            m_debugLoadAggregates.clear();
             m_activeThreadDebugStates.clear();
             m_nextDebugJobId = 1;
             m_debugQueuedJobCount = 0;

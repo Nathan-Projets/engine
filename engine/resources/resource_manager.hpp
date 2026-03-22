@@ -74,10 +74,25 @@ namespace resources
             DebugLoadEntry current;
         };
 
+        struct DebugLoadAggregate
+        {
+            std::string resourceType;
+            std::string path;
+            uint64_t sampleCount = 0;
+            uint64_t successCount = 0;
+            uint64_t failureCount = 0;
+            double avgMs = 0.0;
+            double minMs = 0.0;
+            double maxMs = 0.0;
+            double lastMs = 0.0;
+        };
+
         struct DebugSnapshot
         {
             std::vector<DebugThreadState> threads;
             std::vector<DebugLoadEntry> queuedItems;
+            std::vector<DebugLoadEntry> recentHistory;
+            std::vector<DebugLoadAggregate> aggregateStats;
             size_t pendingGpuUploadCount = 0;
             size_t pendingDeleteCount = 0;
             size_t activeThreadCount = 0;
@@ -269,6 +284,7 @@ namespace resources
         }
 
         DebugSnapshot GetDebugSnapshot() const noexcept;
+        void ClearDebugLoadHistory() noexcept;
 
     private:
         struct LoadJob
@@ -289,6 +305,19 @@ namespace resources
             std::string stage;
             float progress = 0.0f;
             std::chrono::steady_clock::time_point startedAt = {};
+        };
+
+        struct DebugLoadAggregateInternal
+        {
+            std::string resourceType;
+            std::string path;
+            uint64_t sampleCount = 0;
+            uint64_t successCount = 0;
+            uint64_t failureCount = 0;
+            double totalMs = 0.0;
+            double minMs = 0.0;
+            double maxMs = 0.0;
+            double lastMs = 0.0;
         };
 
         // Deferred deletion entry
@@ -481,11 +510,14 @@ namespace resources
         // Debug state for async loading
         mutable std::mutex m_debugMutex;
         std::deque<DebugLoadEntry> m_debugQueuedJobs;
+        std::deque<DebugLoadEntry> m_debugRecentHistory;
+        std::unordered_map<std::string, DebugLoadAggregateInternal> m_debugLoadAggregates;
         std::vector<ActiveThreadDebugState> m_activeThreadDebugStates;
         uint64_t m_nextDebugJobId = 1;
         uint64_t m_debugQueuedJobCount = 0;
         uint64_t m_debugCompletedJobCount = 0;
         uint64_t m_debugFailedJobCount = 0;
+        static constexpr size_t DEBUG_HISTORY_LIMIT = 512;
 
         // GPU uploads pending
         std::queue<Resource *> m_pendingGPUUploads;
