@@ -276,7 +276,7 @@ void Renderer::UploadMaterialUbo(const RenderUnit &unit) const
 void RenderFrameSnapshot::Clear()
 {
     lights.clear();
-    opaqueUnits.clear();
+    litUnits.clear();
     transparentUnits.clear();
     unlitUnits.clear();
     debugUnits.clear();
@@ -359,8 +359,8 @@ void Renderer::Submit(const RenderUnit &unit, RenderQueue queue)
 
     switch (queue)
     {
-    case RenderQueue::Opaque:
-        m_buildingSnapshot.opaqueUnits.push_back(unit);
+    case RenderQueue::Lit:
+        m_buildingSnapshot.litUnits.push_back(unit);
         break;
     case RenderQueue::Transparent:
         m_buildingSnapshot.transparentUnits.push_back(unit);
@@ -469,7 +469,7 @@ void Renderer::ExecuteFrame(const RenderFrameSnapshot &snapshot)
         ExecuteDepthPrepass(snapshot);
     }
 
-    ExecuteOpaquePass(snapshot);
+    ExecuteLitPass(snapshot);
     ExecuteTransparentPass(snapshot);
     ExecuteUnlitPass(snapshot);
     ExecuteDebugPass(snapshot);
@@ -479,7 +479,7 @@ void Renderer::ExecuteDepthPrepass(const RenderFrameSnapshot &snapshot)
 {
 }
 
-void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
+void Renderer::ExecuteLitPass(const RenderFrameSnapshot &snapshot)
 {
     if (!m_uniformBufferManager)
         return;
@@ -488,7 +488,7 @@ void Renderer::ExecuteOpaquePass(const RenderFrameSnapshot &snapshot)
     UploadLightsUbo(snapshot.lights);
 
     m_uniformBufferManager->BindAllBuffers();
-    for (const RenderUnit &unit : snapshot.opaqueUnits)
+    for (const RenderUnit &unit : snapshot.litUnits)
     {
         if (unit.resourceModel && unit.resourceShader)
         {

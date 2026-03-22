@@ -177,6 +177,31 @@ namespace resources
             m_lastID = 0;
         }
 
+        /**
+         * @brief Move all currently allocated resources out of the pool and reset it.
+         */
+        std::vector<std::unique_ptr<T>> ExtractAll() noexcept
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            std::vector<std::unique_ptr<T>> extracted;
+            extracted.reserve(m_resources.size());
+            for (std::unique_ptr<T> &resource : m_resources)
+            {
+                if (resource)
+                {
+                    extracted.push_back(std::move(resource));
+                }
+            }
+
+            m_resources.clear();
+            m_idMap.clear();
+            m_freeList.clear();
+            m_lastID = 0;
+
+            return extracted;
+        }
+
     private:
         /**
          * @brief Find the index of a resource by its handle

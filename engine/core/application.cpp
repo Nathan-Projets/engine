@@ -40,6 +40,7 @@ bool Application::Init()
 
     m_debugUI.Init(m_window);
     m_debugUI.AddPanel(&m_statsPanel);
+    m_debugUI.AddPanel(&m_loadingPanel);
 
     m_initialized = true;
 
@@ -49,6 +50,7 @@ bool Application::Init()
     InputManager::Get().RegisterAction("move_right", GLFW_KEY_D);
     InputManager::Get().RegisterAction("jump", GLFW_KEY_SPACE);
     InputManager::Get().RegisterAction("reload_scene", GLFW_KEY_R);
+    InputManager::Get().RegisterAction("reload_scene_clean", GLFW_KEY_F5);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -69,6 +71,8 @@ bool Application::Run()
     {
         m_scene->Init();
     }
+
+    m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -100,6 +104,7 @@ bool Application::Run()
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_F1))
         {
             m_statsPanel.visible = !m_statsPanel.visible;
+            m_loadingPanel.visible = !m_loadingPanel.visible;
         }
 
         if (m_scene)
@@ -123,7 +128,7 @@ bool Application::Run()
         int framebufferHeight = 0;
         glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
 
-        FrameStats stats; 
+        FrameStats stats;
         stats.fps = fpsStable;
         stats.frameTimeMs = smoothedDeltaTime * 1000.0f;
         stats.totalFrames = totalFrameCount;

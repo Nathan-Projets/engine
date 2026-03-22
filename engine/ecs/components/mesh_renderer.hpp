@@ -13,7 +13,7 @@
 class MeshRenderer : public Component
 {
 public:
-    MeshRenderer() : m_materialData(), m_queue(RenderQueue::Opaque) {}
+    MeshRenderer() : m_materialData(), m_queue(RenderQueue::Lit) {}
 
     resources::Handle<resources::Model> GetModelHandle() const noexcept { return m_modelHandle; }
     void SetModelHandle(resources::Handle<resources::Model> modelHandle) noexcept { m_modelHandle = modelHandle; }

@@ -20,9 +20,14 @@ void GameScene::Init()
 
 void GameScene::Update(float deltaTime)
 {
+    if (InputManager::Get().IsActionJustPressed("reload_scene_clean"))
+    {
+        ReloadScene(true);
+    }
+
     if (InputManager::Get().IsActionJustPressed("reload_scene"))
     {
-        ReloadScene();
+        ReloadScene(false);
     }
 
     m_world.UpdateSystems(deltaTime);
@@ -46,8 +51,18 @@ void GameScene::OnResize(int width, int height)
     }
 }
 
-void GameScene::ReloadScene()
+void GameScene::ReloadScene(bool clearResourceCache)
 {
+    if (clearResourceCache && m_resourceManager)
+    {
+        if (!m_resourceManager->ResetForCleanReload())
+        {
+            ERROR("Aborted clean reload: resource manager failed to reach idle state");
+            return;
+        }
+        INFO("Reset resource manager before scene reload");
+    }
+
     World reloadedWorld;
     if (!SceneLoader::LoadIntoWorld(m_scenePath, &reloadedWorld, m_resourceManager))
     {

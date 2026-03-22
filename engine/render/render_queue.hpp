@@ -4,7 +4,7 @@
 
 enum class RenderQueue : uint8_t
 {
-    Opaque,
+    Lit,
     Transparent,
     Unlit,
     Debug

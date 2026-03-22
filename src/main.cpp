@@ -23,7 +23,8 @@ int main(int argc, char const *argv[])
         return EXIT_FAILURE;
     }
 
-    resources::ResourceManager resourceManager;
+    // TODO: implement a logic that search for the optimal number of available threads
+    resources::ResourceManager resourceManager{3};
 
     GameSceneComponents::RegisterAll();
 

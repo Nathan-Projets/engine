@@ -16,6 +16,8 @@ public:
     void Update(float deltaTime) override;
     void Draw(float deltaTime) override;
 
+    resources::ResourceManager *GetResourceManager() override { return m_resourceManager; }
+
 private:
     World *m_world;
     resources::ResourceManager *m_resourceManager;
