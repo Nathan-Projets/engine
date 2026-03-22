@@ -30,11 +30,7 @@ namespace
         SetUniformInt(programId, "uDisplacementUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Displacement)]));
     }
 
-    int BindTextureForSlot(
-        const RenderUnit &unit,
-        resources::ResourceManager *resourceManager,
-        resources::MaterialTextureSlot slot,
-        int textureUnit)
+    int BindTextureForSlot(const RenderUnit &unit, resources::ResourceManager *resourceManager, resources::MaterialTextureSlot slot, int textureUnit)
     {
         if (!unit.resourceMaterial || !resourceManager)
         {
@@ -139,10 +135,7 @@ namespace
         (void)nextTextureUnit;
     }
 
-    void DrawResourceUnit(
-        const RenderUnit &unit,
-        resources::ResourceManager *resourceManager,
-        UniformBufferManager *uniformBufferManager)
+    void DrawResourceUnit(const RenderUnit &unit, resources::ResourceManager *resourceManager, UniformBufferManager *uniformBufferManager)
     {
         if (!unit.resourceModel || !unit.resourceShader)
         {

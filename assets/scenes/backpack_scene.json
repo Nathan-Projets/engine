@@ -51,50 +51,89 @@
             ]
         },
         {
-            "name": "FirstLight",
+            "name": "FaintSunLight",
             "components": [
                 {
-                    "type": "Transform",
-                    "position": [2.5, 2.0, 2.0],
-                    "rotation": [0.0, 0.0, 0.0],
-                    "scale": [0.2, 0.2, 0.2]
-                },
-                {
-                    "type": "Render",
-                    "model": "meshes/cube/cube.obj",
-                    "material": "materials/unlit_light.json",
-                    "queue": "unlit"
-                },
-                {
                     "type": "Light",
-                    "color": [1.0, 0.95, 0.90],
-                    "ambient": [0.2, 0.2, 0.2],
-                    "diffuse": [0.5, 0.5, 0.5],
-                    "specular": [0.7, 0.7, 0.7]
+                    "lightType": "directional",
+                    "direction": [0.0, -1.0, -0.7],
+                    "color": [1.0, 0.98, 0.95],
+                    "intensity": 0.3,
+                    "ambient": [0.02, 0.02, 0.024],
+                    "diffuse": [0.45, 0.45, 0.45],
+                    "specular": [0.3, 0.3, 0.3]
                 }
             ]
         },
         {
-            "name": "SecondLight",
+            "name": "SpotLight_Left",
             "components": [
                 {
                     "type": "Transform",
-                    "position": [2.5, -2.0, 2.0],
+                    "position": [-4.0, 2.0, 4.0],
                     "rotation": [0.0, 0.0, 0.0],
                     "scale": [0.2, 0.2, 0.2]
                 },
                 {
                     "type": "Render",
-                    "model": "meshes/cube/cube.obj",
+                    "model": "meshes/sphere/sphere.glb",
                     "material": "materials/unlit_light.json",
                     "queue": "unlit"
                 },
                 {
                     "type": "Light",
-                    "color": [1.0, 0.95, 0.90],
-                    "ambient": [0.2, 0.2, 0.2],
-                    "diffuse": [0.5, 0.5, 0.5],
-                    "specular": [0.7, 0.7, 0.7]
+                    "lightType": "spot",
+                    "direction": [0.75, -0.25, -0.65],
+                    "color": [0.6, 0.75, 1.0],
+                    "intensity": 7.0,
+                    "attenuation": {
+                        "constant": 1.0,
+                        "linear": 0.09,
+                        "quadratic": 0.032
+                    },
+                    "spot": {
+                        "innerCutoff": 11.0,
+                        "outerCutoff": 18.0
+                    },
+                    "ambient": [0.01, 0.015, 0.02],
+                    "diffuse": [0.6, 0.75, 1.0],
+                    "specular": [0.7, 0.85, 1.0]
+                }
+            ]
+        },
+        {
+            "name": "SpotLight_Right",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [4.0, 2.0, 4.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.2, 0.2, 0.2]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/unlit_light.json",
+                    "queue": "unlit"
+                },
+                {
+                    "type": "Light",
+                    "lightType": "spot",
+                    "direction": [-0.75, -0.25, -0.65],
+                    "color": [1.0, 0.7, 0.5],
+                    "intensity": 7.0,
+                    "attenuation": {
+                        "constant": 1.0,
+                        "linear": 0.09,
+                        "quadratic": 0.032
+                    },
+                    "spot": {
+                        "innerCutoff": 11.0,
+                        "outerCutoff": 18.0
+                    },
+                    "ambient": [0.02, 0.012, 0.008],
+                    "diffuse": [1.0, 0.7, 0.5],
+                    "specular": [1.0, 0.82, 0.68]
                 }
             ]
         },
