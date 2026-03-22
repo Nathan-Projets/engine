@@ -59,7 +59,7 @@ struct RenderFrameSnapshot
     CameraRenderData camera;
     std::vector<LightRenderData> lights;
 
-    std::vector<RenderUnit> opaqueUnits;
+    std::vector<RenderUnit> litUnits;
     std::vector<RenderUnit> transparentUnits;
     std::vector<RenderUnit> unlitUnits;
     std::vector<RenderUnit> debugUnits;
@@ -79,7 +79,7 @@ public:
 
     // Immediate frame API: build the snapshot incrementally then render it.
     void BeginFrame(const CameraRenderData &camera);
-    void Submit(const RenderUnit &unit, RenderQueue queue = RenderQueue::Opaque);
+    void Submit(const RenderUnit &unit, RenderQueue queue = RenderQueue::Lit);
     void SubmitLight(const LightRenderData &light);
     void EndFrame();
 
@@ -101,7 +101,7 @@ private:
     // Pipeline entry points.
     void ExecuteFrame(const RenderFrameSnapshot &snapshot);
     void ExecuteDepthPrepass(const RenderFrameSnapshot &snapshot);
-    void ExecuteOpaquePass(const RenderFrameSnapshot &snapshot);
+    void ExecuteLitPass(const RenderFrameSnapshot &snapshot);
     void ExecuteTransparentPass(const RenderFrameSnapshot &snapshot);
     void ExecuteUnlitPass(const RenderFrameSnapshot &snapshot);
     void ExecuteDebugPass(const RenderFrameSnapshot &snapshot);

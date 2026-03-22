@@ -1,13 +1,17 @@
 #include "resource_manager.hpp"
 
+#include <thread>
+
 namespace resources
 {
     ResourceManager::ResourceManager(size_t numLoaderThreads) : m_modelPool(256), m_shaderPool(64), m_texturePool(256), m_materialPool(128)
     {
+        m_activeThreadDebugStates.resize(numLoaderThreads);
+
         for (size_t i = 0; i < numLoaderThreads; ++i)
         {
-            m_loaderThreads.emplace_back([this]()
-                                         { LoaderThreadMain(); });
+            m_loaderThreads.emplace_back([this, i]()
+                                         { LoaderThreadMain(i); });
         }
     }
 
@@ -16,7 +20,7 @@ namespace resources
         Shutdown();
     }
 
-    void ResourceManager::LoaderThreadMain()
+    void ResourceManager::LoaderThreadMain(size_t threadIndex)
     {
         while (true)
         {
@@ -43,15 +47,131 @@ namespace resources
                 m_loadJobs.pop();
             }
 
+            MarkJobStarted(threadIndex, job);
+
+            bool succeeded = false;
+
             try
             {
-                job.execute();
+                succeeded = job.execute();
             }
             catch (const std::exception &)
             {
-                // Errors already handled in EnqueueLoadJob
+                succeeded = false;
             }
+
+            MarkJobFinished(threadIndex, succeeded);
         }
+    }
+
+    ResourceManager::DebugSnapshot ResourceManager::GetDebugSnapshot() const noexcept
+    {
+        DebugSnapshot snapshot;
+
+        {
+            std::lock_guard<std::mutex> lock(m_debugMutex);
+            snapshot.queuedItems.assign(m_debugQueuedJobs.begin(), m_debugQueuedJobs.end());
+            snapshot.threads.reserve(m_activeThreadDebugStates.size());
+
+            const auto now = std::chrono::steady_clock::now();
+            for (size_t index = 0; index < m_activeThreadDebugStates.size(); ++index)
+            {
+                const ActiveThreadDebugState &activeState = m_activeThreadDebugStates[index];
+
+                DebugThreadState threadState;
+                threadState.threadIndex = index;
+                threadState.active = activeState.active;
+                threadState.current.jobId = activeState.jobId;
+                threadState.current.resourceType = activeState.resourceType;
+                threadState.current.path = activeState.path;
+                threadState.current.stage = activeState.stage;
+                threadState.current.progress = activeState.progress;
+
+                if (activeState.active)
+                {
+                    threadState.current.elapsedMs = std::chrono::duration<double, std::milli>(now - activeState.startedAt).count();
+                    ++snapshot.activeThreadCount;
+                }
+
+                snapshot.threads.push_back(std::move(threadState));
+            }
+
+            snapshot.queuedJobCount = m_debugQueuedJobCount;
+            snapshot.completedJobCount = m_debugCompletedJobCount;
+            snapshot.failedJobCount = m_debugFailedJobCount;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_gpuUploadMutex);
+            snapshot.pendingGpuUploadCount = m_pendingGPUUploads.size();
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_deletionMutex);
+            snapshot.pendingDeleteCount = m_pendingDeletions.size();
+        }
+
+        return snapshot;
+    }
+
+    void ResourceManager::MarkJobStarted(size_t threadIndex, const LoadJob &job)
+    {
+        std::lock_guard<std::mutex> lock(m_debugMutex);
+
+        auto queuedIt = std::find_if(
+            m_debugQueuedJobs.begin(),
+            m_debugQueuedJobs.end(),
+            [&job](const DebugLoadEntry &entry)
+            {
+                return entry.jobId == job.jobId;
+            });
+
+        if (queuedIt != m_debugQueuedJobs.end())
+        {
+            m_debugQueuedJobs.erase(queuedIt);
+        }
+
+        if (threadIndex >= m_activeThreadDebugStates.size())
+        {
+            return;
+        }
+
+        ActiveThreadDebugState &threadState = m_activeThreadDebugStates[threadIndex];
+        threadState.active = true;
+        threadState.jobId = job.jobId;
+        threadState.resourceType = job.resourceType;
+        threadState.path = job.path;
+        threadState.stage = "CPU load";
+        threadState.progress = 0.5f;
+        threadState.startedAt = std::chrono::steady_clock::now();
+    }
+
+    void ResourceManager::MarkJobFinished(size_t threadIndex, bool succeeded)
+    {
+        std::lock_guard<std::mutex> lock(m_debugMutex);
+
+        if (threadIndex >= m_activeThreadDebugStates.size())
+        {
+            return;
+        }
+
+        ActiveThreadDebugState &threadState = m_activeThreadDebugStates[threadIndex];
+        if (succeeded)
+        {
+            ++m_debugCompletedJobCount;
+        }
+        else
+        {
+            ++m_debugFailedJobCount;
+        }
+
+        threadState.active = false;
+        threadState.jobId = 0;
+        threadState.resourceType.clear();
+        threadState.path.clear();
+        threadState.stage.clear();
+        threadState.progress = 0.0f;
+        threadState.startedAt = {};
     }
 
     void ResourceManager::ProcessGPUUploads()
@@ -117,6 +237,114 @@ namespace resources
             m_pendingDeletions.end());
     }
 
+    bool ResourceManager::AreLoadersIdle()
+    {
+        {
+            std::lock_guard<std::mutex> queueLock(m_jobQueueMutex);
+            if (!m_loadJobs.empty())
+            {
+                return false;
+            }
+        }
+
+        {
+            std::lock_guard<std::mutex> debugLock(m_debugMutex);
+            for (const ActiveThreadDebugState &threadState : m_activeThreadDebugStates)
+            {
+                if (threadState.active)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool ResourceManager::ResetForCleanReload()
+    {
+        constexpr auto kLoaderDrainTimeout = std::chrono::seconds(2);
+        constexpr auto kLoaderPollInterval = std::chrono::milliseconds(1);
+
+        const auto deadline = std::chrono::steady_clock::now() + kLoaderDrainTimeout;
+        while (!AreLoadersIdle())
+        {
+            if (std::chrono::steady_clock::now() >= deadline)
+            {
+                WARNING("ResetForCleanReload timed out waiting for loader threads to become idle");
+                return false;
+            }
+
+            std::this_thread::sleep_for(kLoaderPollInterval);
+        }
+
+        {
+            std::lock_guard<std::mutex> queueLock(m_jobQueueMutex);
+            while (!m_loadJobs.empty())
+            {
+                m_loadJobs.pop();
+            }
+        }
+
+        {
+            std::lock_guard<std::mutex> debugLock(m_debugMutex);
+            m_debugQueuedJobs.clear();
+        }
+
+        {
+            std::lock_guard<std::mutex> uploadLock(m_gpuUploadMutex);
+            while (!m_pendingGPUUploads.empty())
+            {
+                m_pendingGPUUploads.pop();
+            }
+        }
+
+        GPUReleaseCallback gpuReleaseCallback;
+        {
+            std::lock_guard<std::mutex> callbackLock(m_callbackMutex);
+            gpuReleaseCallback = m_gpuReleaseCallback;
+        }
+
+        auto releaseResources = [&gpuReleaseCallback](auto &resourceList)
+        {
+            if (!gpuReleaseCallback)
+            {
+                return;
+            }
+
+            for (auto &resource : resourceList)
+            {
+                if (resource)
+                {
+                    gpuReleaseCallback(resource.get());
+                }
+            }
+        };
+
+        auto modelResources = m_modelPool.ExtractAll();
+        auto shaderResources = m_shaderPool.ExtractAll();
+        auto textureResources = m_texturePool.ExtractAll();
+        auto materialResources = m_materialPool.ExtractAll();
+
+        releaseResources(modelResources);
+        releaseResources(shaderResources);
+        releaseResources(textureResources);
+        releaseResources(materialResources);
+
+        {
+            std::lock_guard<std::mutex> deletionLock(m_deletionMutex);
+            m_pendingDeletions.clear();
+            m_frameIndex = 0;
+        }
+
+        {
+            std::lock_guard<std::mutex> pathLock(m_pathMapMutex);
+            m_pathToHandle.clear();
+        }
+
+        return true;
+    }
+
     void ResourceManager::Shutdown()
     {
         {
@@ -163,6 +391,22 @@ namespace resources
             m_gpuUploadCallback = nullptr;
             m_gpuReleaseCallback = nullptr;
         }
+
+        {
+            std::lock_guard<std::mutex> lock(m_debugMutex);
+            m_debugQueuedJobs.clear();
+            m_activeThreadDebugStates.clear();
+            m_nextDebugJobId = 1;
+            m_debugQueuedJobCount = 0;
+            m_debugCompletedJobCount = 0;
+            m_debugFailedJobCount = 0;
+        }
+    }
+
+    void ResourceManager::ClearPathCache()
+    {
+        std::lock_guard<std::mutex> lock(m_pathMapMutex);
+        m_pathToHandle.clear();
     }
 
 } // namespace resources

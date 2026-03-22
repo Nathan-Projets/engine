@@ -33,7 +33,6 @@ struct FrameData
 
 /**
  * Camera-level constants: Uploaded once per camera per frame.
- * Used by LitOpaque, LitTransparent, ShadowCaster, Sky.
  */
 struct CameraData
 {
@@ -50,7 +49,6 @@ struct CameraData
 
 /**
  * Object-level constants: Uploaded per draw call.
- * Includes transform and object identity.
  */
 struct ObjectData
 {
@@ -63,7 +61,6 @@ struct ObjectData
 
 /**
  * Light source data: Uploaded once per frame.
- * Packed as array or used by compute shader for culling.
  */
 struct LightData
 {
@@ -92,7 +89,6 @@ struct LightData
 
 /**
  * Material surface properties: Uploaded once per material.
- * Does NOT include textures; those bind independently.
  */
 struct MaterialData
 {
@@ -110,8 +106,8 @@ struct MaterialData
 
 // std140 UBO struct sizes must be multiples of the largest base alignment (16 bytes for mat4/vec4).
 // If any of these fail, a struct field is missing padding — update the struct and the matching GLSL block.
-static_assert(sizeof(FrameData)    ==  32, "FrameData size mismatch with std140 block");
-static_assert(sizeof(CameraData)   == 288, "CameraData size mismatch with std140 block");
-static_assert(sizeof(ObjectData)   == 144, "ObjectData size mismatch with std140 block");
-static_assert(sizeof(LightData)    == 112, "LightData size mismatch with std140 element");
-static_assert(sizeof(MaterialData) ==  48, "MaterialData size mismatch with std140 block");
+static_assert(sizeof(FrameData) == 32, "FrameData size mismatch with std140 block");
+static_assert(sizeof(CameraData) == 288, "CameraData size mismatch with std140 block");
+static_assert(sizeof(ObjectData) == 144, "ObjectData size mismatch with std140 block");
+static_assert(sizeof(LightData) == 112, "LightData size mismatch with std140 element");
+static_assert(sizeof(MaterialData) == 48, "MaterialData size mismatch with std140 block");

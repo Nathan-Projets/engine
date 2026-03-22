@@ -16,9 +16,10 @@ public:
     void Update(float deltaTime) override;
     void Draw(float deltaTime) override;
     void OnResize(int width, int height) override;
+    resources::ResourceManager *GetResourceManager() override { return m_resourceManager; }
 
 private:
-    void ReloadScene();
+    void ReloadScene(bool clearResourceCache = false);
     void ConfigureSystems();
 
 private:

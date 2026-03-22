@@ -23,6 +23,7 @@
 #include <thread>
 #include <iostream>
 #include <queue>
+#include <chrono>
 #include <mutex>
 #include <condition_variable>
 #include <functional>
@@ -54,6 +55,35 @@ namespace resources
     public:
         using GPUUploadCallback = std::function<void(Resource *)>;
         using GPUReleaseCallback = std::function<void(Resource *)>;
+
+        struct DebugLoadEntry
+        {
+            uint64_t jobId = 0;
+            std::string resourceType;
+            std::string path;
+            std::string stage;
+            float progress = 0.0f;
+            double elapsedMs = 0.0;
+        };
+
+        struct DebugThreadState
+        {
+            size_t threadIndex = 0;
+            bool active = false;
+            DebugLoadEntry current;
+        };
+
+        struct DebugSnapshot
+        {
+            std::vector<DebugThreadState> threads;
+            std::vector<DebugLoadEntry> queuedItems;
+            size_t pendingGpuUploadCount = 0;
+            size_t pendingDeleteCount = 0;
+            size_t activeThreadCount = 0;
+            uint64_t queuedJobCount = 0;
+            uint64_t completedJobCount = 0;
+            uint64_t failedJobCount = 0;
+        };
 
         explicit ResourceManager(size_t numLoaderThreads = 2);
         ~ResourceManager();
@@ -200,6 +230,21 @@ namespace resources
          */
         void Shutdown();
 
+        /**
+         * @brief Reset resource manager state for scene hot-reload.
+         *
+         * Waits for loader activity to settle, drops queued work, releases GPU resources,
+         * and clears pools and caches so the next scene load starts from a cold state.
+         */
+        bool ResetForCleanReload();
+
+        /**
+         * @brief Clear type+path cache so subsequent Load() calls enqueue fresh jobs.
+         *
+         * Existing resources already stored in pools are not destroyed by this call.
+         */
+        void ClearPathCache();
+
         /****************************
          ********** Getters *********
          ****************************/
@@ -222,11 +267,27 @@ namespace resources
             return m_pendingDeletions.size();
         }
 
+        DebugSnapshot GetDebugSnapshot() const noexcept;
+
     private:
         struct LoadJob
         {
-            std::function<void()> execute;
+            std::function<bool()> execute;
             std::function<void(Resource *)> onComplete;
+            uint64_t jobId = 0;
+            std::string resourceType;
+            std::string path;
+        };
+
+        struct ActiveThreadDebugState
+        {
+            bool active = false;
+            uint64_t jobId = 0;
+            std::string resourceType;
+            std::string path;
+            std::string stage;
+            float progress = 0.0f;
+            std::chrono::steady_clock::time_point startedAt = {};
         };
 
         // Deferred deletion entry
@@ -243,6 +304,31 @@ namespace resources
         static std::string MakePathKey(const std::string &path)
         {
             return typeid(T).name() + std::string(":") + path;
+        }
+
+        template <typename T>
+        static const char *GetResourceTypeName()
+        {
+            if constexpr (std::is_same_v<T, Model>)
+            {
+                return "Model";
+            }
+            else if constexpr (std::is_same_v<T, Shader>)
+            {
+                return "Shader";
+            }
+            else if constexpr (std::is_same_v<T, Texture>)
+            {
+                return "Texture";
+            }
+            else if constexpr (std::is_same_v<T, Material>)
+            {
+                return "Material";
+            }
+            else
+            {
+                static_assert(always_false_v<T>, "Unsupported resource type");
+            }
         }
 
         template <typename T>
@@ -299,6 +385,15 @@ namespace resources
         void EnqueueLoadJob(Handle<T> handle, const std::string &path)
         {
             LoadJob job;
+            job.resourceType = GetResourceTypeName<T>();
+            job.path = path;
+
+            {
+                std::lock_guard<std::mutex> debugLock(m_debugMutex);
+                job.jobId = m_nextDebugJobId++;
+                m_debugQueuedJobs.push_back({job.jobId, job.resourceType, job.path, "Queued", 0.0f, 0.0});
+                ++m_debugQueuedJobCount;
+            }
 
             job.execute = [this, handle, path]()
             {
@@ -315,6 +410,8 @@ namespace resources
                         std::lock_guard<std::mutex> lock(m_gpuUploadMutex);
                         m_pendingGPUUploads.push(GetPool<T>().Get(handle));
                     }
+
+                    return true;
                 }
                 catch (const std::exception &e)
                 {
@@ -331,6 +428,7 @@ namespace resources
                     }
 
                     GetPool<T>().Deallocate(handle);
+                    return false;
                 }
             };
 
@@ -354,7 +452,10 @@ namespace resources
             }
         }
 
-        void LoaderThreadMain();
+        void LoaderThreadMain(size_t threadIndex);
+        void MarkJobStarted(size_t threadIndex, const LoadJob &job);
+        void MarkJobFinished(size_t threadIndex, bool succeeded);
+        bool AreLoadersIdle();
 
         // Thread pool
         std::vector<std::thread> m_loaderThreads;
@@ -374,13 +475,22 @@ namespace resources
         std::mutex m_jobQueueMutex;
         std::condition_variable m_jobCV;
 
+        // Debug state for async loading
+        mutable std::mutex m_debugMutex;
+        std::deque<DebugLoadEntry> m_debugQueuedJobs;
+        std::vector<ActiveThreadDebugState> m_activeThreadDebugStates;
+        uint64_t m_nextDebugJobId = 1;
+        uint64_t m_debugQueuedJobCount = 0;
+        uint64_t m_debugCompletedJobCount = 0;
+        uint64_t m_debugFailedJobCount = 0;
+
         // GPU uploads pending
         std::queue<Resource *> m_pendingGPUUploads;
-        std::mutex m_gpuUploadMutex;
+        mutable std::mutex m_gpuUploadMutex;
 
         // Deferred deletions
         std::deque<PendingDeletion> m_pendingDeletions;
-        std::mutex m_deletionMutex;
+        mutable std::mutex m_deletionMutex;
         uint32_t m_frameIndex = 0;
         static constexpr uint32_t DELETION_GRACE_PERIOD = 2; // frames
 

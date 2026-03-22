@@ -76,8 +76,8 @@ RenderQueue SceneLoader::ReadRenderQueue(simdjson::ondemand::object componentJso
                        [](unsigned char c)
                        { return static_cast<char>(std::tolower(c)); });
 
-        if (queueName == "opaque")
-            return RenderQueue::Opaque;
+        if (queueName == "lit")
+            return RenderQueue::Lit;
         if (queueName == "transparent")
             return RenderQueue::Transparent;
         if (queueName == "unlit")
@@ -284,7 +284,7 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                         materialData.roughness = std::clamp(ReadFloat(componentJson, "roughness", 0.5f), 0.02f, 1.0f);
                         meshRenderer->SetMaterialData(materialData);
 
-                        RenderQueue inferredQueue = RenderQueue::Opaque;
+                        RenderQueue inferredQueue = RenderQueue::Lit;
                         if (!shaderLocation.empty() && shaderLocation.find("unlit") != std::string::npos)
                             inferredQueue = RenderQueue::Unlit;
                         meshRenderer->SetQueue(ReadRenderQueue(componentJson, inferredQueue));

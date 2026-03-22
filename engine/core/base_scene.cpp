@@ -1,7 +1,6 @@
 #include "base_scene.hpp"
 
-BaseScene::BaseScene(World *world, resources::ResourceManager *resourceManager)
-    : m_world(world), m_resourceManager(resourceManager)
+BaseScene::BaseScene(World *world, resources::ResourceManager *resourceManager) : m_world(world), m_resourceManager(resourceManager)
 {
 }
 

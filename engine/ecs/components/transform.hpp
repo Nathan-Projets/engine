@@ -10,8 +10,7 @@ class Transform : public Component
 public:
     Transform() : position(0.0f), rotation(0.0f), scale(1.0f) {}
 
-    Transform(glm::vec3 pos, glm::vec3 rot = glm::vec3(0.0f), glm::vec3 scl = glm::vec3(1.0f))
-        : position(pos), rotation(rot), scale(scl)
+    Transform(glm::vec3 pos, glm::vec3 rot = glm::vec3(0.0f), glm::vec3 scl = glm::vec3(1.0f)) : position(pos), rotation(rot), scale(scl)
     {
     }
 
