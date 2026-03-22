@@ -352,8 +352,6 @@ namespace resources
         {
             std::lock_guard<std::mutex> debugLock(m_debugMutex);
             m_debugQueuedJobs.clear();
-            m_debugRecentHistory.clear();
-            m_debugLoadAggregates.clear();
         }
 
         {
