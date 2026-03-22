@@ -1,6 +1,7 @@
 #include "debug_loading_panel.hpp"
 
 #include <algorithm>
+#include <vector>
 
 #include <imgui.h>
 
@@ -108,6 +109,8 @@ void DebugLoadingPanel::Draw()
     ImGui::Separator();
     if (ImGui::CollapsingHeader(("Aggregate timings (" + std::to_string(snapshot.aggregateStats.size()) + ")").c_str()))
     {
+        static bool showAggregateGraph = false;
+
         std::vector<resources::ResourceManager::DebugLoadAggregate> aggregateStats = snapshot.aggregateStats;
         std::sort(
             aggregateStats.begin(),
@@ -116,6 +119,61 @@ void DebugLoadingPanel::Draw()
             {
                 return a.avgMs > b.avgMs;
             });
+
+        if (ImGui::SmallButton(showAggregateGraph ? "Hide graph" : "Show graph"))
+        {
+            showAggregateGraph = !showAggregateGraph;
+        }
+
+        if (showAggregateGraph)
+        {
+            std::vector<resources::ResourceManager::DebugLoadAggregate> outlierStats = aggregateStats;
+            std::sort(
+                outlierStats.begin(),
+                outlierStats.end(),
+                [](const resources::ResourceManager::DebugLoadAggregate &a, const resources::ResourceManager::DebugLoadAggregate &b)
+                {
+                    return a.maxMs > b.maxMs;
+                });
+
+            const size_t graphCount = std::min<size_t>(outlierStats.size(), 24);
+            std::vector<float> graphValues(graphCount, 0.0f);
+            float graphMax = 1.0f;
+            for (size_t i = 0; i < graphCount; ++i)
+            {
+                graphValues[i] = static_cast<float>(outlierStats[i].maxMs);
+                graphMax = std::max(graphMax, graphValues[i]);
+            }
+
+            if (!graphValues.empty())
+            {
+                ImGui::PlotHistogram(
+                    "##aggregate_outlier_graph",
+                    graphValues.data(),
+                    static_cast<int>(graphValues.size()),
+                    0,
+                    "Outlier view (max load time ms)",
+                    0.0f,
+                    graphMax * 1.1f,
+                    ImVec2(0.0f, 110.0f));
+
+                if (ImGui::IsItemHovered())
+                {
+                    const ImVec2 minRect = ImGui::GetItemRectMin();
+                    const ImVec2 maxRect = ImGui::GetItemRectMax();
+                    const float width = std::max(1.0f, maxRect.x - minRect.x);
+                    const float localX = ImGui::GetIO().MousePos.x - minRect.x;
+                    int barIndex = static_cast<int>((localX / width) * static_cast<float>(graphCount));
+                    barIndex = std::clamp(barIndex, 0, static_cast<int>(graphCount) - 1);
+
+                    const auto &entry = outlierStats[static_cast<size_t>(barIndex)];
+                    ImGui::BeginTooltip();
+                    ImGui::Text("[%s] max %.1f ms (avg %.1f)", entry.resourceType.c_str(), entry.maxMs, entry.avgMs);
+                    ImGui::TextWrapped("%s", entry.path.c_str());
+                    ImGui::EndTooltip();
+                }
+            }
+        }
 
         ImGui::BeginChild("load_aggregates", ImVec2(0.0f, 220.0f), true);
         const size_t maxAggregateItems = std::min<size_t>(aggregateStats.size(), 40);
