@@ -1,11 +1,5 @@
 {
     "shader": "../shaders/lit_ubo",
     "doubleSided": false,
-    "alphaBlend": false,
-    "textures": {
-        "baseColor": "../meshes/backpack/diffuse.jpg",
-        "normal": "../meshes/backpack/normal.png",
-        "metallicRoughness": "../meshes/backpack/specular.jpg",
-        "occlusion": "../meshes/backpack/ao.jpg"
-    }
+    "alphaBlend": false
 }
