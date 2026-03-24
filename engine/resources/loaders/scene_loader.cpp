@@ -293,6 +293,14 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
 
                         MeshRenderer *meshRenderer = world.AddComponent<MeshRenderer>(entity);
 
+                        bool loadTextures = true;
+                        simdjson::simdjson_result<bool> loadTexturesResult = componentJson["loadTextures"].get_bool();
+                        if (!loadTexturesResult.error())
+                        {
+                            loadTextures = loadTexturesResult.value();
+                        }
+                        meshRenderer->SetLoadTextures(loadTextures);
+
                         meshRenderer->SetModelHandle(resourceManager->Load<resources::Model>(fullModelPath));
 
                         if (!fullShaderPath.empty())

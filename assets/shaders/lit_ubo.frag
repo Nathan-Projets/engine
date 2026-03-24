@@ -85,6 +85,16 @@ layout(std140, binding = 4) uniform MaterialDataBlock {
 
 out vec4 FragColor;
 
+vec3 ApplyGammaCorrection(vec3 color) {
+    return pow(max(color, vec3(0.0)), vec3(1.0 / 1.3));
+}
+
+float ComputeAttenuation(vec3 fragPos, vec3 lightPos, float constant, float linear, float quadratic) {
+    float distance = length(lightPos - fragPos);
+    float attenuationDenominator = constant + linear * distance + quadratic * (distance * distance);
+    return 1.0 / max(attenuationDenominator, 0.0001);
+}
+
 // ref. https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
 float CalculateDirectionalShadow(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir) {
     vec3 projCoords = fragPosLightSpace.xyz / max(fragPosLightSpace.w, 0.0001);
@@ -243,6 +253,7 @@ void main() {
 
         vec3 lightDir;
         float attenuation = 1.0;
+        float spotFactor = 1.0;
         // these lights are implement thanks to https://learnopengl.com/Lighting/Light-casters
         if(uLights[i].type == 1u) {
             // Directional light: direction is the world-space direction the light travels.
@@ -251,23 +262,19 @@ void main() {
         } else {
             // Point light: direction from fragment to light position.
             vec3 lightOffset = uLights[i].position - fs_in.FragPos;
-            float distance = length(lightOffset);
             lightDir = normalize(lightOffset);
 
-            float attenuationDenominator = uLights[i].constant +
-                uLights[i].linear * distance +
-                uLights[i].quadratic * (distance * distance);
-            attenuation = 1.0 / max(attenuationDenominator, 0.0001);
+            attenuation = ComputeAttenuation(fs_in.FragPos, uLights[i].position, uLights[i].constant, uLights[i].linear, uLights[i].quadratic);
 
             if(uLights[i].type == 2u) {
                 // Spotlight cone intensity (smooth edge between outer and inner cutoff).
                 float theta = dot(lightDir, normalize(-uLights[i].direction));
                 float epsilon = max(uLights[i].spotInnerCutoff - uLights[i].spotOuterCutoff, 0.0001);
-                float intensity = clamp((theta - uLights[i].spotOuterCutoff) / epsilon, 0.0, 1.0);
-                attenuation *= intensity;
+                spotFactor = clamp((theta - uLights[i].spotOuterCutoff) / epsilon, 0.0, 1.0);
             }
         }
-        vec3 lightColor = uLights[i].color * uLights[i].intensity * attenuation;
+        vec3 lightColor = uLights[i].color * uLights[i].intensity;
+        vec3 attenuatedLightColor = lightColor * attenuation * spotFactor;
         float shadow = 0.0;
         if(uShadowEnabled > 0 && uLights[i].type == 1u) {
             shadow = CalculateDirectionalShadow(fs_in.FragPosLightSpace, norm, lightDir);
@@ -288,11 +295,11 @@ void main() {
         ambientSum += uLights[i].ambient * diffuseColor * lightColor;
 
         float diff = max(dot(norm, lightDir), 0.0);
-        diffuseSum += uLights[i].diffuse * diff * diffuseColor * lightColor * (1.0 - shadow);
+        diffuseSum += uLights[i].diffuse * diff * diffuseColor * attenuatedLightColor * (1.0 - shadow);
 
         vec3 halfwayDir = normalize(lightDir + viewDir); // blinn-phong
         float spec = pow(max(dot(norm, halfwayDir), 0.0), shininess);
-        specularSum += uLights[i].specular * spec * specularColor * lightColor * (1.0 - shadow);
+        specularSum += uLights[i].specular * spec * specularColor * attenuatedLightColor * (1.0 - shadow);
     }
 
     vec3 finalColor = ambientSum + diffuseSum + specularSum + uEmissive;
@@ -319,5 +326,5 @@ void main() {
         return;
     }
 
-    FragColor = vec4(finalColor, 1.0);
+    FragColor = vec4(ApplyGammaCorrection(finalColor), 1.0);
 }

@@ -166,11 +166,14 @@ public:
                         if (!material->GetShaderHandle().IsValid() && !material->GetShaderPath().empty())
                             material->SetShaderHandle(m_resourceManager->Load<resources::Shader>(material->GetShaderPath()));
 
-                        for (const auto &[slot, texturePath] : material->GetTexturePaths())
+                        if (renderer->ShouldLoadTextures())
                         {
-                            const auto existing = material->GetTextureHandle(slot);
-                            if (!existing.has_value() || !existing.value().IsValid())
-                                material->SetTextureHandle(slot, m_resourceManager->Load<resources::Texture>(texturePath));
+                            for (const auto &[slot, texturePath] : material->GetTexturePaths())
+                            {
+                                const auto existing = material->GetTextureHandle(slot);
+                                if (!existing.has_value() || !existing.value().IsValid())
+                                    material->SetTextureHandle(slot, m_resourceManager->Load<resources::Texture>(texturePath));
+                            }
                         }
 
                         if (!renderer->GetShaderHandle().IsValid() && material->GetShaderHandle().IsValid())
@@ -221,6 +224,8 @@ public:
 
                             for (resources::MaterialTextureSlot slot : slots)
                             {
+                                if (!renderer->ShouldLoadTextures())
+                                    continue;
                                 if (material && material->HasTexturePath(slot))
                                     continue;
                                 const auto importedPath = model->GetImportedMaterialTexturePath(pi.materialIndex, slot);
@@ -237,6 +242,8 @@ public:
                     {
                         for (resources::MaterialTextureSlot slot : slots)
                         {
+                            if (!renderer->ShouldLoadTextures())
+                                continue;
                             if (material && material->HasTexturePath(slot))
                                 continue;
                             const auto importedPath = model->GetImportedMaterialTexturePath(0u, slot);

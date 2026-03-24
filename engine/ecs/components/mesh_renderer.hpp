@@ -13,7 +13,7 @@
 class MeshRenderer : public Component
 {
 public:
-    MeshRenderer() : m_materialData(), m_queue(RenderQueue::Lit) {}
+    MeshRenderer() : m_materialData(), m_queue(RenderQueue::Lit), m_loadTextures(true) {}
 
     resources::Handle<resources::Model> GetModelHandle() const noexcept { return m_modelHandle; }
     void SetModelHandle(resources::Handle<resources::Model> modelHandle) noexcept { m_modelHandle = modelHandle; }
@@ -35,10 +35,14 @@ public:
     RenderQueue GetQueue() const { return m_queue; }
     void SetQueue(RenderQueue queue) { m_queue = queue; }
 
+    bool ShouldLoadTextures() const noexcept { return m_loadTextures; }
+    void SetLoadTextures(bool loadTextures) noexcept { m_loadTextures = loadTextures; }
+
 private:
     resources::Handle<resources::Model> m_modelHandle;
     resources::Handle<resources::Shader> m_shaderHandle;
     resources::Handle<resources::Material> m_materialHandle;
     MaterialData m_materialData;
     RenderQueue m_queue;
+    bool m_loadTextures;
 };
