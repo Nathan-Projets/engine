@@ -12,6 +12,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <array>
+#include <filesystem>
 
 #include "../units/texture.hpp"
 #include "../resource_loader.hpp"
@@ -224,6 +226,38 @@ namespace resources
 
             return TextureColorSpace::Linear;
         }
+
+        inline bool ResolveCubemapFacePaths(const std::string &directoryPath, std::array<std::string, 6> &outFacePaths)
+        {
+            const std::filesystem::path directory(directoryPath);
+            if (!std::filesystem::exists(directory) || !std::filesystem::is_directory(directory))
+            {
+                return false;
+            }
+
+            auto resolveFace = [&](size_t index, const std::vector<std::string> &candidates) -> bool
+            {
+                for (const std::string &candidate : candidates)
+                {
+                    const std::filesystem::path facePath = directory / candidate;
+                    if (std::filesystem::exists(facePath) && std::filesystem::is_regular_file(facePath))
+                    {
+                        outFacePaths[index] = facePath.string();
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            const bool okRight = resolveFace(0, {"right.jpg", "right.png", "right.hdr", "posx.jpg", "posx.png", "px.jpg", "px.png"});
+            const bool okLeft = resolveFace(1, {"left.jpg", "left.png", "left.hdr", "negx.jpg", "negx.png", "nx.jpg", "nx.png"});
+            const bool okTop = resolveFace(2, {"top.jpg", "top.png", "top.hdr", "posy.jpg", "posy.png", "py.jpg", "py.png"});
+            const bool okBottom = resolveFace(3, {"bottom.jpg", "bottom.png", "bottom.hdr", "negy.jpg", "negy.png", "ny.jpg", "ny.png"});
+            const bool okFront = resolveFace(4, {"front.jpg", "front.png", "front.hdr", "posz.jpg", "posz.png", "pz.jpg", "pz.png"});
+            const bool okBack = resolveFace(5, {"back.jpg", "back.png", "back.hdr", "negz.jpg", "negz.png", "nz.jpg", "nz.png"});
+
+            return okRight && okLeft && okTop && okBottom && okFront && okBack;
+        }
     }
 
     template <>
@@ -231,6 +265,14 @@ namespace resources
     {
         auto texture = std::make_unique<Texture>(0, path);
         texture->SetState(ResourceState::Loading);
+
+        std::array<std::string, 6> cubemapFacePaths = {};
+        if (detail::ResolveCubemapFacePaths(path, cubemapFacePaths))
+        {
+            texture->SetTextureType(TextureType::Cubemap);
+            texture->SetCubemapFacePaths(std::move(cubemapFacePaths));
+            return texture;
+        }
 
         int width = 0;
         int height = 0;

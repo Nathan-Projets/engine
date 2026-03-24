@@ -86,6 +86,9 @@ public:
     /// @brief Get the registry of all component loaders
     static ComponentLoaderMap &GetComponentLoaders();
 
+    /// @brief Helper: Read an optional string field from componentJson
+    static bool readOptionalString(simdjson::ondemand::object componentJson, const char *fieldName, std::string &outValue);
+
     /// @brief Helper: Read a float field from component JSON with default fallback
     static float ReadFloat(simdjson::ondemand::object componentJson, const char *fieldName, float defaultValue);
 

@@ -51,6 +51,10 @@ namespace resources
             {
                 return MaterialTextureSlot::Emissive;
             }
+            if (name == "skybox")
+            {
+                return MaterialTextureSlot::Skybox;
+            }
 
             throw std::runtime_error("Unknown material texture slot: " + std::string(name));
         }

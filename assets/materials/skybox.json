@@ -1,0 +1,14 @@
+{
+    "shader": "../shaders/sky",
+    "doubleSided": true,
+    "alphaBlend": false,
+    "textures": {
+        "skybox": "../textures/skybox"
+    },
+    "properties": {
+        "baseColor": [1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 0.0,
+        "emissive": [0.0, 0.0, 0.0]
+    }
+}

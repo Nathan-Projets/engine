@@ -8,6 +8,31 @@ ComponentLoaderMap &SceneLoader::GetComponentLoaders()
     return loaders;
 }
 
+bool SceneLoader::readOptionalString(simdjson::ondemand::object componentJson, const char *fieldName, std::string &outValue)
+{
+    try
+    {
+        simdjson::simdjson_result<simdjson::ondemand::value> valueResult = componentJson[fieldName];
+        if (valueResult.error())
+            return false;
+
+        simdjson::ondemand::value value = valueResult.value();
+        if (value.is_null())
+            return false;
+
+        simdjson::simdjson_result<std::string_view> stringResult = value.get_string();
+        if (stringResult.error())
+            return false;
+
+        outValue = std::string(stringResult.value());
+        return true;
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+        return false;
+    }
+}
+
 float SceneLoader::ReadFloat(simdjson::ondemand::object componentJson, const char *fieldName, float defaultValue)
 {
     try
@@ -320,6 +345,26 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                                                    ReadVec3(componentJson, "lookAt", glm::vec3(0.0f)),
                                                    ReadVec3(componentJson, "upVector", glm::vec3(0.0f, 1.0f, 0.0f)),
                                                    true);
+                    });
+
+    loaders.emplace("Skybox",
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
+                    {
+                        if (!resourceManager)
+                        {
+                            return;
+                        }
+
+                        Skybox *skybox = world.AddComponent<Skybox>(entity);
+                        std::string materialPath = "assets/materials/skybox.json";
+                        std::string modelPath = "assets/meshes/cube/cube.obj";
+                        readOptionalString(componentJson, "material", materialPath);
+                        readOptionalString(componentJson, "model", modelPath);
+
+                        skybox->materialHandle = resourceManager->Load<resources::Material>(materialPath);
+                        skybox->modelHandle = resourceManager->Load<resources::Model>(modelPath);
+                        skybox->intensity = SceneLoader::ReadFloat(componentJson, "intensity", 1.0f);
+                        skybox->scale = SceneLoader::ReadFloat(componentJson, "scale", 50.0f);
                     });
 }
 

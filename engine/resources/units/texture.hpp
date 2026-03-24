@@ -3,11 +3,18 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <array>
 
 #include "../resource.hpp"
 
 namespace resources
 {
+    enum class TextureType
+    {
+        Texture2D,
+        Cubemap
+    };
+
     enum class TextureFormat
     {
         Unknown,
@@ -69,6 +76,21 @@ namespace resources
         uint32_t GetTextureId() const noexcept { return m_textureId; }
         bool IsGpuReady() const noexcept { return m_textureId != 0; }
 
+        void SetTextureType(TextureType type) noexcept { m_type = type; }
+        TextureType GetTextureType() const noexcept { return m_type; }
+        bool IsCubemap() const noexcept { return m_type == TextureType::Cubemap; }
+
+        void SetCubemapFacePaths(std::array<std::string, 6> facePaths)
+        {
+            m_cubemapFacePaths = std::move(facePaths);
+            m_type = TextureType::Cubemap;
+        }
+
+        const std::array<std::string, 6> &GetCubemapFacePaths() const noexcept
+        {
+            return m_cubemapFacePaths;
+        }
+
     private:
         int32_t m_width = 0;
         int32_t m_height = 0;
@@ -80,5 +102,7 @@ namespace resources
         std::vector<uint8_t> m_pixels;
         bool m_isHdr = false;
         uint32_t m_textureId = 0;
+        TextureType m_type = TextureType::Texture2D;
+        std::array<std::string, 6> m_cubemapFacePaths = {};
     };
 }

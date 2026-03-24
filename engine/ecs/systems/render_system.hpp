@@ -5,6 +5,7 @@
 #include "../components/mesh_renderer.hpp"
 #include "../components/light.hpp"
 #include "../components/camera.hpp"
+#include "../components/skybox.hpp"
 #include "../../render/renderer.hpp"
 #include "../../resources/resource_manager.hpp"
 #include "../../input/input_manager.hpp"
@@ -36,32 +37,32 @@ public:
 
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_1))
         {
-            m_debugViewMode = 0u; // lit view
+            m_debugViewMode = 0u;
             debugModeChanged = true;
         }
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_2))
         {
-            m_debugViewMode = 1u; // unlit view
+            m_debugViewMode = 1u;
             debugModeChanged = true;
         }
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_3))
         {
-            m_debugViewMode = 2u; // normals view
+            m_debugViewMode = 2u;
             debugModeChanged = true;
         }
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_4))
         {
-            m_debugViewMode = 3u; // roughness view
+            m_debugViewMode = 3u;
             debugModeChanged = true;
         }
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_5))
         {
-            m_debugViewMode = 4u; // metallic view
+            m_debugViewMode = 4u;
             debugModeChanged = true;
         }
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_6))
         {
-            m_debugViewMode = 5u; // ambient_occlusion view
+            m_debugViewMode = 5u;
             debugModeChanged = true;
         }
 
@@ -79,6 +80,7 @@ public:
 
         auto lights = world.GetEntitiesWith<Light>();
         auto entities = world.GetEntitiesWith<Transform, MeshRenderer>();
+        auto skyboxes = world.GetEntitiesWith<Skybox>();
 
         const PerspectiveProjection *activeCameraProjection = nullptr;
         const Transform *activeCameraTransform = nullptr;
@@ -248,6 +250,56 @@ public:
                     }
                     continue;
                 }
+            }
+        }
+
+        if (m_resourceManager)
+        {
+            for (Entity entity : skyboxes)
+            {
+                Skybox *skybox = world.GetComponent<Skybox>(entity);
+                Transform *transform = world.GetComponent<Transform>(entity);
+                if (!skybox || !skybox->modelHandle.IsValid() || !skybox->materialHandle.IsValid())
+                    continue;
+
+                resources::Model *model = m_resourceManager->Get(skybox->modelHandle);
+                resources::Material *material = m_resourceManager->Get(skybox->materialHandle);
+                if (!model || !material)
+                    continue;
+
+                if (!material->GetShaderHandle().IsValid() && !material->GetShaderPath().empty())
+                    material->SetShaderHandle(m_resourceManager->Load<resources::Shader>(material->GetShaderPath()));
+
+                for (const auto &[slot, texturePath] : material->GetTexturePaths())
+                {
+                    const auto existing = material->GetTextureHandle(slot);
+                    if (!existing.has_value() || !existing.value().IsValid())
+                        material->SetTextureHandle(slot, m_resourceManager->Load<resources::Texture>(texturePath));
+                }
+
+                resources::Shader *shader = m_resourceManager->Get(material->GetShaderHandle());
+                if (!shader)
+                    continue;
+
+                RenderUnit unit;
+                unit.resourceModel = model;
+                unit.resourceShader = shader;
+                unit.resourceMaterial = material;
+
+                glm::mat4 rotation = glm::mat4(1.0f);
+                if (transform)
+                {
+                    rotation = glm::rotate(rotation, glm::radians(transform->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+                    rotation = glm::rotate(rotation, glm::radians(transform->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+                    rotation = glm::rotate(rotation, glm::radians(transform->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+                }
+
+                unit.model = glm::translate(glm::mat4(1.0f), activeCameraTransform->position) * rotation * glm::scale(glm::mat4(1.0f), glm::vec3(skybox->scale));
+                unit.material.baseColor = glm::vec3(1.0f);
+                unit.material.emissive = glm::vec3(skybox->intensity);
+                unit.material.features = m_debugViewMode;
+
+                m_renderer.Submit(unit, RenderQueue::Unlit);
             }
         }
 

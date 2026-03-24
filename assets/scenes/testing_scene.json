@@ -229,6 +229,22 @@
                     "maxPitch": 1.2
                 }
             ]
+        },
+        {
+            "name": "Skybox",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 0.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Skybox",
+                    "material": "assets/materials/skybox.json",
+                    "intensity": 1.0
+                }
+            ]
         }
     ]
 }

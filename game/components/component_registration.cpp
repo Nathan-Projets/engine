@@ -4,13 +4,14 @@
 
 #include <helpers/log.hpp>
 #include <resources/loaders/scene_loader.hpp>
+#include <ecs/components/transform.hpp>
+#include <ecs/components/skybox.hpp>
 
 #include "../components/light_orbit_controller.hpp"
 #include "../components/orbit_camera_controller.hpp"
 
 namespace GameSceneComponents
 {
-    // TODO: same here, not sure about registering custom component like this, but we'll see
     void RegisterAll()
     {
         SceneLoader::RegisterComponentLoader("OrbitCameraController",

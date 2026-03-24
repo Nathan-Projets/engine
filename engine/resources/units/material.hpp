@@ -24,8 +24,9 @@ namespace resources
         Normal,            ///< Normal map for surface detail
         MetallicRoughness, ///< Metallic (R) and roughness (G) in packed texture
         Occlusion,         ///< Ambient occlusion texture
-        Emissive,            ///< Emissive/self-illumination texture
-        Displacement         ///< Displacement/height map for vertex deformation
+        Emissive,          ///< Emissive/self-illumination texture
+        Displacement,      ///< Displacement/height map for vertex deformation
+        Skybox             ///< Cubemap skybox texture
     };
 
     struct MaterialTextureSlotHash

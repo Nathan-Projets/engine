@@ -103,7 +103,7 @@ private:
     void SortQueues(RenderFrameSnapshot &snapshot) const;
     void UploadCameraUbo(const CameraRenderData &camera);
     void UploadLightsUbo(const std::vector<LightRenderData> &lights);
-    void UploadObjectUbo(const RenderUnit &unit);
+    void UploadObjectUbo(const RenderUnit &unit, bool useLocalTransform = false);
     void UploadMaterialUbo(const RenderUnit &unit) const;
     void InitializeShadowResources();
     void InitializeDirectionalShadowResources();
@@ -111,6 +111,7 @@ private:
     void ReleaseShadowResources();
     void ReleaseDirectionalShadowResources();
     void ReleasePointShadowResources();
+    void DrawResourceUnit(const RenderUnit &unit);
 
     // Pipeline entry points.
     void ExecuteFrame(const RenderFrameSnapshot &snapshot);

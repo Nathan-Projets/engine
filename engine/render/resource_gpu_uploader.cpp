@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <glad/glad.h>
+#include <stb_image.h>
 
 namespace
 {
@@ -271,7 +272,92 @@ void ResourceGpuUploader::UploadShader(resources::Shader &shader)
 
 void ResourceGpuUploader::UploadTexture(resources::Texture &texture)
 {
-    if (texture.IsGpuReady() || texture.IsEmpty())
+    if (texture.IsGpuReady())
+    {
+        return;
+    }
+
+    if (texture.IsCubemap())
+    {
+        const std::array<std::string, 6> &facePaths = texture.GetCubemapFacePaths();
+        for (const std::string &facePath : facePaths)
+        {
+            if (facePath.empty())
+            {
+                throw std::runtime_error("Cubemap texture is missing one or more face paths");
+            }
+        }
+
+        GLuint textureId = 0;
+        glGenTextures(1, &textureId);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, textureId);
+
+        int width = 0;
+        int height = 0;
+        int channels = 0;
+
+        for (size_t faceIndex = 0; faceIndex < 6; ++faceIndex)
+        {
+            const std::string &facePath = facePaths[faceIndex];
+            stbi_uc *pixelData = stbi_load(facePath.c_str(), &width, &height, &channels, 0);
+            if (!pixelData)
+            {
+                glDeleteTextures(1, &textureId);
+                throw std::runtime_error("Failed to load cubemap face texture at path: " + facePath);
+            }
+
+            resources::TextureFormat faceFormat = resources::TextureFormat::Unknown;
+            switch (channels)
+            {
+            case 1:
+                faceFormat = resources::TextureFormat::R8;
+                break;
+            case 2:
+                faceFormat = resources::TextureFormat::RG8;
+                break;
+            case 3:
+                faceFormat = resources::TextureFormat::RGB8;
+                break;
+            case 4:
+                faceFormat = resources::TextureFormat::RGBA8;
+                break;
+            default:
+                stbi_image_free(pixelData);
+                glDeleteTextures(1, &textureId);
+                throw std::runtime_error("Unsupported cubemap face channel layout at path: " + facePath);
+            }
+
+            GLenum internalFormat = GL_RGBA8;
+            GLenum externalFormat = GL_RGBA;
+            GLenum dataType = GL_UNSIGNED_BYTE;
+            ResolveTextureFormat(faceFormat, internalFormat, externalFormat, dataType);
+
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(faceIndex),
+                0,
+                static_cast<GLint>(internalFormat),
+                width,
+                height,
+                0,
+                externalFormat,
+                dataType,
+                pixelData);
+
+            stbi_image_free(pixelData);
+        }
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+        texture.SetTextureId(textureId);
+        return;
+    }
+
+    if (texture.IsEmpty())
     {
         return;
     }

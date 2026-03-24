@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+// TODO: see where these function should live, probably need to move them back to Shader or something
 namespace
 {
     constexpr int kPointShadowTextureUnitBase = 10;
@@ -136,6 +137,9 @@ namespace
 
     int BindTextureForSlot(const RenderUnit &unit, resources::ResourceManager *resourceManager, resources::MaterialTextureSlot slot, int textureUnit)
     {
+        const bool isSkyboxSlot = slot == resources::MaterialTextureSlot::Skybox;
+        const GLenum textureTarget = isSkyboxSlot ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
+
         if (!unit.resourceMaterial || !resourceManager)
         {
             const resources::Handle<resources::Texture> overrideHandle = unit.textureOverrides[TextureSlotToIndex(slot)];
@@ -151,7 +155,7 @@ namespace
             }
 
             glActiveTexture(GL_TEXTURE0 + textureUnit);
-            glBindTexture(GL_TEXTURE_2D, overrideTexture->GetTextureId());
+            glBindTexture(textureTarget, overrideTexture->GetTextureId());
             return 1;
         }
 
@@ -162,7 +166,7 @@ namespace
             if (overrideTexture && overrideTexture->IsGpuReady())
             {
                 glActiveTexture(GL_TEXTURE0 + textureUnit);
-                glBindTexture(GL_TEXTURE_2D, overrideTexture->GetTextureId());
+                glBindTexture(textureTarget, overrideTexture->GetTextureId());
                 return 1;
             }
         }
@@ -180,7 +184,7 @@ namespace
         }
 
         glActiveTexture(GL_TEXTURE0 + textureUnit);
-        glBindTexture(GL_TEXTURE_2D, texture->GetTextureId());
+        glBindTexture(textureTarget, texture->GetTextureId());
         return 1;
     }
 
@@ -244,74 +248,14 @@ namespace
         }
         SetUniformInt(programId, "uDisplacementCount", displacementCount);
 
+        int skyboxCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::Skybox, nextTextureUnit);
+        if (skyboxCount > 0)
+        {
+            SetUniformInt(programId, "uSkybox", nextTextureUnit);
+            ++nextTextureUnit;
+        }
+
         (void)nextTextureUnit;
-    }
-
-    void DrawResourceUnit(const RenderUnit &unit, resources::ResourceManager *resourceManager, UniformBufferManager *uniformBufferManager)
-    {
-        if (!unit.resourceModel || !unit.resourceShader)
-        {
-            return;
-        }
-
-        if (!unit.resourceModel->IsGpuReady() || !unit.resourceShader->IsGpuReady())
-        {
-            return;
-        }
-
-        auto uploadObjectUbo = [](UniformBufferManager *uniformBufferManager, const glm::mat4 &modelMatrix, uint32_t materialIndex)
-        {
-            if (!uniformBufferManager)
-            {
-                return;
-            }
-
-            ObjectData objectData;
-            objectData.model = modelMatrix;
-            objectData.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(glm::mat3(modelMatrix)))));
-            objectData.objectId = 0;
-            objectData.materialIndex = materialIndex;
-            uniformBufferManager->UpdateObjectData(objectData);
-        };
-
-        glUseProgram(unit.resourceShader->GetProgramId());
-        BindResourceMaterial(unit, resourceManager);
-        glBindVertexArray(unit.resourceModel->GetVao());
-
-        const std::vector<resources::MeshPrimitive> &primitives = unit.resourceModel->GetPrimitives();
-        if (unit.primitiveIndex < primitives.size())
-        {
-            const resources::MeshPrimitive &primitive = primitives[unit.primitiveIndex];
-            uploadObjectUbo(uniformBufferManager, unit.model * unit.localTransform, unit.materialIndex);
-            glDrawElements(
-                GL_TRIANGLES,
-                static_cast<GLsizei>(primitive.indexCount),
-                GL_UNSIGNED_INT,
-                reinterpret_cast<const void *>(static_cast<size_t>(primitive.indexOffset) * sizeof(uint32_t)));
-        }
-        else if (!primitives.empty())
-        {
-            for (const resources::MeshPrimitive &primitive : primitives)
-            {
-                uploadObjectUbo(uniformBufferManager, unit.model, unit.materialIndex);
-                glDrawElements(
-                    GL_TRIANGLES,
-                    static_cast<GLsizei>(primitive.indexCount),
-                    GL_UNSIGNED_INT,
-                    reinterpret_cast<const void *>(static_cast<size_t>(primitive.indexOffset) * sizeof(uint32_t)));
-            }
-        }
-        else
-        {
-            uploadObjectUbo(uniformBufferManager, unit.model * unit.localTransform, unit.materialIndex);
-            glDrawElements(
-                GL_TRIANGLES,
-                static_cast<GLsizei>(unit.resourceModel->GetIndices().size()),
-                GL_UNSIGNED_INT,
-                nullptr);
-        }
-
-        glBindVertexArray(0);
     }
 }
 
@@ -361,13 +305,13 @@ void Renderer::UploadLightsUbo(const std::vector<LightRenderData> &lights)
     m_uniformBufferManager->UpdateLightData(lightDataArray.data(), static_cast<unsigned int>(lightDataArray.size()));
 }
 
-void Renderer::UploadObjectUbo(const RenderUnit &unit)
+void Renderer::UploadObjectUbo(const RenderUnit &unit, bool useLocalTransform)
 {
     if (!m_uniformBufferManager)
         return;
 
     ObjectData objectData;
-    const glm::mat4 objectModel = unit.model * unit.localTransform;
+    const glm::mat4 objectModel = useLocalTransform ? unit.model * unit.localTransform : unit.model;
     objectData.model = objectModel;
     objectData.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(glm::mat3(objectModel)))));
     objectData.objectId = 0;
@@ -530,6 +474,58 @@ void Renderer::ReleasePointShadowResources()
             m_pointShadow.depthCubemaps[textureIndex] = 0;
         }
     }
+}
+
+void Renderer::DrawResourceUnit(const RenderUnit &unit)
+{
+    if (!unit.resourceModel || !unit.resourceShader)
+    {
+        return;
+    }
+
+    if (!unit.resourceModel->IsGpuReady() || !unit.resourceShader->IsGpuReady())
+    {
+        return;
+    }
+
+    glUseProgram(unit.resourceShader->GetProgramId());
+    BindResourceMaterial(unit, m_resourceManager);
+    glBindVertexArray(unit.resourceModel->GetVao());
+
+    const std::vector<resources::MeshPrimitive> &primitives = unit.resourceModel->GetPrimitives();
+    if (unit.primitiveIndex < primitives.size())
+    {
+        const resources::MeshPrimitive &primitive = primitives[unit.primitiveIndex];
+        UploadObjectUbo(unit, true);
+        glDrawElements(
+            GL_TRIANGLES,
+            static_cast<GLsizei>(primitive.indexCount),
+            GL_UNSIGNED_INT,
+            reinterpret_cast<const void *>(static_cast<size_t>(primitive.indexOffset) * sizeof(uint32_t)));
+    }
+    else if (!primitives.empty())
+    {
+        for (const resources::MeshPrimitive &primitive : primitives)
+        {
+            UploadObjectUbo(unit, false);
+            glDrawElements(
+                GL_TRIANGLES,
+                static_cast<GLsizei>(primitive.indexCount),
+                GL_UNSIGNED_INT,
+                reinterpret_cast<const void *>(static_cast<size_t>(primitive.indexOffset) * sizeof(uint32_t)));
+        }
+    }
+    else
+    {
+        UploadObjectUbo(unit, true);
+        glDrawElements(
+            GL_TRIANGLES,
+            static_cast<GLsizei>(unit.resourceModel->GetIndices().size()),
+            GL_UNSIGNED_INT,
+            nullptr);
+    }
+
+    glBindVertexArray(0);
 }
 
 void Renderer::Initialize(uint32_t width, uint32_t height, const RendererOptions &options)
@@ -1071,7 +1067,7 @@ void Renderer::ExecuteLitPass(const RenderFrameSnapshot &snapshot)
             }
 
             UploadMaterialUbo(unit);
-            DrawResourceUnit(unit, m_resourceManager, m_uniformBufferManager.get());
+            DrawResourceUnit(unit);
         }
     }
 }
@@ -1088,14 +1084,18 @@ void Renderer::ExecuteUnlitPass(const RenderFrameSnapshot &snapshot)
     UploadCameraUbo(snapshot.camera);
     m_uniformBufferManager->BindAllBuffers();
 
+    glDepthFunc(GL_LEQUAL);
+
     for (const RenderUnit &unit : snapshot.unlitUnits)
     {
         if (unit.resourceModel && unit.resourceShader)
         {
             UploadMaterialUbo(unit);
-            DrawResourceUnit(unit, m_resourceManager, m_uniformBufferManager.get());
+            DrawResourceUnit(unit);
         }
     }
+
+    glDepthFunc(GL_LESS);
 }
 
 void Renderer::ExecuteDebugPass(const RenderFrameSnapshot &snapshot)
