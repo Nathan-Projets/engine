@@ -1,0 +1,93 @@
+{
+    "name": "Prototype UBO Pipeline (Directional Only)",
+    "version": "1.0",
+    "entities": [
+        {
+            "name": "Helmet",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -1.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [2.0, 2.0, 2.0]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/helmet/helmet.gltf",
+                    "material": "materials/lit_backpack.json"
+                }
+            ]
+        },
+        {
+            "name": "Pavement",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -3.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/pavement/pavement.glb",
+                    "material": "materials/lit_pavement.json"
+                }
+            ]
+        },
+        {
+            "name": "FaintSunLight",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 8.0, 5.6],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.3, 0.3, 0.3]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/unlit_light.json",
+                    "queue": "unlit"
+                },
+                {
+                    "type": "Light",
+                    "lightType": "directional",
+                    "direction": [0.0, -1.0, -0.7],
+                    "color": [1.0, 0.98, 0.95],
+                    "intensity": 0.9,
+                    "ambient": [0.05, 0.05, 0.06],
+                    "diffuse": [0.8, 0.8, 0.8],
+                    "specular": [0.55, 0.55, 0.55]
+                }
+            ]
+        },
+        {
+            "name": "PrototypeCamera",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 1.0, 10.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Camera",
+                    "frustrum": [45.0, 1280.0, 720.0, 0.1, 250.0],
+                    "lookAt": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0]
+                },
+                {
+                    "type": "OrbitCameraController",
+                    "target": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0],
+                    "radius": 10.0,
+                    "yaw": 0.2,
+                    "pitch": 0.1,
+                    "yawSpeed": 3.0,
+                    "pitchSpeed": 3.0,
+                    "maxPitch": 1.2
+                }
+            ]
+        }
+    ]
+}

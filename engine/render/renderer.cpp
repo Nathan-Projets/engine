@@ -130,6 +130,7 @@ namespace
         SetUniformInt(programId, "uNormalUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Normal)]));
         SetUniformInt(programId, "uSpecularUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::MetallicRoughness)]));
         SetUniformInt(programId, "uAmbientUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Occlusion)]));
+        SetUniformInt(programId, "uEmissiveUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Emissive)]));
         SetUniformInt(programId, "uDisplacementUV", static_cast<int>(unit.textureUvIndices[TextureSlotToIndex(resources::MaterialTextureSlot::Displacement)]));
     }
 
@@ -226,6 +227,14 @@ namespace
             ++nextTextureUnit;
         }
         SetUniformInt(programId, "uSpecularCount", specularCount);
+
+        int emissiveCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::Emissive, nextTextureUnit);
+        if (emissiveCount > 0)
+        {
+            SetUniformInt(programId, "uEmissiveTex[0]", nextTextureUnit);
+            ++nextTextureUnit;
+        }
+        SetUniformInt(programId, "uEmissiveTexCount", emissiveCount);
 
         int displacementCount = BindTextureForSlot(unit, resourceManager, resources::MaterialTextureSlot::Displacement, nextTextureUnit);
         if (displacementCount > 0)
