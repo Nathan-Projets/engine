@@ -18,6 +18,8 @@ namespace resources
         glm::vec2 uv1{0.0f, 0.0f};
         glm::vec3 tangent{0.0f, 0.0f, 0.0f};
         glm::vec3 bitangent{0.0f, 0.0f, 0.0f};
+        glm::uvec4 boneIndices{0u, 0u, 0u, 0u};
+        glm::vec4 boneWeights{0.0f, 0.0f, 0.0f, 0.0f};
     };
 
     struct MeshPrimitive
@@ -53,6 +55,9 @@ namespace resources
             m_hasTangents = std::any_of(m_vertices.begin(), m_vertices.end(),
                                         [](const MeshVertex &v)
                                         { return v.tangent != glm::vec3(0.0f); });
+            m_hasSkinning = std::any_of(m_vertices.begin(), m_vertices.end(),
+                                        [](const MeshVertex &v)
+                                        { return v.boneWeights != glm::vec4(0.0f); });
 
             RecalculateBounds();
         }
@@ -65,6 +70,7 @@ namespace resources
         bool HasNormals() const noexcept { return m_hasNormals; }
         bool HasTexCoords() const noexcept { return m_hasTexCoords; }
         bool HasTangents() const noexcept { return m_hasTangents; }
+        bool HasSkinning() const noexcept { return m_hasSkinning; }
 
         const glm::vec3 &GetBoundsMin() const noexcept { return m_boundsMin; }
         const glm::vec3 &GetBoundsMax() const noexcept { return m_boundsMax; }
@@ -106,6 +112,7 @@ namespace resources
         bool m_hasNormals = false;
         bool m_hasTexCoords = false;
         bool m_hasTangents = false;
+        bool m_hasSkinning = false;
 
         glm::vec3 m_boundsMin{0.0f};
         glm::vec3 m_boundsMax{0.0f};

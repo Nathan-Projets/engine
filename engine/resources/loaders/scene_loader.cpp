@@ -243,6 +243,23 @@ std::array<float, 2> SceneLoader::ReadSpotValues(simdjson::ondemand::object comp
     return {12.5f, 17.5f};
 }
 
+bool SceneLoader::ReadCastShadow(simdjson::ondemand::object componentJson, bool defaultValue)
+{
+    try
+    {
+        simdjson::simdjson_result<bool> castShadowsResult = componentJson["castShadows"].get_bool();
+        if (!castShadowsResult.error())
+        {
+            return castShadowsResult.value();
+        }
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+    }
+
+    return defaultValue;
+}
+
 void SceneLoader::RegisterBuiltInComponentLoaders()
 {
     static bool registered = false;
@@ -336,6 +353,7 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                         light->intensity = ReadFloat(componentJson, "intensity", 1.0f);
                         light->direction = ReadVec3(componentJson, "direction", glm::vec3(0.0f, -1.0f, 0.0f));
                         light->type = ReadLightType(componentJson, LightType::Point);
+                        light->castShadows = ReadCastShadow(componentJson, light->castShadows);
                         std::array<float, 3> attenuation = ReadLightAttenuation(componentJson);
                         light->constant = attenuation[0];
                         light->linear = attenuation[1];
@@ -353,6 +371,47 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                                                    ReadVec3(componentJson, "lookAt", glm::vec3(0.0f)),
                                                    ReadVec3(componentJson, "upVector", glm::vec3(0.0f, 1.0f, 0.0f)),
                                                    true);
+                    });
+
+    loaders.emplace("Animation",
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
+                    {
+                        (void)resourceManager;
+
+                        AnimationPlayer *animationPlayer = world.AddComponent<AnimationPlayer>(entity);
+                        world.AddComponent<SkeletonPose>(entity);
+
+                        readOptionalString(componentJson, "clip", animationPlayer->clipName);
+
+                        simdjson::simdjson_result<int64_t> clipIndexResult = componentJson["clipIndex"].get_int64();
+                        if (!clipIndexResult.error())
+                        {
+                            animationPlayer->clipIndex = static_cast<int>(clipIndexResult.value());
+                        }
+
+                        animationPlayer->speed = ReadFloat(componentJson, "speed", 1.0f);
+
+                        bool autoplay = true;
+                        simdjson::simdjson_result<bool> autoplayResult = componentJson["autoplay"].get_bool();
+                        if (!autoplayResult.error())
+                        {
+                            autoplay = autoplayResult.value();
+                        }
+
+                        simdjson::simdjson_result<bool> loopResult = componentJson["loop"].get_bool();
+                        if (!loopResult.error())
+                        {
+                            animationPlayer->loop = loopResult.value();
+                        }
+
+                        animationPlayer->paused = !autoplay;
+                        simdjson::simdjson_result<bool> pausedResult = componentJson["paused"].get_bool();
+                        if (!pausedResult.error())
+                        {
+                            animationPlayer->paused = pausedResult.value();
+                        }
+
+                        animationPlayer->currentTimeSeconds = ReadFloat(componentJson, "startTime", 0.0f);
                     });
 
     loaders.emplace("Skybox",

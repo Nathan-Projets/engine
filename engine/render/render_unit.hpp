@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -25,5 +26,6 @@ public:
     glm::mat4 localTransform = glm::mat4(1.0f);
     std::array<resources::Handle<resources::Texture>, TextureSlotCount> textureOverrides = {};
     std::array<uint32_t, TextureSlotCount> textureUvIndices = {};
+    const std::vector<glm::mat4> *skinningPalette = nullptr;
     MaterialData material = {};
 };

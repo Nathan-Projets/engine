@@ -10,6 +10,7 @@ namespace
 {
     constexpr int kPointShadowTextureUnitBase = 10;
     constexpr int kShadowTextureUnit = 15;
+    constexpr int kMaxSkinningMatrices = 128;
 
     size_t TextureSlotToIndex(resources::MaterialTextureSlot slot)
     {
@@ -81,6 +82,22 @@ namespace
         if (location >= 0 && values != nullptr && count > 0)
         {
             glUniformMatrix4fv(location, count, GL_FALSE, glm::value_ptr(values[0]));
+        }
+    }
+
+    void UploadSkinningPalette(GLuint programId, const RenderUnit &unit)
+    {
+        int boneCount = 0;
+        if (unit.skinningPalette != nullptr)
+        {
+            boneCount = std::min(static_cast<int>(unit.skinningPalette->size()), kMaxSkinningMatrices);
+        }
+
+        SetUniformInt(programId, "uIsSkinned", boneCount > 0 ? 1 : 0);
+        SetUniformInt(programId, "uBoneCount", boneCount);
+        if (boneCount > 0)
+        {
+            SetUniformMat4Array(programId, "uBoneMatrices[0]", unit.skinningPalette->data(), boneCount);
         }
     }
 
@@ -299,6 +316,7 @@ void Renderer::UploadLightsUbo(const std::vector<LightRenderData> &lights)
         lightData.spotInnerCutoff = glm::cos(glm::radians(renderLight.innerCutoff));
         lightData.spotOuterCutoff = glm::cos(glm::radians(renderLight.outerCutoff));
         lightData.type = renderLight.type;
+        lightData.flags = renderLight.castShadows ? 1u : 0u;
         lightDataArray.push_back(lightData);
     }
 
@@ -489,6 +507,7 @@ void Renderer::DrawResourceUnit(const RenderUnit &unit)
     }
 
     glUseProgram(unit.resourceShader->GetProgramId());
+    UploadSkinningPalette(unit.resourceShader->GetProgramId(), unit);
     BindResourceMaterial(unit, m_resourceManager);
     glBindVertexArray(unit.resourceModel->GetVao());
 
@@ -835,7 +854,7 @@ void Renderer::ExecuteShadowPass(const RenderFrameSnapshot &snapshot)
         snapshot.lights.end(),
         [](const LightRenderData &light)
         {
-            return light.type == 1u && light.intensity > 0.0f;
+            return light.type == 1u && light.intensity > 0.0f && light.castShadows;
         });
 
     if (directionalLightIt == snapshot.lights.end())
@@ -857,10 +876,15 @@ void Renderer::ExecuteShadowPass(const RenderFrameSnapshot &snapshot)
 
     m_directionalShadow.invalidDirectionWarningLogged = false;
 
-    const glm::vec3 focusPoint = snapshot.camera.position;
-    const glm::vec3 lightPosition = focusPoint - lightDirection * 35.0f;
+    const glm::vec3 focusPoint = snapshot.camera.focusPoint;
+    const float focusDistance = glm::max(glm::length(snapshot.camera.position - focusPoint), 1.0f);
+    const float shadowHalfExtent = glm::clamp(focusDistance * 1.25f, 10.0f, 70.0f);
+    const float lightDistance = glm::max(35.0f, shadowHalfExtent * 1.75f);
+    const glm::vec3 lightPosition = focusPoint - lightDirection * lightDistance;
     const glm::mat4 lightView = glm::lookAt(lightPosition, focusPoint, glm::vec3(0.0f, 1.0f, 0.0f));
-    const glm::mat4 lightProjection = glm::ortho(-25.0f, 25.0f, -25.0f, 25.0f, 1.0f, 90.0f);
+    const glm::mat4 lightProjection = glm::ortho(-shadowHalfExtent, shadowHalfExtent,
+                                                 -shadowHalfExtent, shadowHalfExtent,
+                                                 1.0f, lightDistance + shadowHalfExtent * 4.0f);
     m_directionalShadow.lightSpaceMatrix = lightProjection * lightView;
 
     GLint previousViewport[4] = {0, 0, 0, 0};
@@ -884,6 +908,7 @@ void Renderer::ExecuteShadowPass(const RenderFrameSnapshot &snapshot)
 
         const glm::mat4 modelMatrix = unit.model * unit.localTransform;
         SetUniformMat4(shadowProgram, "uModel", modelMatrix);
+        UploadSkinningPalette(shadowProgram, unit);
         DrawUnitGeometryOnly(unit);
     }
 
@@ -942,6 +967,11 @@ void Renderer::ExecutePointShadowPass(const RenderFrameSnapshot &snapshot)
     {
         if (light.type == 0u && light.intensity > 0.0f)
         {
+            if (!light.castShadows)
+            {
+                continue;
+            }
+
             pointShadowCasters[casterCount] = &light;
             ++casterCount;
             if (casterCount >= m_pointShadow.maxLights)
@@ -999,6 +1029,7 @@ void Renderer::ExecutePointShadowPass(const RenderFrameSnapshot &snapshot)
 
             const glm::mat4 modelMatrix = unit.model * unit.localTransform;
             SetUniformMat4(pointShadowProgram, "uModel", modelMatrix);
+            UploadSkinningPalette(pointShadowProgram, unit);
             DrawUnitGeometryOnly(unit);
         }
     }

@@ -223,6 +223,12 @@ void ResourceGpuUploader::UploadMesh(resources::Mesh &mesh)
     glEnableVertexAttribArray(5);
     glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, sizeof(resources::MeshVertex), reinterpret_cast<const void *>(offsetof(resources::MeshVertex, uv1)));
 
+    glEnableVertexAttribArray(6);
+    glVertexAttribIPointer(6, 4, GL_UNSIGNED_INT, sizeof(resources::MeshVertex), reinterpret_cast<const void *>(offsetof(resources::MeshVertex, boneIndices)));
+
+    glEnableVertexAttribArray(7);
+    glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(resources::MeshVertex), reinterpret_cast<const void *>(offsetof(resources::MeshVertex, boneWeights)));
+
     glBindVertexArray(0);
 
     mesh.SetGpuHandles(vao, vbo, ebo);

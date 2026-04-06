@@ -25,7 +25,8 @@ public:
               direction(0.0f, -1.0f, 0.0f),
               innerCutoff(12.5f),
               outerCutoff(17.5f),
-              type(LightType::Point)
+              type(LightType::Point),
+              castShadows(true)
     {
     }
 
@@ -41,4 +42,5 @@ public:
     float innerCutoff;
     float outerCutoff;
     LightType type;
+    bool castShadows;
 };

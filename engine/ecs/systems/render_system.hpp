@@ -5,6 +5,7 @@
 #include "../components/mesh_renderer.hpp"
 #include "../components/light.hpp"
 #include "../components/camera.hpp"
+#include "../components/skeleton_pose.hpp"
 #include "../components/skybox.hpp"
 #include "../../render/renderer.hpp"
 #include "../../resources/resource_manager.hpp"
@@ -108,6 +109,7 @@ public:
         cameraData.viewProjection = projection * view;
         cameraData.invViewProjection = glm::inverse(cameraData.viewProjection);
         cameraData.position = activeCameraTransform->position;
+        cameraData.focusPoint = activeCameraProjection->GetLookAt();
 
         m_renderer.BeginFrame(cameraData);
 
@@ -133,6 +135,7 @@ public:
             lightData.innerCutoff = light->innerCutoff;
             lightData.outerCutoff = light->outerCutoff;
             lightData.type = static_cast<unsigned int>(light->type);
+            lightData.castShadows = light->castShadows;
             m_renderer.SubmitLight(lightData);
         }
 
@@ -148,6 +151,7 @@ public:
         {
             Transform *transform = world.GetComponent<Transform>(entity);
             MeshRenderer *renderer = world.GetComponent<MeshRenderer>(entity);
+            SkeletonPose *skeletonPose = world.GetComponent<SkeletonPose>(entity);
             if (!transform || !renderer)
                 continue;
 
@@ -215,12 +219,32 @@ public:
                     const auto &primitiveInstances = model->GetPrimitiveInstances();
                     if (!primitiveInstances.empty())
                     {
-                        for (const resources::MeshPrimitiveInstance &pi : primitiveInstances)
+                        for (size_t primitiveInstanceIndex = 0; primitiveInstanceIndex < primitiveInstances.size(); ++primitiveInstanceIndex)
                         {
+                            const resources::MeshPrimitiveInstance &pi = primitiveInstances[primitiveInstanceIndex];
                             RenderUnit unit = baseUnit;
                             unit.primitiveIndex = pi.primitiveIndex;
                             unit.materialIndex = pi.materialIndex;
                             unit.localTransform = pi.localTransform;
+
+                            if (auto importedProperties = model->GetImportedMaterialProperties(pi.materialIndex))
+                            {
+                                if (!material || !material->HasProperty("baseColor"))
+                                    unit.material.baseColor = glm::vec3(importedProperties->baseColorFactor);
+                                if (!material || !material->HasProperty("roughness"))
+                                    unit.material.roughness = importedProperties->roughnessFactor;
+                                if (!material || !material->HasProperty("metallic"))
+                                    unit.material.metallic = importedProperties->metallicFactor;
+                                if (!material || !material->HasProperty("emissive"))
+                                    unit.material.emissive = importedProperties->emissiveFactor;
+                            }
+
+                            if (skeletonPose && skeletonPose->valid && pi.usesSkinning &&
+                                primitiveInstanceIndex < skeletonPose->primitiveBonePalettes.size())
+                            {
+                                unit.skinningPalette = &skeletonPose->primitiveBonePalettes[primitiveInstanceIndex];
+                                unit.localTransform = glm::mat4(1.0f);
+                            }
 
                             for (resources::MaterialTextureSlot slot : slots)
                             {
@@ -240,6 +264,25 @@ public:
                     }
                     else
                     {
+                        SkeletonPose *singlePose = skeletonPose;
+                        if (singlePose && singlePose->valid && !singlePose->primitiveBonePalettes.empty())
+                        {
+                            baseUnit.skinningPalette = &singlePose->primitiveBonePalettes.front();
+                            baseUnit.localTransform = glm::mat4(1.0f);
+                        }
+
+                        if (auto importedProperties = model->GetImportedMaterialProperties(0u))
+                        {
+                            if (!material || !material->HasProperty("baseColor"))
+                                baseUnit.material.baseColor = glm::vec3(importedProperties->baseColorFactor);
+                            if (!material || !material->HasProperty("roughness"))
+                                baseUnit.material.roughness = importedProperties->roughnessFactor;
+                            if (!material || !material->HasProperty("metallic"))
+                                baseUnit.material.metallic = importedProperties->metallicFactor;
+                            if (!material || !material->HasProperty("emissive"))
+                                baseUnit.material.emissive = importedProperties->emissiveFactor;
+                        }
+
                         for (resources::MaterialTextureSlot slot : slots)
                         {
                             if (!renderer->ShouldLoadTextures())

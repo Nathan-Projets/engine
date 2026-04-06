@@ -47,6 +47,14 @@ public:
 
             bool changed = false;
 
+            const float scrollY = input.GetMouseScroll().y;
+            if (std::abs(scrollY) > 0.0001f)
+            {
+                controller->radius -= scrollY * controller->zoomSpeed;
+                controller->radius = glm::clamp(controller->radius, controller->minRadius, controller->maxRadius);
+                changed = true;
+            }
+
             if (input.IsActionActive("move_left"))
             {
                 controller->yaw += controller->yawSpeed * deltaTime;
@@ -76,6 +84,7 @@ public:
                 continue;
 
             controller->pitch = glm::clamp(controller->pitch, -controller->maxPitch, controller->maxPitch);
+            controller->radius = glm::clamp(controller->radius, controller->minRadius, controller->maxRadius);
 
             const float horizontalRadius = controller->radius * std::cos(controller->pitch);
             const glm::vec3 position = controller->target + glm::vec3(

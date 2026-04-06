@@ -15,6 +15,9 @@ public:
     float pitch = 0.0f;
     float yawSpeed = glm::quarter_pi<float>();
     float pitchSpeed = glm::quarter_pi<float>();
+    float zoomSpeed = 0.75f;
+    float minRadius = 1.5f;
+    float maxRadius = 250.0f;
     float maxPitch = glm::radians(75.0f);
 
     bool orbitInitialized = false;

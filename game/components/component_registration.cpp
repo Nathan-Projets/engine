@@ -30,6 +30,12 @@ namespace GameSceneComponents
                                                  controller->pitch = SceneLoader::ReadFloat(componentJson, "pitch", 0.0f);
                                                  controller->yawSpeed = SceneLoader::ReadFloat(componentJson, "yawSpeed", glm::quarter_pi<float>() * 0.5f);
                                                  controller->pitchSpeed = SceneLoader::ReadFloat(componentJson, "pitchSpeed", glm::quarter_pi<float>());
+                                                 controller->zoomSpeed = SceneLoader::ReadFloat(componentJson, "zoomSpeed", 0.75f);
+                                                 controller->minRadius = SceneLoader::ReadFloat(componentJson, "minRadius", 1.5f);
+                                                 controller->maxRadius = SceneLoader::ReadFloat(componentJson, "maxRadius", 25.0f);
+                                                 if (controller->maxRadius < controller->minRadius)
+                                                     std::swap(controller->minRadius, controller->maxRadius);
+                                                 controller->radius = glm::clamp(controller->radius, controller->minRadius, controller->maxRadius);
                                                  controller->maxPitch = SceneLoader::ReadFloat(componentJson, "maxPitch", glm::radians(75.0f));
                                              });
 

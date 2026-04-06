@@ -28,6 +28,7 @@ struct CameraRenderData
     glm::mat4 viewProjection = glm::mat4(1.0f);
     glm::mat4 invViewProjection = glm::mat4(1.0f);
     glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 focusPoint = glm::vec3(0.0f);
     float near = 0.1f;
     float far = 1000.0f;
 };
@@ -47,6 +48,7 @@ struct LightRenderData
     float innerCutoff = 12.5f;
     float outerCutoff = 17.5f;
     unsigned int type = 0; // 0 = point, 1 = directional, 2 = spot
+    bool castShadows = true;
 };
 
 struct RendererOptions

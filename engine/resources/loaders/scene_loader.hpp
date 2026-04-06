@@ -14,9 +14,11 @@
 #include "core/base_scene.hpp"
 #include "ecs/world.hpp"
 #include "ecs/components/transform.hpp"
+#include "ecs/components/animation_player.hpp"
 #include "ecs/components/mesh_renderer.hpp"
 #include "ecs/components/light.hpp"
 #include "resources/resource_manager.hpp"
+#include "ecs/components/skeleton_pose.hpp"
 #include "render/camera/perspective_projection.hpp"
 #include "helpers/log.hpp"
 
@@ -112,6 +114,9 @@ public:
 
     /// @brief Helper: Read spotlight attributes innerCutoff and outerCutoff, returned in this specific order
     static std::array<float, 2> ReadSpotValues(simdjson::ondemand::object componentJson);
+
+    /// @brief Helper: Read castShadows value from JSON with default fallback
+    static bool ReadCastShadow(simdjson::ondemand::object componentJson, bool defaultValue);
 
     /// @brief Register all built-in component loaders (Transform, Render, Light, Camera)
     static void RegisterBuiltInComponentLoaders();

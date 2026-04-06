@@ -276,9 +276,9 @@ void main() {
         vec3 lightColor = uLights[i].color * uLights[i].intensity;
         vec3 attenuatedLightColor = lightColor * attenuation * spotFactor;
         float shadow = 0.0;
-        if(uShadowEnabled > 0 && uLights[i].type == 1u) {
+        if(uShadowEnabled > 0 && uLights[i].type == 1u && (uLights[i].flags & 1u) != 0u) {
             shadow = CalculateDirectionalShadow(fs_in.FragPosLightSpace, norm, lightDir);
-        } else if(uPointShadowEnabled > 0 && uLights[i].type == 0u && uPointShadowCount > 0) {
+        } else if(uPointShadowEnabled > 0 && uLights[i].type == 0u && uPointShadowCount > 0 && (uLights[i].flags & 1u) != 0u) {
             int shadowIndex = -1;
             for(int pointIndex = 0; pointIndex < uPointShadowCount; ++pointIndex) {
                 if(distance(uPointShadowLightPositions[pointIndex], uLights[i].position) < 0.05) {
