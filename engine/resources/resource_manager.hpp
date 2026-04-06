@@ -285,6 +285,8 @@ namespace resources
 
         DebugSnapshot GetDebugSnapshot() const noexcept;
         void ClearDebugLoadHistory() noexcept;
+        void UpdateThreadStage(size_t threadIndex, std::string_view stage, float progress);
+        void RecordStageTiming(uint64_t jobId, std::string_view resourceType, std::string_view path, std::string_view stage, double elapsedMs);
 
     private:
         struct LoadJob

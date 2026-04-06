@@ -308,15 +308,19 @@ namespace resources
                                   ext == ".GLB" || ext == ".GLTF");
 
         Assimp::Importer importer;
-        const aiScene *scene = importer.ReadFile(
-            path,
-            aiProcess_Triangulate |
-                aiProcess_JoinIdenticalVertices |
-                aiProcess_GenNormals |
-                aiProcess_CalcTangentSpace |
-                aiProcess_ImproveCacheLocality |
-                (needsUvFlip ? aiProcess_FlipUVs : 0u) |
-                aiProcess_SortByPType);
+        const aiScene *scene = nullptr;
+        {
+            LoadDebugStageScope stageScope("Assimp import", 0.2f);
+            scene = importer.ReadFile(
+                path,
+                aiProcess_Triangulate |
+                    aiProcess_JoinIdenticalVertices |
+                    aiProcess_GenNormals |
+                    aiProcess_CalcTangentSpace |
+                    aiProcess_ImproveCacheLocality |
+                    (needsUvFlip ? aiProcess_FlipUVs : 0u) |
+                    aiProcess_SortByPType);
+        }
 
         if (!scene || !scene->HasMeshes())
             throw std::runtime_error("Failed to load model at path: " + path);
@@ -332,151 +336,163 @@ namespace resources
         meshMaterialIndices.reserve(scene->mNumMeshes);
         meshUsesSkinning.reserve(scene->mNumMeshes);
 
-        uint32_t vertexBase = 0;
-        for (uint32_t meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex)
         {
-            const aiMesh *src = scene->mMeshes[meshIndex];
-            if (!src)
-                continue;
+            LoadDebugStageScope stageScope("Mesh conversion", 0.5f);
 
-            const uint32_t primitiveIndexOffset = static_cast<uint32_t>(indices.size());
-
-            for (uint32_t i = 0; i < src->mNumVertices; ++i)
+            uint32_t vertexBase = 0;
+            for (uint32_t meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex)
             {
-                MeshVertex v;
-                const aiVector3D &p = src->mVertices[i];
-                v.position = glm::vec3(p.x, p.y, p.z);
-                if (src->HasNormals())
-                {
-                    const aiVector3D &n = src->mNormals[i];
-                    v.normal = glm::vec3(n.x, n.y, n.z);
-                }
-                if (src->HasTextureCoords(0))
-                {
-                    const aiVector3D &uv = src->mTextureCoords[0][i];
-                    v.uv0 = glm::vec2(uv.x, uv.y);
-                }
-                if (src->HasTextureCoords(1))
-                {
-                    const aiVector3D &uv = src->mTextureCoords[1][i];
-                    v.uv1 = glm::vec2(uv.x, uv.y);
-                }
-                if (src->HasTangentsAndBitangents())
-                {
-                    const aiVector3D &t = src->mTangents[i];
-                    const aiVector3D &bt = src->mBitangents[i];
-                    v.tangent = glm::vec3(t.x, t.y, t.z);
-                    v.bitangent = glm::vec3(bt.x, bt.y, bt.z);
-                }
-                vertices.push_back(v);
-            }
-
-            for (uint32_t f = 0; f < src->mNumFaces; ++f)
-            {
-                const aiFace &face = src->mFaces[f];
-                if (face.mNumIndices < 3)
+                const aiMesh *src = scene->mMeshes[meshIndex];
+                if (!src)
                     continue;
-                for (uint32_t li = 0; li < face.mNumIndices; ++li)
-                    indices.push_back(vertexBase + face.mIndices[li]);
-            }
 
-            MeshPrimitive prim;
-            prim.indexOffset = primitiveIndexOffset;
-            prim.indexCount = static_cast<uint32_t>(indices.size()) - primitiveIndexOffset;
-            prim.name = src->mName.C_Str();
-            meshTemplates.push_back(std::move(prim));
-            meshMaterialIndices.push_back(src->mMaterialIndex);
-            meshUsesSkinning.push_back(src->HasBones());
+                const uint32_t primitiveIndexOffset = static_cast<uint32_t>(indices.size());
 
-            if (src->HasBones())
-            {
-                for (uint32_t boneIndex = 0; boneIndex < src->mNumBones; ++boneIndex)
+                for (uint32_t i = 0; i < src->mNumVertices; ++i)
                 {
-                    const aiBone *sourceBone = src->mBones[boneIndex];
-                    if (!sourceBone)
+                    MeshVertex v;
+                    const aiVector3D &p = src->mVertices[i];
+                    v.position = glm::vec3(p.x, p.y, p.z);
+                    if (src->HasNormals())
+                    {
+                        const aiVector3D &n = src->mNormals[i];
+                        v.normal = glm::vec3(n.x, n.y, n.z);
+                    }
+                    if (src->HasTextureCoords(0))
+                    {
+                        const aiVector3D &uv = src->mTextureCoords[0][i];
+                        v.uv0 = glm::vec2(uv.x, uv.y);
+                    }
+                    if (src->HasTextureCoords(1))
+                    {
+                        const aiVector3D &uv = src->mTextureCoords[1][i];
+                        v.uv1 = glm::vec2(uv.x, uv.y);
+                    }
+                    if (src->HasTangentsAndBitangents())
+                    {
+                        const aiVector3D &t = src->mTangents[i];
+                        const aiVector3D &bt = src->mBitangents[i];
+                        v.tangent = glm::vec3(t.x, t.y, t.z);
+                        v.bitangent = glm::vec3(bt.x, bt.y, bt.z);
+                    }
+                    vertices.push_back(v);
+                }
+
+                for (uint32_t f = 0; f < src->mNumFaces; ++f)
+                {
+                    const aiFace &face = src->mFaces[f];
+                    if (face.mNumIndices < 3)
                         continue;
+                    for (uint32_t li = 0; li < face.mNumIndices; ++li)
+                        indices.push_back(vertexBase + face.mIndices[li]);
+                }
 
-                    const std::string boneName = sourceBone->mName.C_Str();
-                    uint32_t resolvedBoneIndex = 0;
-                    auto boneIt = boneNameToIndex.find(boneName);
-                    if (boneIt == boneNameToIndex.end())
-                    {
-                        resolvedBoneIndex = static_cast<uint32_t>(bones.size());
-                        boneNameToIndex.emplace(boneName, resolvedBoneIndex);
+                MeshPrimitive prim;
+                prim.indexOffset = primitiveIndexOffset;
+                prim.indexCount = static_cast<uint32_t>(indices.size()) - primitiveIndexOffset;
+                prim.name = src->mName.C_Str();
+                meshTemplates.push_back(std::move(prim));
+                meshMaterialIndices.push_back(src->mMaterialIndex);
+                meshUsesSkinning.push_back(src->HasBones());
 
-                        BoneInfo boneInfo;
-                        boneInfo.name = boneName;
-                        boneInfo.inverseBindMatrix = detail::ToGlmMatrix(sourceBone->mOffsetMatrix);
-                        bones.push_back(std::move(boneInfo));
-                    }
-                    else
+                if (src->HasBones())
+                {
+                    for (uint32_t boneIndex = 0; boneIndex < src->mNumBones; ++boneIndex)
                     {
-                        resolvedBoneIndex = boneIt->second;
-                    }
-
-                    for (uint32_t weightIndex = 0; weightIndex < sourceBone->mNumWeights; ++weightIndex)
-                    {
-                        const aiVertexWeight &weight = sourceBone->mWeights[weightIndex];
-                        const uint32_t vertexIndex = vertexBase + weight.mVertexId;
-                        if (vertexIndex >= vertices.size())
+                        const aiBone *sourceBone = src->mBones[boneIndex];
+                        if (!sourceBone)
                             continue;
 
-                        detail::AddBoneInfluence(vertices[vertexIndex], resolvedBoneIndex, weight.mWeight);
+                        const std::string boneName = sourceBone->mName.C_Str();
+                        uint32_t resolvedBoneIndex = 0;
+                        auto boneIt = boneNameToIndex.find(boneName);
+                        if (boneIt == boneNameToIndex.end())
+                        {
+                            resolvedBoneIndex = static_cast<uint32_t>(bones.size());
+                            boneNameToIndex.emplace(boneName, resolvedBoneIndex);
+
+                            BoneInfo boneInfo;
+                            boneInfo.name = boneName;
+                            boneInfo.inverseBindMatrix = detail::ToGlmMatrix(sourceBone->mOffsetMatrix);
+                            bones.push_back(std::move(boneInfo));
+                        }
+                        else
+                        {
+                            resolvedBoneIndex = boneIt->second;
+                        }
+
+                        for (uint32_t weightIndex = 0; weightIndex < sourceBone->mNumWeights; ++weightIndex)
+                        {
+                            const aiVertexWeight &weight = sourceBone->mWeights[weightIndex];
+                            const uint32_t vertexIndex = vertexBase + weight.mVertexId;
+                            if (vertexIndex >= vertices.size())
+                                continue;
+
+                            detail::AddBoneInfluence(vertices[vertexIndex], resolvedBoneIndex, weight.mWeight);
+                        }
                     }
                 }
+
+                vertexBase += src->mNumVertices;
             }
 
-            vertexBase += src->mNumVertices;
-        }
-
-        for (MeshVertex &vertex : vertices)
-        {
-            detail::NormalizeBoneWeights(vertex);
+            for (MeshVertex &vertex : vertices)
+            {
+                detail::NormalizeBoneWeights(vertex);
+            }
         }
 
         if (vertices.empty() || indices.empty())
             throw std::runtime_error("Model file contains no renderable geometry: " + path);
 
-        std::vector<SkeletonNode> skeletonNodes;
-        std::unordered_map<std::string, uint32_t> nodeNameToIndex;
-        uint32_t rootNodeIndex = 0;
-        if (scene->mRootNode)
         {
-            rootNodeIndex = detail::AppendSkeletonNode(scene->mRootNode,
-                                                       std::numeric_limits<uint32_t>::max(),
-                                                       glm::mat4(1.0f),
-                                                       skeletonNodes,
-                                                       nodeNameToIndex);
-        }
+            LoadDebugStageScope stageScope("Skeleton build", 0.7f);
 
-        for (BoneInfo &bone : bones)
-        {
-            auto nodeIt = nodeNameToIndex.find(bone.name);
-            if (nodeIt != nodeNameToIndex.end())
+            std::vector<SkeletonNode> skeletonNodes;
+            std::unordered_map<std::string, uint32_t> nodeNameToIndex;
+            uint32_t rootNodeIndex = 0;
+            if (scene->mRootNode)
             {
-                bone.nodeIndex = nodeIt->second;
+                rootNodeIndex = detail::AppendSkeletonNode(scene->mRootNode,
+                                                           std::numeric_limits<uint32_t>::max(),
+                                                           glm::mat4(1.0f),
+                                                           skeletonNodes,
+                                                           nodeNameToIndex);
+            }
+
+            for (BoneInfo &bone : bones)
+            {
+                auto nodeIt = nodeNameToIndex.find(bone.name);
+                if (nodeIt != nodeNameToIndex.end())
+                {
+                    bone.nodeIndex = nodeIt->second;
+                }
+            }
+
+            std::vector<MeshPrimitiveInstance> primitiveInstances;
+            if (scene->mRootNode)
+                detail::AppendNodePrimitivesFromSkeleton(scene->mRootNode,
+                                                         nodeNameToIndex,
+                                                         glm::mat4(1.0f),
+                                                         meshTemplates,
+                                                         meshMaterialIndices,
+                                                         meshUsesSkinning,
+                                                         primitiveInstances);
+
+            {
+                LoadDebugStageScope animationStage("Animation build", 0.82f);
+                model->SetData(std::move(vertices), std::move(indices),
+                               std::move(meshTemplates), std::move(primitiveInstances));
+                model->SetSkeletonData(std::move(skeletonNodes),
+                                       std::move(bones),
+                                       detail::BuildAnimationClips(scene, nodeNameToIndex),
+                                       rootNodeIndex);
             }
         }
 
-        std::vector<MeshPrimitiveInstance> primitiveInstances;
-        if (scene->mRootNode)
-            detail::AppendNodePrimitivesFromSkeleton(scene->mRootNode,
-                                                     nodeNameToIndex,
-                                                     glm::mat4(1.0f),
-                                                     meshTemplates,
-                                                     meshMaterialIndices,
-                                                     meshUsesSkinning,
-                                                     primitiveInstances);
-
-        model->SetData(std::move(vertices), std::move(indices),
-                       std::move(meshTemplates), std::move(primitiveInstances));
-        model->SetSkeletonData(std::move(skeletonNodes),
-                               std::move(bones),
-                               detail::BuildAnimationClips(scene, nodeNameToIndex),
-                               rootNodeIndex);
-
         if (scene->HasMaterials())
         {
+            LoadDebugStageScope stageScope("Material extraction", 0.94f);
             for (uint32_t mi = 0; mi < scene->mNumMaterials; ++mi)
             {
                 const aiMaterial *src = scene->mMaterials[mi];

@@ -29,7 +29,7 @@ add_library(
     render/shader_domain.hpp
     render/uniform_buffer.cpp
     render/renderer.cpp
-    
+
     resources/stb_impl.cpp
 
     resources/handle.hpp
@@ -56,6 +56,21 @@ add_library(
     
     helpers/log.hpp
 )
+
+if (MSVC)
+    set_source_files_properties(
+        resources/stb_impl.cpp
+        PROPERTIES
+            COMPILE_OPTIONS "$<$<CONFIG:Debug>:/O2>"
+            VS_SETTINGS "$<$<CONFIG:Debug>:BasicRuntimeChecks=Default>"
+    )
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    set_source_files_properties(
+        resources/stb_impl.cpp
+        PROPERTIES
+            COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O3>"
+    )
+endif ()
 
 target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson imgui)

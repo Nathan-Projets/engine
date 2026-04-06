@@ -4,6 +4,48 @@
 
 namespace resources
 {
+    namespace
+    {
+        thread_local LoadDebugSink *g_activeLoadDebugSink = nullptr;
+
+        class ThreadLoadDebugSink final : public LoadDebugSink
+        {
+        public:
+            ThreadLoadDebugSink(ResourceManager &manager, size_t threadIndex, uint64_t jobId, std::string_view resourceType, std::string_view path)
+                : m_manager(manager), m_threadIndex(threadIndex), m_jobId(jobId), m_resourceType(resourceType), m_path(path)
+            {
+            }
+
+            void BeginStage(std::string_view stage, float progress) override
+            {
+                m_manager.UpdateThreadStage(m_threadIndex, stage, progress);
+            }
+
+            void EndStage(std::string_view stage, double elapsedMs, float progress) override
+            {
+                m_manager.UpdateThreadStage(m_threadIndex, stage, progress);
+                m_manager.RecordStageTiming(m_jobId, m_resourceType, m_path, stage, elapsedMs);
+            }
+
+        private:
+            ResourceManager &m_manager;
+            size_t m_threadIndex = 0;
+            uint64_t m_jobId = 0;
+            std::string_view m_resourceType;
+            std::string_view m_path;
+        };
+    }
+
+    void SetActiveLoadDebugSink(LoadDebugSink *sink) noexcept
+    {
+        g_activeLoadDebugSink = sink;
+    }
+
+    LoadDebugSink *GetActiveLoadDebugSink() noexcept
+    {
+        return g_activeLoadDebugSink;
+    }
+
     ResourceManager::ResourceManager(size_t numLoaderThreads) : m_modelPool(256), m_shaderPool(64), m_texturePool(256), m_materialPool(128)
     {
         m_activeThreadDebugStates.resize(numLoaderThreads);
@@ -51,6 +93,8 @@ namespace resources
             MarkJobStarted(threadIndex, job);
 
             bool succeeded = false;
+            ThreadLoadDebugSink debugSink(*this, threadIndex, job.jobId, job.resourceType, job.path);
+            SetActiveLoadDebugSink(&debugSink);
 
             try
             {
@@ -60,6 +104,8 @@ namespace resources
             {
                 succeeded = false;
             }
+
+            SetActiveLoadDebugSink(nullptr);
 
             MarkJobFinished(threadIndex, succeeded);
             m_activeLoaderCount.fetch_sub(1, std::memory_order_acq_rel);
@@ -245,6 +291,63 @@ namespace resources
         threadState.stage.clear();
         threadState.progress = 0.0f;
         threadState.startedAt = {};
+    }
+
+    void ResourceManager::UpdateThreadStage(size_t threadIndex, std::string_view stage, float progress)
+    {
+        std::lock_guard<std::mutex> lock(m_debugMutex);
+        if (threadIndex >= m_activeThreadDebugStates.size())
+        {
+            return;
+        }
+
+        ActiveThreadDebugState &threadState = m_activeThreadDebugStates[threadIndex];
+        threadState.stage = std::string(stage);
+        threadState.progress = progress;
+    }
+
+    void ResourceManager::RecordStageTiming(uint64_t jobId, std::string_view resourceType, std::string_view path, std::string_view stage, double elapsedMs)
+    {
+        std::lock_guard<std::mutex> lock(m_debugMutex);
+
+        DebugLoadEntry historyEntry;
+        historyEntry.jobId = jobId;
+        historyEntry.resourceType = std::string(resourceType);
+        historyEntry.path = std::string(path);
+        historyEntry.stage = std::string(stage);
+        historyEntry.progress = 1.0f;
+        historyEntry.elapsedMs = elapsedMs;
+        m_debugRecentHistory.push_front(std::move(historyEntry));
+        if (m_debugRecentHistory.size() > DEBUG_HISTORY_LIMIT)
+        {
+            m_debugRecentHistory.pop_back();
+        }
+
+        const std::string aggregateKey = std::string(resourceType) + ":stage:" + std::string(stage) + ":" + std::string(path);
+        auto aggregateIt = m_debugLoadAggregates.find(aggregateKey);
+        if (aggregateIt == m_debugLoadAggregates.end())
+        {
+            DebugLoadAggregateInternal aggregate;
+            aggregate.resourceType = std::string(resourceType) + " Stage";
+            aggregate.path = std::string(stage) + " | " + std::string(path);
+            aggregate.sampleCount = 1;
+            aggregate.successCount = 1;
+            aggregate.failureCount = 0;
+            aggregate.totalMs = elapsedMs;
+            aggregate.minMs = elapsedMs;
+            aggregate.maxMs = elapsedMs;
+            aggregate.lastMs = elapsedMs;
+            m_debugLoadAggregates.emplace(aggregateKey, std::move(aggregate));
+            return;
+        }
+
+        DebugLoadAggregateInternal &aggregate = aggregateIt->second;
+        ++aggregate.sampleCount;
+        ++aggregate.successCount;
+        aggregate.totalMs += elapsedMs;
+        aggregate.minMs = std::min(aggregate.minMs, elapsedMs);
+        aggregate.maxMs = std::max(aggregate.maxMs, elapsedMs);
+        aggregate.lastMs = elapsedMs;
     }
 
     void ResourceManager::ProcessGPUUploads()

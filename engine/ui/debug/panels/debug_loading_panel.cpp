@@ -3,6 +3,7 @@
 #include "debug_panel_layout.hpp"
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
 #include <imgui.h>
@@ -93,18 +94,64 @@ void DebugLoadingPanel::Draw()
     if (ImGui::CollapsingHeader(("Recent load history (" + std::to_string(snapshot.recentHistory.size()) + ")").c_str()))
     {
         ImGui::BeginChild("load_history", ImVec2(0.0f, 170.0f), true);
-        const size_t maxHistoryItems = std::min<size_t>(snapshot.recentHistory.size(), 64);
-        for (size_t index = 0; index < maxHistoryItems; ++index)
+        size_t renderedRows = 0;
+        const size_t maxHistoryRows = 64;
+        for (size_t index = 0; index < snapshot.recentHistory.size() && renderedRows < maxHistoryRows;)
         {
             const resources::ResourceManager::DebugLoadEntry &entry = snapshot.recentHistory[index];
-            ImGui::Text("[%s] %.1f ms", entry.resourceType.c_str(), entry.elapsedMs);
+
+            if (entry.jobId != 0 && entry.stage != "Completed" && entry.stage != "Failed")
+            {
+                ++index;
+                continue;
+            }
+
+            if (entry.jobId != 0 && (entry.stage == "Completed" || entry.stage == "Failed"))
+            {
+                ImGui::Text("[%s] %.1f ms", entry.resourceType.c_str(), entry.elapsedMs);
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", entry.stage.c_str());
+                ImGui::TextWrapped("%s", entry.path.c_str());
+                ++renderedRows;
+
+                size_t stageIndex = index + 1;
+                while (stageIndex < snapshot.recentHistory.size() && renderedRows < maxHistoryRows)
+                {
+                    const resources::ResourceManager::DebugLoadEntry &stageEntry = snapshot.recentHistory[stageIndex];
+                    if (stageEntry.jobId != entry.jobId || stageEntry.stage == "Completed" || stageEntry.stage == "Failed")
+                    {
+                        break;
+                    }
+
+                    ImGui::Indent();
+                    ImGui::BulletText("%s: %.1f ms", stageEntry.stage.c_str(), stageEntry.elapsedMs);
+                    ImGui::Unindent();
+                    ++renderedRows;
+                    ++stageIndex;
+                }
+
+                ImGui::Separator();
+                index = stageIndex;
+                continue;
+            }
+
+            std::string label = entry.resourceType;
+            if (!entry.stage.empty())
+            {
+                label += " - ";
+                label += entry.stage;
+            }
+
+            ImGui::Text("[%s] %.1f ms", label.c_str(), entry.elapsedMs);
             ImGui::TextWrapped("%s", entry.path.c_str());
             ImGui::Separator();
+            ++renderedRows;
+            ++index;
         }
 
-        if (snapshot.recentHistory.size() > maxHistoryItems)
+        if (snapshot.recentHistory.size() > renderedRows)
         {
-            ImGui::Text("... %d more", static_cast<int>(snapshot.recentHistory.size() - maxHistoryItems));
+            ImGui::Text("... %d more", static_cast<int>(snapshot.recentHistory.size() - renderedRows));
         }
         ImGui::EndChild();
     }
