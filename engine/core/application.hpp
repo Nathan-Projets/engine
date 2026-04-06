@@ -13,6 +13,7 @@
 #include "helpers/log.hpp"
 #include "input/input_manager.hpp"
 #include "ui/debug/debug_ui.hpp"
+#include "ui/debug/panels/debug_animation_panel.hpp"
 #include "ui/debug/panels/debug_loading_panel.hpp"
 #include "ui/debug/panels/debug_stats_panel.hpp"
 
@@ -26,7 +27,7 @@ public:
     bool Run();
     void Stop();
 
-    void SetScene(Scene* scene) { m_scene = scene; }
+    void SetScene(Scene *scene);
 
     static void ResizeCallback(GLFWwindow *window, int width, int height);
 
@@ -39,6 +40,7 @@ private:
     Scene* m_scene = nullptr;
 
     DebugUI m_debugUI;
+    DebugAnimationPanel m_animationPanel;
     DebugLoadingPanel m_loadingPanel;
     DebugStatsPanel m_statsPanel;
 

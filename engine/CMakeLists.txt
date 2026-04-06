@@ -50,6 +50,7 @@ add_library(
     resources/loaders/texture_loader.hpp
 
     ui/debug/debug_ui.cpp
+    ui/debug/panels/debug_animation_panel.cpp
     ui/debug/panels/debug_loading_panel.cpp
     ui/debug/panels/debug_stats_panel.cpp
     

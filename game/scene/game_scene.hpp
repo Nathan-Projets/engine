@@ -17,6 +17,8 @@ public:
     void Draw(float deltaTime) override;
     void OnResize(int width, int height) override;
     resources::ResourceManager *GetResourceManager() override { return m_resourceManager; }
+    AnimationDebugSnapshot GetAnimationDebugSnapshot() const override;
+    bool RequestAnimationTransition(Entity entity, int clipIndex, float durationSeconds) override;
 
 private:
     void ReloadScene(bool clearResourceCache = false);

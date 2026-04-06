@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+
+#include <glad/glad.h>
 #include <glfw/glfw3.h>
 
 struct IDebugPanel

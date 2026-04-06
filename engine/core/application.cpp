@@ -10,6 +10,13 @@ Application::~Application()
     glfwTerminate();
 }
 
+void Application::SetScene(Scene *scene)
+{
+    m_scene = scene;
+    m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
+    m_animationPanel.SetScene(m_scene);
+}
+
 bool Application::Init()
 {
     glfwInit();
@@ -40,6 +47,7 @@ bool Application::Init()
 
     m_debugUI.Init(m_window);
     m_debugUI.AddPanel(&m_statsPanel);
+    m_debugUI.AddPanel(&m_animationPanel);
     m_debugUI.AddPanel(&m_loadingPanel);
 
     m_initialized = true;
@@ -78,6 +86,7 @@ bool Application::Run()
     }
 
     m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
+    m_animationPanel.SetScene(m_scene);
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -108,6 +117,7 @@ bool Application::Run()
         if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_F1))
         {
             m_statsPanel.visible = !m_statsPanel.visible;
+            m_animationPanel.visible = !m_animationPanel.visible;
             m_loadingPanel.visible = !m_loadingPanel.visible;
         }
 
@@ -142,6 +152,7 @@ bool Application::Run()
         stats.mousePosition = InputManager::Get().GetMousePosition();
         stats.sceneLoaded = m_scene != nullptr;
         m_statsPanel.SetStats(stats);
+        m_animationPanel.SetSnapshot(m_scene ? m_scene->GetAnimationDebugSnapshot() : AnimationDebugSnapshot{});
 
         m_debugUI.BeginFrame();
         m_debugUI.DrawPanels();

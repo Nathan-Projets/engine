@@ -1,5 +1,7 @@
 #include "debug_stats_panel.hpp"
 
+#include "debug_panel_layout.hpp"
+
 #include <imgui.h>
 
 void DebugStatsPanel::SetStats(const FrameStats &stats)
@@ -9,7 +11,8 @@ void DebugStatsPanel::SetStats(const FrameStats &stats)
 
 void DebugStatsPanel::Draw()
 {
-    ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(debug_panels::GetInitialStackedPosition(0), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(0.85f);
     ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;

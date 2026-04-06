@@ -1,5 +1,7 @@
 #include "debug_loading_panel.hpp"
 
+#include "debug_panel_layout.hpp"
+
 #include <algorithm>
 #include <vector>
 
@@ -12,8 +14,9 @@ void DebugLoadingPanel::SetResourceManager(resources::ResourceManager *resourceM
 
 void DebugLoadingPanel::Draw()
 {
-    ImGui::SetNextWindowPos(ImVec2(10.0f, 190.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(debug_panels::GetInitialStackedPosition(2), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(760.0f, 560.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
 
     ImGuiIO &io = ImGui::GetIO();
     const float maxWidth = std::max(520.0f, io.DisplaySize.x - 20.0f);
