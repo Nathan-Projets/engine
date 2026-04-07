@@ -1,5 +1,7 @@
 #include "application.hpp"
 
+#include <imgui.h>
+
 Application::Application(int width, int height) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false), m_initialized(false)
 {
 }
@@ -13,6 +15,7 @@ Application::~Application()
 void Application::SetScene(Scene *scene)
 {
     m_scene = scene;
+    m_editorContext.BindScene(m_scene);
     m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
     m_animationPanel.SetScene(m_scene);
 }
@@ -49,6 +52,23 @@ bool Application::Init()
     m_debugUI.AddPanel(&m_statsPanel);
     m_debugUI.AddPanel(&m_animationPanel);
     m_debugUI.AddPanel(&m_loadingPanel);
+    m_debugUI.AddPanel(&m_filesPanel);
+    m_debugUI.AddPanel(&m_outlinerPanel);
+    m_debugUI.AddPanel(&m_inspectorPanel);
+    m_debugUI.AddPanel(&m_viewportPanel);
+
+    m_filesPanel.SetContext(&m_editorContext);
+    m_outlinerPanel.SetContext(&m_editorContext);
+    m_inspectorPanel.SetContext(&m_editorContext);
+    m_viewportPanel.SetContext(&m_editorContext);
+
+    m_filesPanel.visible = true;
+    m_outlinerPanel.visible = true;
+    m_inspectorPanel.visible = true;
+    m_viewportPanel.visible = true;
+    m_statsPanel.visible = m_debugPanelsVisible;
+    m_animationPanel.visible = m_debugPanelsVisible;
+    m_loadingPanel.visible = m_debugPanelsVisible;
 
     m_initialized = true;
 
@@ -87,6 +107,7 @@ bool Application::Run()
 
     m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
     m_animationPanel.SetScene(m_scene);
+    m_editorContext.BindScene(m_scene);
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -109,17 +130,21 @@ bool Application::Run()
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-        if (InputManager::Get().IsKeyPressed(GLFW_KEY_ESCAPE))
+        if (InputManager::Get().IsKeyPressedGlobal(GLFW_KEY_ESCAPE))
         {
             Stop();
         }
 
-        if (InputManager::Get().IsKeyJustPressed(GLFW_KEY_F1))
+        if (InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_F1))
         {
-            m_statsPanel.visible = !m_statsPanel.visible;
-            m_animationPanel.visible = !m_animationPanel.visible;
-            m_loadingPanel.visible = !m_loadingPanel.visible;
+            m_debugPanelsVisible = !m_debugPanelsVisible;
+            m_statsPanel.visible = m_debugPanelsVisible;
+            m_animationPanel.visible = m_debugPanelsVisible;
+            m_loadingPanel.visible = m_debugPanelsVisible;
         }
+
+        InputManager::Get().SetMouseInputBlocked(!m_editorContext.IsViewportHovered());
+        InputManager::Get().SetKeyboardInputBlocked(!m_editorContext.IsViewportFocused());
 
         if (m_scene)
         {
@@ -153,6 +178,10 @@ bool Application::Run()
         stats.sceneLoaded = m_scene != nullptr;
         m_statsPanel.SetStats(stats);
         m_animationPanel.SetSnapshot(m_scene ? m_scene->GetAnimationDebugSnapshot() : AnimationDebugSnapshot{});
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, framebufferWidth, framebufferHeight);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         m_debugUI.BeginFrame();
         m_debugUI.DrawPanels();

@@ -4,10 +4,15 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include <simdjson.h>
+
+#include <cctype>
 #include <filesystem>
+#include <fstream>
 #include <glm/gtc/quaternion.hpp>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -293,6 +298,214 @@ namespace resources
             }
             return std::nullopt;
         }
+
+        inline std::optional<uint32_t> ReadOptionalUint32(const simdjson::dom::object &object, std::string_view key)
+        {
+            simdjson::dom::element element;
+            if (object.at_key(key).get(element))
+            {
+                return std::nullopt;
+            }
+
+            uint64_t value = 0;
+            if (element.get(value))
+            {
+                return std::nullopt;
+            }
+
+            return static_cast<uint32_t>(value);
+        }
+
+        inline std::optional<ResolvedMaterialTexture> ResolveGltfTextureReference(
+            const simdjson::dom::array &textures,
+            const simdjson::dom::array &images,
+            const simdjson::dom::object &textureInfo,
+            const std::filesystem::path &meshDirectory)
+        {
+            const std::optional<uint32_t> textureIndex = ReadOptionalUint32(textureInfo, "index");
+            if (!textureIndex.has_value())
+            {
+                return std::nullopt;
+            }
+
+            simdjson::dom::element textureElement;
+            if (textures.at(textureIndex.value()).get(textureElement))
+            {
+                return std::nullopt;
+            }
+
+            simdjson::dom::object textureObject;
+            if (textureElement.get(textureObject))
+            {
+                return std::nullopt;
+            }
+
+            const std::optional<uint32_t> imageIndex = ReadOptionalUint32(textureObject, "source");
+            if (!imageIndex.has_value())
+            {
+                return std::nullopt;
+            }
+
+            simdjson::dom::element imageElement;
+            if (images.at(imageIndex.value()).get(imageElement))
+            {
+                return std::nullopt;
+            }
+
+            simdjson::dom::object imageObject;
+            if (imageElement.get(imageObject))
+            {
+                return std::nullopt;
+            }
+
+            simdjson::dom::element uriElement;
+            if (imageObject.at_key("uri").get(uriElement))
+            {
+                return std::nullopt;
+            }
+
+            std::string_view uri;
+            if (uriElement.get(uri))
+            {
+                return std::nullopt;
+            }
+
+            if (uri.empty() || uri.rfind("data:", 0) == 0)
+            {
+                return std::nullopt;
+            }
+
+            ResolvedMaterialTexture resolved;
+            resolved.path = (meshDirectory / std::string(uri)).string();
+            resolved.uvIndex = ReadOptionalUint32(textureInfo, "texCoord").value_or(0u);
+            return resolved;
+        }
+
+        inline void ApplyGltfMaterialTextureFallback(const std::string &meshPath, const std::filesystem::path &meshDirectory, Model &model)
+        {
+            std::ifstream file(meshPath);
+            if (!file.is_open())
+            {
+                return;
+            }
+
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+
+            simdjson::dom::parser parser;
+            simdjson::dom::element document;
+            if (parser.parse(buffer.str()).get(document))
+            {
+                return;
+            }
+
+            simdjson::dom::object root;
+            if (document.get(root))
+            {
+                return;
+            }
+
+            simdjson::dom::element texturesElement;
+            simdjson::dom::element imagesElement;
+            simdjson::dom::element materialsElement;
+            if (root.at_key("textures").get(texturesElement) || root.at_key("images").get(imagesElement) || root.at_key("materials").get(materialsElement))
+            {
+                return;
+            }
+
+            simdjson::dom::array textures;
+            simdjson::dom::array images;
+            simdjson::dom::array materials;
+            if (texturesElement.get(textures) || imagesElement.get(images) || materialsElement.get(materials))
+            {
+                return;
+            }
+
+            uint32_t materialIndex = 0;
+            for (const simdjson::dom::element materialElement : materials)
+            {
+                simdjson::dom::object materialObject;
+                if (materialElement.get(materialObject))
+                {
+                    ++materialIndex;
+                    continue;
+                }
+
+                auto applySlot = [&](MaterialTextureSlot slot, const simdjson::dom::object &textureInfo)
+                {
+                    if (model.GetImportedMaterialTexturePath(materialIndex, slot).has_value())
+                    {
+                        return;
+                    }
+
+                    const std::optional<ResolvedMaterialTexture> resolved = ResolveGltfTextureReference(textures, images, textureInfo, meshDirectory);
+                    if (resolved.has_value())
+                    {
+                        model.SetImportedMaterialTextureInfo(materialIndex, slot, resolved->path, resolved->uvIndex);
+                    }
+                };
+
+                simdjson::dom::element pbrElement;
+                if (!materialObject.at_key("pbrMetallicRoughness").get(pbrElement))
+                {
+                    simdjson::dom::object pbrObject;
+                    if (!pbrElement.get(pbrObject))
+                    {
+                        simdjson::dom::element baseColorTextureElement;
+                        if (!pbrObject.at_key("baseColorTexture").get(baseColorTextureElement))
+                        {
+                            simdjson::dom::object baseColorTextureObject;
+                            if (!baseColorTextureElement.get(baseColorTextureObject))
+                            {
+                                applySlot(MaterialTextureSlot::BaseColor, baseColorTextureObject);
+                            }
+                        }
+
+                        simdjson::dom::element metallicRoughnessTextureElement;
+                        if (!pbrObject.at_key("metallicRoughnessTexture").get(metallicRoughnessTextureElement))
+                        {
+                            simdjson::dom::object metallicRoughnessTextureObject;
+                            if (!metallicRoughnessTextureElement.get(metallicRoughnessTextureObject))
+                            {
+                                applySlot(MaterialTextureSlot::MetallicRoughness, metallicRoughnessTextureObject);
+                            }
+                        }
+                    }
+                }
+
+                simdjson::dom::element normalTextureElement;
+                if (!materialObject.at_key("normalTexture").get(normalTextureElement))
+                {
+                    simdjson::dom::object normalTextureObject;
+                    if (!normalTextureElement.get(normalTextureObject))
+                    {
+                        applySlot(MaterialTextureSlot::Normal, normalTextureObject);
+                    }
+                }
+
+                simdjson::dom::element occlusionTextureElement;
+                if (!materialObject.at_key("occlusionTexture").get(occlusionTextureElement))
+                {
+                    simdjson::dom::object occlusionTextureObject;
+                    if (!occlusionTextureElement.get(occlusionTextureObject))
+                    {
+                        applySlot(MaterialTextureSlot::Occlusion, occlusionTextureObject);
+                    }
+                }
+
+                simdjson::dom::element emissiveTextureElement;
+                if (!materialObject.at_key("emissiveTexture").get(emissiveTextureElement))
+                {
+                    simdjson::dom::object emissiveTextureObject;
+                    if (!emissiveTextureElement.get(emissiveTextureObject))
+                    {
+                        applySlot(MaterialTextureSlot::Emissive, emissiveTextureObject);
+                    }
+                }
+
+                ++materialIndex;
+            }
+        }
     }
 
     template <>
@@ -304,8 +517,10 @@ namespace resources
         const std::filesystem::path meshPath(path);
         const std::filesystem::path meshDirectory = meshPath.parent_path();
         const std::string ext = meshPath.extension().string();
-        const bool needsUvFlip = (ext == ".glb" || ext == ".gltf" ||
-                                  ext == ".GLB" || ext == ".GLTF");
+        std::string normalizedExt = ext;
+        std::transform(normalizedExt.begin(), normalizedExt.end(), normalizedExt.begin(), [](unsigned char character)
+                       { return static_cast<char>(std::tolower(character)); });
+        const bool needsUvFlip = (normalizedExt == ".glb" || normalizedExt == ".gltf");
 
         Assimp::Importer importer;
         const aiScene *scene = nullptr;
@@ -568,6 +783,11 @@ namespace resources
                     model->SetImportedMaterialTextureInfo(mi, MaterialTextureSlot::Displacement, t->path, t->uvIndex);
                 }
             }
+        }
+
+        if (normalizedExt == ".gltf")
+        {
+            detail::ApplyGltfMaterialTextureFallback(path, meshDirectory, *model);
         }
 
         return model;

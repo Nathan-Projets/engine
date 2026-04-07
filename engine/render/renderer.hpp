@@ -97,6 +97,7 @@ public:
     void Render(const RenderFrameSnapshot &snapshot);
 
     void SetResourceManager(resources::ResourceManager *resourceManager);
+    uint32_t GetSceneColorTextureId() const noexcept { return m_sceneColorTexture; }
 
     const RendererOptions &GetOptions() const;
     void SetOptions(const RendererOptions &options);
@@ -108,8 +109,10 @@ private:
     void UploadObjectUbo(const RenderUnit &unit, bool useLocalTransform = false);
     void UploadMaterialUbo(const RenderUnit &unit) const;
     void InitializeShadowResources();
+    void InitializeSceneFramebuffer();
     void InitializeDirectionalShadowResources();
     void InitializePointShadowResources();
+    void ReleaseSceneFramebuffer();
     void ReleaseShadowResources();
     void ReleaseDirectionalShadowResources();
     void ReleasePointShadowResources();
@@ -166,4 +169,7 @@ private:
 
     DirectionalShadowState m_directionalShadow = {};
     PointShadowState m_pointShadow = {};
+    unsigned int m_sceneFramebuffer = 0;
+    unsigned int m_sceneColorTexture = 0;
+    unsigned int m_sceneDepthRenderbuffer = 0;
 };

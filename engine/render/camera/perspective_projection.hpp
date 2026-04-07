@@ -68,6 +68,11 @@ public:
         return m_upVector;
     }
 
+    const Frustrum &GetFrustrum() const
+    {
+        return m_cameraFrustrum;
+    }
+
     // TODO: check if I can only build it when camera change or something, right now with the new changes it recalculates everything each frame
     glm::mat4 BuildViewMatrix(const glm::vec3 &position) const
     {

@@ -29,24 +29,30 @@ public:
     // Clear ephemeral state (scroll, etc) - call after frame rendering
     void ClearFrameState();
 
+    void SetKeyboardInputBlocked(bool blocked) { m_keyboardInputBlocked = blocked; }
+    void SetMouseInputBlocked(bool blocked) { m_mouseInputBlocked = blocked; }
+
     // === Keyboard ===
 
-    bool IsKeyPressed(int key) const { return m_keyboardState.IsKeyPressed(key); }
-    bool IsKeyJustPressed(int key) const { return m_keyboardState.IsKeyJustPressed(key); }
-    bool IsKeyReleased(int key) const { return m_keyboardState.IsKeyReleased(key); }
+    bool IsKeyPressed(int key) const { return !m_keyboardInputBlocked && m_keyboardState.IsKeyPressed(key); }
+    bool IsKeyJustPressed(int key) const { return !m_keyboardInputBlocked && m_keyboardState.IsKeyJustPressed(key); }
+    bool IsKeyReleased(int key) const { return !m_keyboardInputBlocked && m_keyboardState.IsKeyReleased(key); }
+    bool IsKeyPressedGlobal(int key) const { return m_keyboardState.IsKeyPressed(key); }
+    bool IsKeyJustPressedGlobal(int key) const { return m_keyboardState.IsKeyJustPressed(key); }
+    bool IsKeyReleasedGlobal(int key) const { return m_keyboardState.IsKeyReleased(key); }
 
     void RegisterAction(const std::string &name, int key) { m_keyboardState.RegisterAction(name, key); }
-    bool IsActionActive(const std::string &name) const { return m_keyboardState.IsActionActive(name); }
-    bool IsActionJustPressed(const std::string &name) const { return m_keyboardState.IsActionJustPressed(name); }
+    bool IsActionActive(const std::string &name) const { return !m_keyboardInputBlocked && m_keyboardState.IsActionActive(name); }
+    bool IsActionJustPressed(const std::string &name) const { return !m_keyboardInputBlocked && m_keyboardState.IsActionJustPressed(name); }
 
     // === Mouse ===
 
     glm::vec2 GetMousePosition() const { return m_mouseState.GetPosition(); }
-    glm::vec2 GetMouseDelta() const { return m_mouseState.GetDelta(); }
-    bool IsMouseButtonPressed(int button) const { return m_mouseState.IsButtonPressed(button); }
-    bool IsMouseButtonJustPressed(int button) const { return m_mouseState.IsButtonJustPressed(button); }
-    bool IsMouseButtonReleased(int button) const { return m_mouseState.IsButtonReleased(button); }
-    glm::vec2 GetMouseScroll() const { return m_mouseState.GetScroll(); }
+    glm::vec2 GetMouseDelta() const { return m_mouseInputBlocked ? glm::vec2(0.0f) : m_mouseState.GetDelta(); }
+    bool IsMouseButtonPressed(int button) const { return !m_mouseInputBlocked && m_mouseState.IsButtonPressed(button); }
+    bool IsMouseButtonJustPressed(int button) const { return !m_mouseInputBlocked && m_mouseState.IsButtonJustPressed(button); }
+    bool IsMouseButtonReleased(int button) const { return !m_mouseInputBlocked && m_mouseState.IsButtonReleased(button); }
+    glm::vec2 GetMouseScroll() const { return m_mouseInputBlocked ? glm::vec2(0.0f) : m_mouseState.GetScroll(); }
 
 private:
     static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
@@ -67,4 +73,6 @@ private:
 
     KeyboardState m_keyboardState;
     MouseState m_mouseState;
+    bool m_keyboardInputBlocked = false;
+    bool m_mouseInputBlocked = false;
 };

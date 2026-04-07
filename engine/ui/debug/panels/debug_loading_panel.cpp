@@ -16,16 +16,16 @@ void DebugLoadingPanel::SetResourceManager(resources::ResourceManager *resourceM
 void DebugLoadingPanel::Draw()
 {
     ImGui::SetNextWindowPos(debug_panels::GetInitialStackedPosition(2), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(760.0f, 560.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(760.0f, 300.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
 
     ImGuiIO &io = ImGui::GetIO();
     const float maxWidth = std::max(520.0f, io.DisplaySize.x - 20.0f);
-    const float maxHeight = std::max(280.0f, io.DisplaySize.y - 20.0f);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(420.0f, 260.0f), ImVec2(maxWidth, maxHeight));
+    const float maxHeight = std::max(220.0f, io.DisplaySize.y * 0.45f);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(420.0f, 180.0f), ImVec2(maxWidth, maxHeight));
 
     ImGui::SetNextWindowBgAlpha(0.85f);
-    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoSavedSettings;
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None;
 
     ImGui::Begin("Resource Loading", nullptr, windowFlags);
 

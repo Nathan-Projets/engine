@@ -24,6 +24,29 @@ class RenderSystem : public System
 public:
     explicit RenderSystem(resources::ResourceManager *resourceManager = nullptr) : m_resourceManager(resourceManager) {}
 
+    void SetCameraOverride(const std::optional<CameraRenderData> &cameraOverride)
+    {
+        m_cameraOverride = cameraOverride;
+    }
+
+    void SetViewportSize(uint32_t width, uint32_t height)
+    {
+        m_pendingViewportWidth = std::max(width, 1u);
+        m_pendingViewportHeight = std::max(height, 1u);
+
+        if (!m_rendererInitialized)
+        {
+            return;
+        }
+
+        m_renderer.Resize(m_pendingViewportWidth, m_pendingViewportHeight);
+    }
+
+    uint32_t GetViewportTextureId() const
+    {
+        return m_renderer.GetSceneColorTextureId();
+    }
+
     void Update(World &world, float deltaTime) override {}
 
     void Render(World &world, float deltaTime) override
@@ -75,7 +98,7 @@ public:
         if (!m_rendererInitialized)
         {
             m_renderer.SetResourceManager(m_resourceManager);
-            m_renderer.Initialize(0, 0);
+            m_renderer.Initialize(m_pendingViewportWidth, m_pendingViewportHeight);
             m_rendererInitialized = true;
         }
 
@@ -83,33 +106,40 @@ public:
         auto entities = world.GetEntitiesWith<Transform, MeshRenderer>();
         auto skyboxes = world.GetEntitiesWith<Skybox>();
 
-        const PerspectiveProjection *activeCameraProjection = nullptr;
-        const Transform *activeCameraTransform = nullptr;
-        for (Entity cameraEntity : world.GetEntitiesWith<Camera>())
-        {
-            Camera *cam = world.GetComponent<Camera>(cameraEntity);
-            Transform *t = world.GetComponent<Transform>(cameraEntity);
-            if (cam && t && cam->main)
-            {
-                activeCameraProjection = &cam->GetProjection();
-                activeCameraTransform = t;
-                break;
-            }
-        }
-
-        if (!activeCameraProjection || !activeCameraTransform)
-            return;
-
-        const glm::mat4 view = activeCameraProjection->BuildViewMatrix(activeCameraTransform->position);
-        const glm::mat4 projection = activeCameraProjection->GetProjectionMatrix();
-
         CameraRenderData cameraData;
-        cameraData.view = view;
-        cameraData.projection = projection;
-        cameraData.viewProjection = projection * view;
-        cameraData.invViewProjection = glm::inverse(cameraData.viewProjection);
-        cameraData.position = activeCameraTransform->position;
-        cameraData.focusPoint = activeCameraProjection->GetLookAt();
+        if (m_cameraOverride.has_value())
+        {
+            cameraData = m_cameraOverride.value();
+        }
+        else
+        {
+            const PerspectiveProjection *activeCameraProjection = nullptr;
+            const Transform *activeCameraTransform = nullptr;
+            for (Entity cameraEntity : world.GetEntitiesWith<Camera>())
+            {
+                Camera *cam = world.GetComponent<Camera>(cameraEntity);
+                Transform *t = world.GetComponent<Transform>(cameraEntity);
+                if (cam && t && cam->main)
+                {
+                    activeCameraProjection = &cam->GetProjection();
+                    activeCameraTransform = t;
+                    break;
+                }
+            }
+
+            if (!activeCameraProjection || !activeCameraTransform)
+                return;
+
+            const glm::mat4 view = activeCameraProjection->BuildViewMatrix(activeCameraTransform->position);
+            const glm::mat4 projection = activeCameraProjection->GetProjectionMatrix();
+
+            cameraData.view = view;
+            cameraData.projection = projection;
+            cameraData.viewProjection = projection * view;
+            cameraData.invViewProjection = glm::inverse(cameraData.viewProjection);
+            cameraData.position = activeCameraTransform->position;
+            cameraData.focusPoint = activeCameraProjection->GetLookAt();
+        }
 
         m_renderer.BeginFrame(cameraData);
 
@@ -344,7 +374,7 @@ public:
                     rotation = glm::rotate(rotation, glm::radians(transform->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
                 }
 
-                unit.model = glm::translate(glm::mat4(1.0f), activeCameraTransform->position) * rotation * glm::scale(glm::mat4(1.0f), glm::vec3(skybox->scale));
+                unit.model = glm::translate(glm::mat4(1.0f), cameraData.position) * rotation * glm::scale(glm::mat4(1.0f), glm::vec3(skybox->scale));
                 unit.material.baseColor = glm::vec3(1.0f);
                 unit.material.emissive = glm::vec3(skybox->intensity);
                 unit.material.features = m_debugViewMode;
@@ -382,4 +412,7 @@ private:
     bool m_rendererInitialized = false;
     resources::ResourceManager *m_resourceManager = nullptr;
     uint32_t m_debugViewMode = 0;
+    uint32_t m_pendingViewportWidth = 1;
+    uint32_t m_pendingViewportHeight = 1;
+    std::optional<CameraRenderData> m_cameraOverride;
 };

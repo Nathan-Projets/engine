@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include <imgui.h>
+
 #include <glad/glad.h>
 #include <glfw/glfw3.h>
 
@@ -25,5 +27,11 @@ public:
     void DrawPanels();
 
 private:
+    void DrawDockspace();
+    void EnsureDefaultDockLayout(ImGuiID dockspaceId);
+    void ResetDockedWindowSettings();
+
+private:
     std::vector<IDebugPanel *> m_panels;
+    bool m_defaultDockLayoutBuilt = false;
 };

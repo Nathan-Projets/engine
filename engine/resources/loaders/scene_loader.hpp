@@ -13,6 +13,7 @@
 #include "core/scene.hpp"
 #include "core/base_scene.hpp"
 #include "ecs/world.hpp"
+#include "ecs/components/name.hpp"
 #include "ecs/components/transform.hpp"
 #include "ecs/components/animation_player.hpp"
 #include "ecs/components/mesh_renderer.hpp"

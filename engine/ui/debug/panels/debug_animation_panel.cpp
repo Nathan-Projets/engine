@@ -20,11 +20,11 @@ void DebugAnimationPanel::SetSnapshot(AnimationDebugSnapshot snapshot)
 void DebugAnimationPanel::Draw()
 {
     ImGui::SetNextWindowPos(debug_panels::GetInitialStackedPosition(1), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(520.0f, 460.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(520.0f, 280.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(0.88f);
 
-    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoSavedSettings;
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None;
     ImGui::Begin("Animation Debug", nullptr, windowFlags);
 
     if (!m_scene)

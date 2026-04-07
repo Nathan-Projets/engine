@@ -22,6 +22,9 @@ uniform int uSpecularUV;
 uniform sampler2D uNormal[16];
 uniform int uNormalCount;
 uniform int uNormalUV;
+uniform sampler2D uEmissiveTex[16];
+uniform int uEmissiveTexCount;
+uniform int uEmissiveUV;
 uniform sampler2D uShadowMap;
 uniform int uShadowEnabled;
 uniform samplerCube uPointShadowMaps[4];
@@ -226,6 +229,21 @@ void main() {
         aoFactor /= float(uAmbientCount);
     }
 
+    vec3 emissiveColor = uEmissive;
+    if(uEmissiveTexCount > 0) {
+        vec3 emissiveTextureColor = vec3(0.0);
+        for(int i = 0; i < uEmissiveTexCount; i++) {
+            emissiveTextureColor += texture(uEmissiveTex[i], SelectTexCoords(uEmissiveUV)).rgb;
+        }
+        emissiveTextureColor /= float(uEmissiveTexCount);
+
+        vec3 emissiveFactor = emissiveColor;
+        if(length(emissiveFactor) <= 0.0001) {
+            emissiveFactor = vec3(1.0);
+        }
+        emissiveColor = emissiveFactor * emissiveTextureColor;
+    }
+
     vec3 norm;
     if(uNormalCount > 0 && fs_in.use_tbn > 0.0) {
         vec3 tangentNormal = vec3(0.0);
@@ -302,7 +320,7 @@ void main() {
         specularSum += uLights[i].specular * spec * specularColor * attenuatedLightColor * (1.0 - shadow);
     }
 
-    vec3 finalColor = ambientSum + diffuseSum + specularSum + uEmissive;
+    vec3 finalColor = ambientSum + diffuseSum + specularSum + emissiveColor;
 
     if(debugViewMode == 1) {
         FragColor = vec4(diffuseColor, 1.0);

@@ -456,9 +456,17 @@ bool SceneLoader::LoadIntoWorld(const std::string &filepath, World *world, resou
     {
         for (ondemand::object entityJson : entities)
         {
-            std::string_view name = entityJson["name"].get_string();
-            DEBUG("Detected entity: " << name);
             Entity entity = world->CreateEntity();
+            std::string entityName = "Entity " + std::to_string(entity.GetID());
+
+            simdjson::simdjson_result<std::string_view> nameResult = entityJson["name"].get_string();
+            if (!nameResult.error())
+            {
+                entityName = std::string(nameResult.value());
+            }
+
+            world->AddComponent<Name>(entity, entityName);
+            DEBUG("Detected entity: " << entityName);
 
             ondemand::array components = entityJson["components"].get_array();
             if (!components.is_empty())

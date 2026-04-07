@@ -16,6 +16,11 @@
 #include "ui/debug/panels/debug_animation_panel.hpp"
 #include "ui/debug/panels/debug_loading_panel.hpp"
 #include "ui/debug/panels/debug_stats_panel.hpp"
+#include "ui/editor/editor_context.hpp"
+#include "ui/editor/panels/editor_files_panel.hpp"
+#include "ui/editor/panels/editor_inspector_panel.hpp"
+#include "ui/editor/panels/editor_outliner_panel.hpp"
+#include "ui/editor/panels/editor_viewport_panel.hpp"
 
 class Application
 {
@@ -40,9 +45,15 @@ private:
     Scene* m_scene = nullptr;
 
     DebugUI m_debugUI;
+    EditorContext m_editorContext;
     DebugAnimationPanel m_animationPanel;
     DebugLoadingPanel m_loadingPanel;
     DebugStatsPanel m_statsPanel;
+    EditorFilesPanel m_filesPanel;
+    EditorOutlinerPanel m_outlinerPanel;
+    EditorInspectorPanel m_inspectorPanel;
+    EditorViewportPanel m_viewportPanel;
+    bool m_debugPanelsVisible = false;
 
     std::vector<std::unique_ptr<Scene>> m_scenes;
 };

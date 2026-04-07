@@ -15,7 +15,7 @@ void DebugStatsPanel::Draw()
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(0.85f);
     ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
-                                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;
+                                    ImGuiWindowFlags_AlwaysAutoResize;
     ImGui::Begin("Debug Stats", nullptr, overlayFlags);
     ImGui::Text("FPS: %d", m_stats.fps);
     ImGui::Text("Frame time: %.2f ms", m_stats.frameTimeMs);
@@ -25,6 +25,6 @@ void DebugStatsPanel::Draw()
     ImGui::Text("Viewport: %d x %d", m_stats.viewportWidth, m_stats.viewportHeight);
     ImGui::Text("Mouse: (%.1f, %.1f)", m_stats.mousePosition.x, m_stats.mousePosition.y);
     ImGui::Text("Scene bound: %s", m_stats.sceneLoaded ? "yes" : "no");
-    ImGui::Text("Toggle panel: F1");
+    ImGui::Text("Toggle debug: F1");
     ImGui::End();
 }

@@ -2,6 +2,8 @@
 
 #include "../helpers/log.hpp"
 
+#include <algorithm>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -362,6 +364,38 @@ void Renderer::InitializeShadowResources()
     InitializePointShadowResources();
 }
 
+void Renderer::InitializeSceneFramebuffer()
+{
+    ReleaseSceneFramebuffer();
+
+    const uint32_t framebufferWidth = std::max<uint32_t>(m_viewportWidth, 1u);
+    const uint32_t framebufferHeight = std::max<uint32_t>(m_viewportHeight, 1u);
+
+    glGenFramebuffers(1, &m_sceneFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_sceneFramebuffer);
+
+    glGenTextures(1, &m_sceneColorTexture);
+    glBindTexture(GL_TEXTURE_2D, m_sceneColorTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, framebufferWidth, framebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_sceneColorTexture, 0);
+
+    glGenRenderbuffers(1, &m_sceneDepthRenderbuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_sceneDepthRenderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, framebufferWidth, framebufferHeight);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_sceneDepthRenderbuffer);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        ReleaseSceneFramebuffer();
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::InitializeDirectionalShadowResources()
 {
     glGenFramebuffers(1, &m_directionalShadow.framebuffer);
@@ -461,6 +495,25 @@ void Renderer::ReleaseShadowResources()
 {
     ReleaseDirectionalShadowResources();
     ReleasePointShadowResources();
+}
+
+void Renderer::ReleaseSceneFramebuffer()
+{
+    if (m_sceneDepthRenderbuffer != 0)
+    {
+        glDeleteRenderbuffers(1, &m_sceneDepthRenderbuffer);
+        m_sceneDepthRenderbuffer = 0;
+    }
+    if (m_sceneColorTexture != 0)
+    {
+        glDeleteTextures(1, &m_sceneColorTexture);
+        m_sceneColorTexture = 0;
+    }
+    if (m_sceneFramebuffer != 0)
+    {
+        glDeleteFramebuffers(1, &m_sceneFramebuffer);
+        m_sceneFramebuffer = 0;
+    }
 }
 
 void Renderer::ReleaseDirectionalShadowResources()
@@ -571,6 +624,8 @@ void Renderer::Initialize(uint32_t width, uint32_t height, const RendererOptions
     m_pointShadow.maxLights = std::clamp(m_options.maxPointShadowLights, 1u, Renderer::kMaxPointShadowLights);
     m_pointShadow.farPlane = std::max(1.0f, m_options.pointShadowFarPlane);
 
+    InitializeSceneFramebuffer();
+
     if (m_resourceManager != nullptr)
     {
         m_directionalShadow.materialHandle = m_resourceManager->Load<resources::Material>(m_options.shadowMaterialPath);
@@ -618,6 +673,7 @@ void Renderer::Shutdown()
     m_uniformBufferManager.reset(nullptr);
     m_resourceGpuUploader.reset(nullptr);
 
+    ReleaseSceneFramebuffer();
     ReleaseShadowResources();
 
     m_directionalShadow.materialHandle = {};
@@ -630,6 +686,7 @@ void Renderer::Resize(uint32_t width, uint32_t height)
 {
     m_viewportWidth = width;
     m_viewportHeight = height;
+    InitializeSceneFramebuffer();
 }
 
 void Renderer::BeginFrame(const CameraRenderData &camera)
@@ -801,10 +858,22 @@ void Renderer::ExecuteFrame(const RenderFrameSnapshot &snapshot)
         ExecutePointShadowPass(snapshot);
     }
 
+    if (m_sceneFramebuffer != 0)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, m_sceneFramebuffer);
+        glViewport(0, 0, static_cast<GLsizei>(std::max<uint32_t>(m_viewportWidth, 1u)), static_cast<GLsizei>(std::max<uint32_t>(m_viewportHeight, 1u)));
+    }
+    else
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
     ExecuteLitPass(snapshot);
     ExecuteTransparentPass(snapshot);
     ExecuteUnlitPass(snapshot);
     ExecuteDebugPass(snapshot);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Renderer::ExecuteShadowPass(const RenderFrameSnapshot &snapshot)

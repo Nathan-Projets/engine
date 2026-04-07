@@ -1,5 +1,5 @@
 {
-    "name": "Mushnub Animation Showcase",
+    "name": "mushnub_scene",
     "version": "1.0",
     "entities": [
         {
@@ -7,21 +7,23 @@
             "components": [
                 {
                     "type": "Transform",
-                    "position": [0.0, -1.2, 0.0],
-                    "rotation": [0.0, 0.0, 0.0],
+                    "position": [0.1323, -1.6, -0.7988],
+                    "rotation": [0.0, 23.0, 0.0],
                     "scale": [1.0, 1.0, 1.0]
                 },
                 {
                     "type": "Render",
                     "model": "meshes/mushnub/mushnub.glb",
-                    "material": "materials/lit_backpack.json"
+                    "material": "materials/lit_backpack.json",
+                    "loadTextures": true
                 },
                 {
                     "type": "Animation",
-                    "clip": "Jump",
+                    "clip": "CharacterArmature|Jump",
                     "speed": 1.0,
                     "loop": true,
-                    "autoplay": true
+                    "paused": false,
+                    "startTime": 0.3429
                 }
             ]
         },
@@ -30,7 +32,7 @@
             "components": [
                 {
                     "type": "Transform",
-                    "position": [0.0, -1.55, 0.0],
+                    "position": [-0.0618, -1.55, 0.0],
                     "rotation": [0.0, 0.0, 0.0],
                     "scale": [1.0, 1.0, 1.0]
                 },
@@ -53,7 +55,8 @@
                     "intensity": 0.7,
                     "ambient": [0.03, 0.03, 0.035],
                     "diffuse": [0.62, 0.62, 0.6],
-                    "specular": [0.24, 0.24, 0.24]
+                    "specular": [0.24, 0.24, 0.24],
+                    "castShadows": true
                 }
             ]
         },
@@ -62,7 +65,7 @@
             "components": [
                 {
                     "type": "Transform",
-                    "position": [2.2, 1.8, 2.0],
+                    "position": [4.5221, 0.3629, 2.0],
                     "rotation": [0.0, 0.0, 0.0],
                     "scale": [0.15, 0.15, 0.15]
                 },
@@ -70,22 +73,24 @@
                     "type": "Render",
                     "model": "meshes/sphere/sphere.glb",
                     "material": "materials/unlit_light.json",
-                    "queue": "unlit"
+                    "queue": "unlit",
+                    "loadTextures": true
                 },
                 {
                     "type": "Light",
                     "lightType": "point",
-                    "castShadows": false,
+                    "direction": [0.0, -1.0, 0.0],
                     "color": [1.0, 0.86, 0.76],
-                    "intensity": 0.85,
+                    "intensity": 1.35,
+                    "ambient": [0.03, 0.02, 0.015],
+                    "diffuse": [0.55, 0.48, 0.42],
+                    "specular": [0.4, 0.36, 0.32],
+                    "castShadows": false,
                     "attenuation": {
                         "constant": 1.0,
                         "linear": 0.14,
                         "quadratic": 0.07
-                    },
-                    "ambient": [0.03, 0.02, 0.015],
-                    "diffuse": [0.55, 0.48, 0.42],
-                    "specular": [0.4, 0.36, 0.32]
+                    }
                 }
             ]
         },
@@ -101,7 +106,9 @@
                 {
                     "type": "Skybox",
                     "material": "assets/materials/skybox.json",
-                    "intensity": 0.2
+                    "model": "assets/meshes/cube/cube.obj",
+                    "intensity": 0.2,
+                    "scale": 50.0
                 }
             ]
         },
@@ -110,13 +117,13 @@
             "components": [
                 {
                     "type": "Transform",
-                    "position": [0.0, 1.4, 7.0],
+                    "position": [17.6246, 1.1702, 30.286],
                     "rotation": [0.0, 0.0, 0.0],
                     "scale": [1.0, 1.0, 1.0]
                 },
                 {
                     "type": "Camera",
-                    "frustrum": [45.0, 1280.0, 720.0, 0.1, 250.0],
+                    "frustrum": [45.0, 1398.0, 990.0, 0.1, 250.0],
                     "lookAt": [0.0, 0.6, 0.0],
                     "upVector": [0.0, 1.0, 0.0]
                 },
@@ -124,12 +131,12 @@
                     "type": "OrbitCameraController",
                     "target": [0.0, 0.6, 0.0],
                     "upVector": [0.0, 1.0, 0.0],
-                    "radius": 7.0,
+                    "radius": 35.0456,
                     "minRadius": 0.5,
                     "maxRadius": 400.0,
                     "zoomSpeed": 4.0,
-                    "yaw": 0.1,
-                    "pitch": 0.12,
+                    "yaw": 1.0438,
+                    "pitch": 0.0163,
                     "yawSpeed": 2.4,
                     "pitchSpeed": 2.2,
                     "maxPitch": 1.15

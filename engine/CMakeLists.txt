@@ -18,6 +18,7 @@ add_library(
     ecs/systems/render_system.hpp
     
     ecs/components/transform.hpp
+    ecs/components/name.hpp
     ecs/components/mesh_renderer.hpp
     ecs/components/light.hpp
     ecs/components/camera.hpp
@@ -53,6 +54,10 @@ add_library(
     ui/debug/panels/debug_animation_panel.cpp
     ui/debug/panels/debug_loading_panel.cpp
     ui/debug/panels/debug_stats_panel.cpp
+    ui/editor/panels/editor_files_panel.cpp
+    ui/editor/panels/editor_inspector_panel.cpp
+    ui/editor/panels/editor_outliner_panel.cpp
+    ui/editor/panels/editor_viewport_panel.cpp
     
     helpers/log.hpp
 )

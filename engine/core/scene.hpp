@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string_view>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,97 @@ struct AnimationDebugSnapshot
     std::vector<AnimationDebugEntry> entries;
 };
 
+struct EditorEntitySummary
+{
+    Entity entity;
+    std::string name;
+};
+
+struct EditorTransformState
+{
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 rotation = glm::vec3(0.0f);
+    glm::vec3 scale = glm::vec3(1.0f);
+};
+
+struct EditorLightState
+{
+    glm::vec3 ambient = glm::vec3(0.2f);
+    glm::vec3 diffuse = glm::vec3(0.5f);
+    glm::vec3 specular = glm::vec3(0.7f);
+    glm::vec3 color = glm::vec3(1.0f);
+    glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
+    float intensity = 1.0f;
+    float constant = 1.0f;
+    float linear = 0.09f;
+    float quadratic = 0.032f;
+    float innerCutoff = 12.5f;
+    float outerCutoff = 17.5f;
+    int type = 0;
+    bool castShadows = true;
+};
+
+struct EditorCameraState
+{
+    glm::vec3 lookAt = glm::vec3(0.0f);
+    glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+    float angle = 45.0f;
+    float width = 1.0f;
+    float height = 1.0f;
+    float nearPlane = 0.1f;
+    float farPlane = 150.0f;
+    bool main = false;
+};
+
+struct EditorViewportCameraState
+{
+    bool valid = false;
+    glm::mat4 view = glm::mat4(1.0f);
+    glm::mat4 projection = glm::mat4(1.0f);
+    glm::mat4 viewProjection = glm::mat4(1.0f);
+    glm::mat4 invViewProjection = glm::mat4(1.0f);
+    glm::vec3 position = glm::vec3(0.0f);
+    float viewportWidth = 1.0f;
+    float viewportHeight = 1.0f;
+};
+
+struct EditorMeshRendererState
+{
+    std::string modelPath;
+    std::string shaderPath;
+    std::string materialPath;
+    int queue = 0;
+    bool loadTextures = true;
+    bool usesResourcePipeline = false;
+};
+
+struct EditorAnimationState
+{
+    std::string clipName;
+    int clipIndex = -1;
+    float speed = 1.0f;
+    bool loop = true;
+    bool paused = false;
+    bool transitionActive = false;
+};
+
+struct EditorEntityInspectorState
+{
+    bool valid = false;
+    Entity entity;
+    std::string name;
+    bool hasTransform = false;
+    bool hasLight = false;
+    bool hasCamera = false;
+    bool hasMeshRenderer = false;
+    bool hasAnimation = false;
+    EditorTransformState transform;
+    EditorLightState light;
+    EditorCameraState camera;
+    EditorMeshRendererState meshRenderer;
+    EditorAnimationState animation;
+};
+
 class Scene
 {
 public:
@@ -54,6 +146,92 @@ public:
     virtual void OnResize(int width, int height) {}
     virtual resources::ResourceManager *GetResourceManager() { return nullptr; }
     virtual AnimationDebugSnapshot GetAnimationDebugSnapshot() const { return {}; }
+    virtual std::vector<EditorEntitySummary> GetEditorEntitySummaries() const { return {}; }
+    virtual EditorEntityInspectorState GetEditorEntityInspectorState(Entity entity) const
+    {
+        (void)entity;
+        return {};
+    }
+    virtual bool SetEditorEntityName(Entity entity, std::string_view name)
+    {
+        (void)entity;
+        (void)name;
+        return false;
+    }
+    virtual bool SetEditorTransform(Entity entity, const EditorTransformState &transform)
+    {
+        (void)entity;
+        (void)transform;
+        return false;
+    }
+    virtual bool SetEditorLight(Entity entity, const EditorLightState &light)
+    {
+        (void)entity;
+        (void)light;
+        return false;
+    }
+    virtual bool SetEditorCamera(Entity entity, const EditorCameraState &camera)
+    {
+        (void)entity;
+        (void)camera;
+        return false;
+    }
+    virtual void SetEditorViewportSize(int width, int height)
+    {
+        (void)width;
+        (void)height;
+    }
+    virtual uint32_t GetEditorViewportTextureId() const
+    {
+        return 0;
+    }
+    virtual EditorViewportCameraState GetEditorViewportCameraState() const
+    {
+        return {};
+    }
+    virtual bool OrbitEditorViewportCamera(float deltaX, float deltaY)
+    {
+        (void)deltaX;
+        (void)deltaY;
+        return false;
+    }
+    virtual bool PanEditorViewportCamera(float deltaX, float deltaY)
+    {
+        (void)deltaX;
+        (void)deltaY;
+        return false;
+    }
+    virtual bool DollyEditorViewportCamera(float deltaY)
+    {
+        (void)deltaY;
+        return false;
+    }
+    virtual Entity PickEditorEntityInViewport(float viewportX, float viewportY) const
+    {
+        (void)viewportX;
+        (void)viewportY;
+        return {};
+    }
+    virtual bool AddEditorComponent(Entity entity, std::string_view componentType)
+    {
+        (void)entity;
+        (void)componentType;
+        return false;
+    }
+    virtual bool RemoveEditorComponent(Entity entity, std::string_view componentType)
+    {
+        (void)entity;
+        (void)componentType;
+        return false;
+    }
+    virtual std::string GetEditorScenePath() const { return {}; }
+    virtual std::vector<std::string> GetEditorSceneFiles() const { return {}; }
+    virtual bool SaveEditorScene() { return false; }
+    virtual bool LoadEditorScene(std::string_view scenePath)
+    {
+        (void)scenePath;
+        return false;
+    }
     virtual bool RequestAnimationTransition(Entity entity, int clipIndex, float durationSeconds)
     {
         (void)entity;
