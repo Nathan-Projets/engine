@@ -3,3 +3,4 @@ build
 external/*
 docs/
 TODO.md
+imgui.ini

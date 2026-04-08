@@ -760,6 +760,24 @@ void Renderer::Render(const RenderFrameSnapshot &snapshot)
     ExecuteFrame(sortedSnapshot);
 }
 
+void Renderer::PresentSceneToBackbuffer() const
+{
+    if (m_sceneFramebuffer == 0)
+    {
+        return;
+    }
+
+    const GLsizei width = static_cast<GLsizei>(std::max<uint32_t>(m_viewportWidth, 1u));
+    const GLsizei height = static_cast<GLsizei>(std::max<uint32_t>(m_viewportHeight, 1u));
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_sceneFramebuffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, width, height,
+                      0, 0, width, height,
+                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::SetResourceManager(resources::ResourceManager *resourceManager)
 {
     m_resourceManager = resourceManager;

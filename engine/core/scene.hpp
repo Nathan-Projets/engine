@@ -86,6 +86,51 @@ struct EditorCameraState
     bool main = false;
 };
 
+struct EditorRigidbodyState
+{
+    int type = 1;
+    float mass = 1.0f;
+    float gravityScale = 1.0f;
+    float linearDamping = 0.05f;
+    float angularDamping = 0.8f;
+    bool useGravity = true;
+    bool lockRotation = false;
+    bool isTrigger = false;
+    glm::vec3 linearVelocity = glm::vec3(0.0f);
+    glm::vec3 angularVelocity = glm::vec3(0.0f);
+};
+
+struct EditorColliderMaterialState
+{
+    float friction = 0.5f;
+    float restitution = 0.0f;
+};
+
+struct EditorBoxColliderState
+{
+    glm::vec3 center = glm::vec3(0.0f);
+    glm::vec3 halfExtents = glm::vec3(0.5f);
+    bool isTrigger = false;
+    EditorColliderMaterialState material;
+};
+
+struct EditorSphereColliderState
+{
+    glm::vec3 center = glm::vec3(0.0f);
+    float radius = 0.5f;
+    bool isTrigger = false;
+    EditorColliderMaterialState material;
+};
+
+struct EditorCapsuleColliderState
+{
+    glm::vec3 center = glm::vec3(0.0f);
+    float radius = 0.5f;
+    float height = 1.0f;
+    bool isTrigger = false;
+    EditorColliderMaterialState material;
+};
+
 struct EditorViewportCameraState
 {
     bool valid = false;
@@ -126,13 +171,21 @@ struct EditorEntityInspectorState
     bool hasTransform = false;
     bool hasLight = false;
     bool hasCamera = false;
+    bool hasRigidbody = false;
     bool hasMeshRenderer = false;
     bool hasAnimation = false;
+    bool hasBoxCollider = false;
+    bool hasSphereCollider = false;
+    bool hasCapsuleCollider = false;
     EditorTransformState transform;
     EditorLightState light;
     EditorCameraState camera;
+    EditorRigidbodyState rigidbody;
     EditorMeshRendererState meshRenderer;
     EditorAnimationState animation;
+    EditorBoxColliderState boxCollider;
+    EditorSphereColliderState sphereCollider;
+    EditorCapsuleColliderState capsuleCollider;
 };
 
 class Scene
@@ -174,6 +227,30 @@ public:
     {
         (void)entity;
         (void)camera;
+        return false;
+    }
+    virtual bool SetEditorRigidbody(Entity entity, const EditorRigidbodyState &rigidbody)
+    {
+        (void)entity;
+        (void)rigidbody;
+        return false;
+    }
+    virtual bool SetEditorBoxCollider(Entity entity, const EditorBoxColliderState &collider)
+    {
+        (void)entity;
+        (void)collider;
+        return false;
+    }
+    virtual bool SetEditorSphereCollider(Entity entity, const EditorSphereColliderState &collider)
+    {
+        (void)entity;
+        (void)collider;
+        return false;
+    }
+    virtual bool SetEditorCapsuleCollider(Entity entity, const EditorCapsuleColliderState &collider)
+    {
+        (void)entity;
+        (void)collider;
         return false;
     }
     virtual void SetEditorViewportSize(int width, int height)
@@ -224,6 +301,32 @@ public:
         (void)componentType;
         return false;
     }
+    virtual std::string ExportEditorSceneSnapshot() const { return {}; }
+    virtual bool RestoreEditorSceneSnapshot(std::string_view snapshot)
+    {
+        (void)snapshot;
+        return false;
+    }
+    virtual Entity CreateEditorEntity(std::string_view name)
+    {
+        (void)name;
+        return {};
+    }
+    virtual bool DeleteEditorEntity(Entity entity)
+    {
+        (void)entity;
+        return false;
+    }
+    virtual Entity DuplicateEditorEntity(Entity entity)
+    {
+        (void)entity;
+        return {};
+    }
+    virtual bool FrameEditorEntity(Entity entity)
+    {
+        (void)entity;
+        return false;
+    }
     virtual std::string GetEditorScenePath() const { return {}; }
     virtual std::vector<std::string> GetEditorSceneFiles() const { return {}; }
     virtual bool SaveEditorScene() { return false; }
@@ -239,6 +342,10 @@ public:
         (void)durationSeconds;
         return false;
     }
+    virtual bool StartEditorPlayMode() { return false; }
+    virtual bool StopEditorPlayMode() { return false; }
+    virtual bool IsEditorPlayMode() const { return false; }
+    virtual void PresentToScreen() {}
 
     void Render(float deltaTime)
     {

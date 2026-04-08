@@ -2,22 +2,28 @@
 
 #include <imgui.h>
 
-Application::Application(int width, int height) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false), m_initialized(false)
+Application::Application(int width, int height, Options options) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false), m_initialized(false), m_options(std::move(options))
 {
 }
 
 Application::~Application()
 {
-    m_debugUI.Shutdown();
+    if (m_debugUIInitialized)
+    {
+        m_debugUI.Shutdown();
+    }
     glfwTerminate();
 }
 
 void Application::SetScene(Scene *scene)
 {
     m_scene = scene;
-    m_editorContext.BindScene(m_scene);
-    m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
-    m_animationPanel.SetScene(m_scene);
+    if (m_options.enableEditorUI)
+    {
+        m_editorContext.BindScene(m_scene);
+        m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
+        m_animationPanel.SetScene(m_scene);
+    }
 }
 
 bool Application::Init()
@@ -27,7 +33,7 @@ bool Application::Init()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    m_window = glfwCreateWindow(m_width, m_height, "Engine", nullptr, nullptr);
+    m_window = glfwCreateWindow(m_width, m_height, m_options.windowTitle.c_str(), nullptr, nullptr);
     if (m_window == nullptr)
     {
         ERROR("GLFW window not created.");
@@ -48,27 +54,39 @@ bool Application::Init()
 
     InputManager::Get().AttachToWindow(m_window);
 
-    m_debugUI.Init(m_window);
-    m_debugUI.AddPanel(&m_statsPanel);
-    m_debugUI.AddPanel(&m_animationPanel);
-    m_debugUI.AddPanel(&m_loadingPanel);
-    m_debugUI.AddPanel(&m_filesPanel);
-    m_debugUI.AddPanel(&m_outlinerPanel);
-    m_debugUI.AddPanel(&m_inspectorPanel);
-    m_debugUI.AddPanel(&m_viewportPanel);
+    if (m_options.enableEditorUI || m_options.enableDebugUI)
+    {
+        m_debugUI.Init(m_window);
+        m_debugUIInitialized = true;
 
-    m_filesPanel.SetContext(&m_editorContext);
-    m_outlinerPanel.SetContext(&m_editorContext);
-    m_inspectorPanel.SetContext(&m_editorContext);
-    m_viewportPanel.SetContext(&m_editorContext);
+        if (m_options.enableDebugUI)
+        {
+            m_debugUI.AddPanel(&m_statsPanel);
+            m_debugUI.AddPanel(&m_animationPanel);
+            m_debugUI.AddPanel(&m_loadingPanel);
+            m_statsPanel.visible = m_debugPanelsVisible;
+            m_animationPanel.visible = m_debugPanelsVisible;
+            m_loadingPanel.visible = m_debugPanelsVisible;
+        }
 
-    m_filesPanel.visible = true;
-    m_outlinerPanel.visible = true;
-    m_inspectorPanel.visible = true;
-    m_viewportPanel.visible = true;
-    m_statsPanel.visible = m_debugPanelsVisible;
-    m_animationPanel.visible = m_debugPanelsVisible;
-    m_loadingPanel.visible = m_debugPanelsVisible;
+        if (m_options.enableEditorUI)
+        {
+            m_debugUI.AddPanel(&m_filesPanel);
+            m_debugUI.AddPanel(&m_outlinerPanel);
+            m_debugUI.AddPanel(&m_inspectorPanel);
+            m_debugUI.AddPanel(&m_viewportPanel);
+
+            m_filesPanel.SetContext(&m_editorContext);
+            m_outlinerPanel.SetContext(&m_editorContext);
+            m_inspectorPanel.SetContext(&m_editorContext);
+            m_viewportPanel.SetContext(&m_editorContext);
+
+            m_filesPanel.visible = true;
+            m_outlinerPanel.visible = true;
+            m_inspectorPanel.visible = true;
+            m_viewportPanel.visible = true;
+        }
+    }
 
     m_initialized = true;
 
@@ -105,9 +123,12 @@ bool Application::Run()
         m_scene->OnResize(framebufferWidth, framebufferHeight);
     }
 
-    m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
-    m_animationPanel.SetScene(m_scene);
-    m_editorContext.BindScene(m_scene);
+    if (m_options.enableEditorUI)
+    {
+        m_loadingPanel.SetResourceManager(m_scene ? m_scene->GetResourceManager() : nullptr);
+        m_animationPanel.SetScene(m_scene);
+        m_editorContext.BindScene(m_scene);
+    }
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -135,7 +156,7 @@ bool Application::Run()
             Stop();
         }
 
-        if (InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_F1))
+        if (m_options.enableDebugUI && InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_F1))
         {
             m_debugPanelsVisible = !m_debugPanelsVisible;
             m_statsPanel.visible = m_debugPanelsVisible;
@@ -143,8 +164,49 @@ bool Application::Run()
             m_loadingPanel.visible = m_debugPanelsVisible;
         }
 
-        InputManager::Get().SetMouseInputBlocked(!m_editorContext.IsViewportHovered());
-        InputManager::Get().SetKeyboardInputBlocked(!m_editorContext.IsViewportFocused());
+        const bool ctrlDown = InputManager::Get().IsKeyPressedGlobal(GLFW_KEY_LEFT_CONTROL) || InputManager::Get().IsKeyPressedGlobal(GLFW_KEY_RIGHT_CONTROL);
+        const bool shiftDown = InputManager::Get().IsKeyPressedGlobal(GLFW_KEY_LEFT_SHIFT) || InputManager::Get().IsKeyPressedGlobal(GLFW_KEY_RIGHT_SHIFT);
+        if (m_options.enableEditorUI && ctrlDown && InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_S) && m_scene && !m_editorContext.IsPlaying())
+        {
+            if (m_scene->SaveEditorScene())
+            {
+                m_editorContext.ClearDirty();
+            }
+        }
+
+        // ctrl + Z needs to be W for AZERTY
+        if (m_options.enableEditorUI && ctrlDown && InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_W) && !m_editorContext.IsPlaying())
+        {
+            if (shiftDown)
+            {
+                m_editorContext.Redo();
+            }
+            else
+            {
+                m_editorContext.Undo();
+            }
+        }
+
+        if (m_options.enableEditorUI && ctrlDown && InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_Y) && !m_editorContext.IsPlaying())
+        {
+            m_editorContext.Redo();
+        }
+
+        if (m_options.enableEditorUI && ctrlDown && InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_P))
+        {
+            m_editorContext.TogglePlayMode();
+        }
+
+        if (m_options.enableEditorUI)
+        {
+            InputManager::Get().SetMouseInputBlocked(!m_editorContext.IsViewportHovered());
+            InputManager::Get().SetKeyboardInputBlocked(!m_editorContext.IsViewportFocused());
+        }
+        else
+        {
+            InputManager::Get().SetMouseInputBlocked(false);
+            InputManager::Get().SetKeyboardInputBlocked(false);
+        }
 
         if (m_scene)
         {
@@ -176,16 +238,27 @@ bool Application::Run()
         stats.viewportHeight = framebufferHeight;
         stats.mousePosition = InputManager::Get().GetMousePosition();
         stats.sceneLoaded = m_scene != nullptr;
-        m_statsPanel.SetStats(stats);
-        m_animationPanel.SetSnapshot(m_scene ? m_scene->GetAnimationDebugSnapshot() : AnimationDebugSnapshot{});
+        if (m_options.enableDebugUI)
+        {
+            m_statsPanel.SetStats(stats);
+            m_animationPanel.SetSnapshot(m_scene ? m_scene->GetAnimationDebugSnapshot() : AnimationDebugSnapshot{});
+        }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, framebufferWidth, framebufferHeight);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        m_debugUI.BeginFrame();
-        m_debugUI.DrawPanels();
-        m_debugUI.EndFrame();
+        if (m_scene && !m_options.enableEditorUI)
+        {
+            m_scene->PresentToScreen();
+        }
+
+        if (m_debugUIInitialized)
+        {
+            m_debugUI.BeginFrame();
+            m_debugUI.DrawPanels();
+            m_debugUI.EndFrame();
+        }
 
         InputManager::Get().ClearFrameState();
 

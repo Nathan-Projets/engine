@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "../component.hpp"
 
@@ -18,14 +19,35 @@ public:
     {
         glm::mat4 mat = glm::mat4(1.0f);
         mat = glm::translate(mat, position);
-        mat = glm::rotate(mat, glm::radians(rotation.x), glm::vec3(1, 0, 0));
-        mat = glm::rotate(mat, glm::radians(rotation.y), glm::vec3(0, 1, 0));
-        mat = glm::rotate(mat, glm::radians(rotation.z), glm::vec3(0, 0, 1));
+        if (hasRotationOverride)
+        {
+            mat *= glm::mat4_cast(rotationOverride);
+        }
+        else
+        {
+            mat = glm::rotate(mat, glm::radians(rotation.x), glm::vec3(1, 0, 0));
+            mat = glm::rotate(mat, glm::radians(rotation.y), glm::vec3(0, 1, 0));
+            mat = glm::rotate(mat, glm::radians(rotation.z), glm::vec3(0, 0, 1));
+        }
         mat = glm::scale(mat, scale);
         return mat;
+    }
+
+    void SetRotationOverride(const glm::quat &value)
+    {
+        rotationOverride = glm::normalize(value);
+        hasRotationOverride = true;
+    }
+
+    void ClearRotationOverride()
+    {
+        rotationOverride = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        hasRotationOverride = false;
     }
 
     glm::vec3 position;
     glm::vec3 rotation;
     glm::vec3 scale;
+    glm::quat rotationOverride = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    bool hasRotationOverride = false;
 };

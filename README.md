@@ -34,8 +34,14 @@ cmake --build . --config Debug
 ```bash
 # From the build directory
 cmake --build . --config Debug
-./bin/Debug/Executable.exe
+./bin/Debug/Editor.exe
 ```
+
+### Executables
+
+- `Editor`: author scenes, inspect entities, tweak content, and iterate in-editor.
+- `Game`: run the gameplay bootstrap scene without editor UI or debug panels.
+- `Executable`: compatibility target that currently maps to the editor build.
 
 ## Documentation
 
@@ -109,10 +115,51 @@ assets/
 
 ## Development
 
+### Game Development Workflow
+
+1. Implement reusable engine/runtime features in `engine/`.
+2. Implement game-specific components, systems, and scene bootstrap in `game/`.
+3. Use `Editor.exe` to build scenes and tune component data in `assets/scenes/`.
+4. Use `Game.exe` to validate the actual player-facing runtime without editor tooling.
+5. Pass a scene path to `Game.exe` when you want to run the JSON-backed `EditorScene` runtime instead of the default gameplay bootstrap scene.
+
+### Build Targets
+
+```bash
+# Editor build
+cmake --build build --config Release --target Editor
+
+# Runtime game build
+cmake --build build --config Release --target Game
+```
+
+Release outputs are generated under `build/bin/Release/`.
+
+Examples:
+
+```bash
+# Default gameplay bootstrap scene
+./build/bin/Release/Game.exe
+
+# Run a JSON-authored scene with the heavier EditorScene runtime
+./build/bin/Release/Game.exe assets/scenes/backpack_scene.json
+
+# Run the sample physics authoring scene with box/sphere/capsule/trigger setup
+./build/bin/Release/Game.exe assets/scenes/physics_authoring_scene.json
+```
+
+### Shipping
+
+For a playable build, package:
+
+- `build/bin/Release/Game.exe`
+- the `assets/` directory
+- any runtime DLLs produced beside the executable in the build output
+
 ### Adding New Components
 
 1. Define the component in `engine/ecs/components/`
-2. Register a loader in `game/scene/game_scene.cpp`
+2. Register a loader in `game/components/component_registration.cpp`
 3. Reference in scene JSON with component type name
 
 ### Adding New Materials

@@ -28,6 +28,26 @@ void EditorFilesPanel::Draw()
     std::vector<std::string> sceneFiles = scene->GetEditorSceneFiles();
     std::sort(sceneFiles.begin(), sceneFiles.end());
 
+    if (ImGui::Button(m_context->IsPlaying() ? "Stop" : "Play"))
+    {
+        m_context->TogglePlayMode();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!m_context->CanUndo());
+    if (ImGui::Button("Undo"))
+    {
+        m_context->Undo();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!m_context->CanRedo());
+    if (ImGui::Button("Redo"))
+    {
+        m_context->Redo();
+    }
+    ImGui::EndDisabled();
+
+    ImGui::BeginDisabled(m_context->IsPlaying());
     if (ImGui::Button("Save Scene"))
     {
         if (scene->SaveEditorScene())
@@ -35,8 +55,16 @@ void EditorFilesPanel::Draw()
             m_context->ClearDirty();
         }
     }
+    ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::TextUnformatted(m_context->IsDirty() ? "Unsaved changes" : "Saved");
+    if (m_context->IsPlaying())
+    {
+        ImGui::TextUnformatted("Play mode");
+    }
+    else
+    {
+        ImGui::TextUnformatted(m_context->IsDirty() ? "Unsaved changes" : "Saved");
+    }
     ImGui::TextWrapped("Active scene: %s%s",
                        activeScenePath.empty() ? "(unknown)" : activeScenePath.c_str(),
                        m_context->IsDirty() ? " *" : "");
@@ -53,14 +81,16 @@ void EditorFilesPanel::Draw()
     for (const std::string &sceneFile : sceneFiles)
     {
         const bool isSelected = sceneFile == activeScenePath;
+        ImGui::BeginDisabled(m_context->IsPlaying());
         if (ImGui::Selectable(sceneFile.c_str(), isSelected) && !isSelected)
         {
             if (scene->LoadEditorScene(sceneFile))
             {
                 m_context->ClearSelection();
-                m_context->ClearDirty();
+                m_context->ResetHistory();
             }
         }
+        ImGui::EndDisabled();
     }
     ImGui::EndChild();
 

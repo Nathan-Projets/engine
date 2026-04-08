@@ -2,6 +2,117 @@
 
 #include <algorithm>
 
+#include "physics/collider.hpp"
+#include "physics/rigidbody.hpp"
+
+namespace
+{
+    RigidbodyType ReadRigidbodyType(simdjson::ondemand::object componentJson, RigidbodyType defaultValue)
+    {
+        try
+        {
+            simdjson::simdjson_result<std::string_view> typeResult = componentJson["bodyType"].get_string();
+            if (typeResult.error())
+            {
+                return defaultValue;
+            }
+
+            const std::string_view type = typeResult.value();
+            if (type == "static")
+            {
+                return RigidbodyType::Static;
+            }
+            if (type == "kinematic")
+            {
+                return RigidbodyType::Kinematic;
+            }
+            if (type == "dynamic")
+            {
+                return RigidbodyType::Dynamic;
+            }
+        }
+        catch (const simdjson::simdjson_error &)
+        {
+        }
+
+        return defaultValue;
+    }
+
+    PhysicsMaterial ReadPhysicsMaterial(simdjson::ondemand::object componentJson)
+    {
+        PhysicsMaterial material;
+        try
+        {
+            simdjson::simdjson_result<simdjson::ondemand::object> materialResult = componentJson["material"].get_object();
+            if (!materialResult.error())
+            {
+                simdjson::ondemand::object materialJson = materialResult.value();
+                material.friction = SceneLoader::ReadFloat(materialJson, "friction", material.friction);
+                material.restitution = SceneLoader::ReadFloat(materialJson, "restitution", material.restitution);
+            }
+        }
+        catch (const simdjson::simdjson_error &)
+        {
+        }
+
+        return material;
+    }
+
+    bool LoadIntoWorldDocument(simdjson::ondemand::document &document, World *world, resources::ResourceManager *resourceManager)
+    {
+        using namespace simdjson;
+
+        ondemand::array entities = document["entities"].get_array();
+        if (!entities.is_empty())
+        {
+            for (ondemand::object entityJson : entities)
+            {
+                Entity entity = world->CreateEntity();
+                std::string entityName = "Entity " + std::to_string(entity.GetID());
+
+                simdjson::simdjson_result<std::string_view> nameResult = entityJson["name"].get_string();
+                if (!nameResult.error())
+                {
+                    entityName = std::string(nameResult.value());
+                }
+
+                world->AddComponent<Name>(entity, entityName);
+                DEBUG("Detected entity: " << entityName);
+
+                ondemand::array components = entityJson["components"].get_array();
+                if (!components.is_empty())
+                {
+                    for (ondemand::object componentJson : components)
+                    {
+                        std::string_view type = componentJson["type"].get_string();
+
+                        ComponentLoaderMap &loaders = SceneLoader::GetComponentLoaders();
+                        auto loaderIt = loaders.find(std::string(type));
+                        if (loaderIt == loaders.end())
+                        {
+                            WARNING("\tNo component of type: " << type);
+                            continue;
+                        }
+
+                        DEBUG("\tAdding component: " << type);
+                        loaderIt->second(entity, componentJson, *world, resourceManager);
+                    }
+                }
+                else
+                {
+                    DEBUG("\tNo components to load.");
+                }
+            }
+        }
+        else
+        {
+            DEBUG("No entities to load.");
+        }
+
+        return true;
+    }
+}
+
 ComponentLoaderMap &SceneLoader::GetComponentLoaders()
 {
     static ComponentLoaderMap loaders;
@@ -50,6 +161,30 @@ float SceneLoader::ReadFloat(simdjson::ondemand::object componentJson, const cha
             return defaultValue;
 
         return static_cast<float>(result.value());
+    }
+    catch (const simdjson::simdjson_error &)
+    {
+        return defaultValue;
+    }
+}
+
+bool SceneLoader::ReadBool(simdjson::ondemand::object componentJson, const char *fieldName, bool defaultValue)
+{
+    try
+    {
+        simdjson::simdjson_result<simdjson::ondemand::value> valueResult = componentJson[fieldName];
+        if (valueResult.error())
+            return defaultValue;
+
+        simdjson::ondemand::value value = valueResult.value();
+        if (value.is_null())
+            return defaultValue;
+
+        simdjson::simdjson_result<bool> result = value.get_bool();
+        if (result.error())
+            return defaultValue;
+
+        return result.value();
     }
     catch (const simdjson::simdjson_error &)
     {
@@ -414,6 +549,61 @@ void SceneLoader::RegisterBuiltInComponentLoaders()
                         animationPlayer->currentTimeSeconds = ReadFloat(componentJson, "startTime", 0.0f);
                     });
 
+    loaders.emplace("Rigidbody",
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
+                    {
+                        (void)resourceManager;
+
+                        Rigidbody *rigidbody = world.AddComponent<Rigidbody>(entity);
+                        rigidbody->type = ReadRigidbodyType(componentJson, rigidbody->type);
+                        rigidbody->mass = ReadFloat(componentJson, "mass", rigidbody->mass);
+                        rigidbody->gravityScale = ReadFloat(componentJson, "gravityScale", rigidbody->gravityScale);
+                        rigidbody->linearDamping = ReadFloat(componentJson, "linearDamping", rigidbody->linearDamping);
+                        rigidbody->angularDamping = ReadFloat(componentJson, "angularDamping", rigidbody->angularDamping);
+                        rigidbody->useGravity = ReadBool(componentJson, "useGravity", rigidbody->useGravity);
+                        rigidbody->lockRotation = ReadBool(componentJson, "lockRotation", rigidbody->lockRotation);
+                        rigidbody->isTrigger = ReadBool(componentJson, "isTrigger", rigidbody->isTrigger);
+                        rigidbody->linearVelocity = ReadVec3(componentJson, "linearVelocity", rigidbody->linearVelocity);
+                        rigidbody->angularVelocity = ReadVec3(componentJson, "angularVelocity", rigidbody->angularVelocity);
+                    });
+
+    loaders.emplace("BoxCollider",
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
+                    {
+                        (void)resourceManager;
+
+                        BoxCollider *collider = world.AddComponent<BoxCollider>(entity);
+                        collider->center = ReadVec3(componentJson, "center", collider->center);
+                        collider->halfExtents = ReadVec3(componentJson, "halfExtents", collider->halfExtents);
+                        collider->isTrigger = ReadBool(componentJson, "isTrigger", collider->isTrigger);
+                        collider->material = ReadPhysicsMaterial(componentJson);
+                    });
+
+    loaders.emplace("SphereCollider",
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
+                    {
+                        (void)resourceManager;
+
+                        SphereCollider *collider = world.AddComponent<SphereCollider>(entity);
+                        collider->center = ReadVec3(componentJson, "center", collider->center);
+                        collider->radius = ReadFloat(componentJson, "radius", collider->radius);
+                        collider->isTrigger = ReadBool(componentJson, "isTrigger", collider->isTrigger);
+                        collider->material = ReadPhysicsMaterial(componentJson);
+                    });
+
+    loaders.emplace("CapsuleCollider",
+                    [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
+                    {
+                        (void)resourceManager;
+
+                        CapsuleCollider *collider = world.AddComponent<CapsuleCollider>(entity);
+                        collider->center = ReadVec3(componentJson, "center", collider->center);
+                        collider->radius = ReadFloat(componentJson, "radius", collider->radius);
+                        collider->height = ReadFloat(componentJson, "height", collider->height);
+                        collider->isTrigger = ReadBool(componentJson, "isTrigger", collider->isTrigger);
+                        collider->material = ReadPhysicsMaterial(componentJson);
+                    });
+
     loaders.emplace("Skybox",
                     [](Entity entity, simdjson::ondemand::object componentJson, World &world, resources::ResourceManager *resourceManager)
                     {
@@ -451,54 +641,18 @@ bool SceneLoader::LoadIntoWorld(const std::string &filepath, World *world, resou
     ondemand::document document = parser.iterate(json);
 
     INFO("Loading scene from " << filepath);
-    ondemand::array entities = document["entities"].get_array();
-    if (!entities.is_empty())
-    {
-        for (ondemand::object entityJson : entities)
-        {
-            Entity entity = world->CreateEntity();
-            std::string entityName = "Entity " + std::to_string(entity.GetID());
+    return LoadIntoWorldDocument(document, world, resourceManager);
+}
 
-            simdjson::simdjson_result<std::string_view> nameResult = entityJson["name"].get_string();
-            if (!nameResult.error())
-            {
-                entityName = std::string(nameResult.value());
-            }
+bool SceneLoader::LoadIntoWorldFromJson(std::string_view json, World *world, resources::ResourceManager *resourceManager)
+{
+    RegisterBuiltInComponentLoaders();
 
-            world->AddComponent<Name>(entity, entityName);
-            DEBUG("Detected entity: " << entityName);
-
-            ondemand::array components = entityJson["components"].get_array();
-            if (!components.is_empty())
-            {
-                for (ondemand::object componentJson : components)
-                {
-                    std::string_view type = componentJson["type"].get_string();
-
-                    ComponentLoaderMap &loaders = GetComponentLoaders();
-                    auto loaderIt = loaders.find(std::string(type));
-                    if (loaderIt == loaders.end())
-                    {
-                        WARNING("\tNo component of type: " << type);
-                        continue;
-                    }
-
-                    DEBUG("\tAdding component: " << type);
-                    loaderIt->second(entity, componentJson, *world, resourceManager);
-                }
-            }
-            else
-            {
-                DEBUG("\tNo components to load.");
-            }
-        }
-    }
-    else
-    {
-        DEBUG("No entities to load.");
-    }
-
-    return true;
+    using namespace simdjson;
+    static ondemand::parser parser;
+    padded_string paddedJson(json);
+    ondemand::document document = parser.iterate(paddedJson);
+    return LoadIntoWorldDocument(document, world, resourceManager);
 }
 
 std::shared_ptr<Scene> SceneLoader::LoadScene(const std::string &filepath, World *world, resources::ResourceManager *resourceManager)

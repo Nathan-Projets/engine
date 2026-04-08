@@ -79,6 +79,13 @@ public:
     /// @return true if load succeeded, false on parse/IO errors
     static bool LoadIntoWorld(const std::string &filepath, World *world, resources::ResourceManager *resourceManager = nullptr);
 
+    /// @brief Load a scene from an in-memory JSON string into an existing world
+    /// @param json Raw scene JSON
+    /// @param world Target world to populate with entities
+    /// @param resourceManager Resource manager for async asset loading
+    /// @return true if load succeeded, false on parse errors
+    static bool LoadIntoWorldFromJson(std::string_view json, World *world, resources::ResourceManager *resourceManager = nullptr);
+
     /// @brief Load a scene from JSON file and create a new Scene object
     /// @param filepath Path to the scene JSON file
     /// @param world Target world to populate
@@ -94,6 +101,9 @@ public:
 
     /// @brief Helper: Read a float field from component JSON with default fallback
     static float ReadFloat(simdjson::ondemand::object componentJson, const char *fieldName, float defaultValue);
+
+    /// @brief Helper: Read a bool field from component JSON with default fallback
+    static bool ReadBool(simdjson::ondemand::object componentJson, const char *fieldName, bool defaultValue);
 
     /// @brief Helper: Read a vec3 field from component JSON with default fallback
     static glm::vec3 ReadVec3(simdjson::ondemand::object componentJson, const char *fieldName, const glm::vec3 &defaultValue);

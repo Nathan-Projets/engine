@@ -95,6 +95,7 @@ public:
 
     // Snapshot API: provide the fully built frame data directly.
     void Render(const RenderFrameSnapshot &snapshot);
+    void PresentSceneToBackbuffer() const;
 
     void SetResourceManager(resources::ResourceManager *resourceManager);
     uint32_t GetSceneColorTextureId() const noexcept { return m_sceneColorTexture; }

@@ -28,6 +28,9 @@
 #include "../../engine/resources/loaders/scene_loader.hpp"
 #include "../components/light_orbit_controller.hpp"
 #include "../components/orbit_camera_controller.hpp"
+#include "runtime_scene_support.hpp"
+#include "../../engine/physics/collider.hpp"
+#include "../../engine/physics/rigidbody.hpp"
 #include "../systems/light_orbit_controller_system.hpp"
 #include "../systems/orbit_camera_controller_system.hpp"
 
@@ -123,6 +126,26 @@ namespace
         return normalized;
     }
 
+    bool HasAnyCollider(const World &world, Entity entity)
+    {
+        return world.HasComponent<BoxCollider>(entity) ||
+               world.HasComponent<SphereCollider>(entity) ||
+               world.HasComponent<CapsuleCollider>(entity);
+    }
+
+    std::string RigidbodyTypeToJson(RigidbodyType type)
+    {
+        switch (type)
+        {
+        case RigidbodyType::Static:
+            return "static";
+        case RigidbodyType::Kinematic:
+            return "kinematic";
+        default:
+            return "dynamic";
+        }
+    }
+
     void WriteStringField(std::ostream &stream, int indent, std::string_view key, std::string_view value, bool withComma = true)
     {
         WriteIndent(stream, indent);
@@ -138,6 +161,21 @@ namespace
     {
         WriteIndent(stream, indent);
         stream << '"' << key << "\": " << FloatToJson(value);
+        if (withComma)
+        {
+            stream << ',';
+        }
+        stream << '\n';
+    }
+
+    void WritePhysicsMaterialObject(std::ostream &stream, int indent, const PhysicsMaterial &material, bool withComma = true)
+    {
+        WriteIndent(stream, indent);
+        stream << "\"material\": {\n";
+        WriteFloatField(stream, indent + 4, "friction", material.friction);
+        WriteFloatField(stream, indent + 4, "restitution", material.restitution, false);
+        WriteIndent(stream, indent);
+        stream << '}';
         if (withComma)
         {
             stream << ',';
@@ -381,18 +419,484 @@ namespace
         return std::max(std::max(fitDistanceVertical, fitDistanceHorizontal) * 1.15f, 2.0f);
     }
 
+    SceneBounds BuildEntityBounds(const World &world, resources::ResourceManager *resourceManager, Entity entity)
+    {
+        SceneBounds bounds;
+        const Transform *transform = world.GetComponent<Transform>(entity);
+        if (!transform)
+        {
+            return bounds;
+        }
+
+        const MeshRenderer *renderer = world.GetComponent<MeshRenderer>(entity);
+        if (!renderer || !resourceManager)
+        {
+            ExpandBounds(bounds, transform->position);
+            bounds.contributorCount = 1;
+            return bounds;
+        }
+
+        const resources::Model *model = resourceManager->Get(renderer->GetModelHandle());
+        if (!model || !model->IsLoaded() || model->IsEmpty())
+        {
+            ExpandBounds(bounds, transform->position);
+            bounds.complete = model && model->HasFailed();
+            bounds.contributorCount = 1;
+            return bounds;
+        }
+
+        const glm::vec3 modelMin = model->GetBoundsMin();
+        const glm::vec3 modelMax = model->GetBoundsMax();
+        const glm::mat4 worldMatrix = transform->GetMatrix();
+        for (int x = 0; x < 2; ++x)
+        {
+            for (int y = 0; y < 2; ++y)
+            {
+                for (int z = 0; z < 2; ++z)
+                {
+                    const glm::vec3 corner(
+                        x == 0 ? modelMin.x : modelMax.x,
+                        y == 0 ? modelMin.y : modelMax.y,
+                        z == 0 ? modelMin.z : modelMax.z);
+                    ExpandBounds(bounds, glm::vec3(worldMatrix * glm::vec4(corner, 1.0f)));
+                }
+            }
+        }
+
+        bounds.contributorCount = 1;
+        return bounds;
+    }
+
+    void CopySupportedEditorComponents(World &world, Entity source, Entity target)
+    {
+        if (const Transform *transform = world.GetComponent<Transform>(source))
+        {
+            world.AddComponent<Transform>(target, transform->position, transform->rotation, transform->scale);
+        }
+
+        if (const Light *light = world.GetComponent<Light>(source))
+        {
+            *world.AddComponent<Light>(target) = *light;
+        }
+
+        if (const Camera *camera = world.GetComponent<Camera>(source))
+        {
+            Camera *targetCamera = world.AddComponent<Camera>(target,
+                                                              camera->GetProjection().GetFrustrum(),
+                                                              camera->GetProjection().GetLookAt(),
+                                                              camera->GetProjection().GetUpVector(),
+                                                              false);
+            targetCamera->main = false;
+        }
+
+        if (const Rigidbody *rigidbody = world.GetComponent<Rigidbody>(source))
+        {
+            *world.AddComponent<Rigidbody>(target) = *rigidbody;
+        }
+
+        if (const BoxCollider *boxCollider = world.GetComponent<BoxCollider>(source))
+        {
+            *world.AddComponent<BoxCollider>(target) = *boxCollider;
+        }
+
+        if (const SphereCollider *sphereCollider = world.GetComponent<SphereCollider>(source))
+        {
+            *world.AddComponent<SphereCollider>(target) = *sphereCollider;
+        }
+
+        if (const CapsuleCollider *capsuleCollider = world.GetComponent<CapsuleCollider>(source))
+        {
+            *world.AddComponent<CapsuleCollider>(target) = *capsuleCollider;
+        }
+
+        if (const MeshRenderer *meshRenderer = world.GetComponent<MeshRenderer>(source))
+        {
+            MeshRenderer *targetRenderer = world.AddComponent<MeshRenderer>(target);
+            targetRenderer->SetModelHandle(meshRenderer->GetModelHandle());
+            targetRenderer->SetShaderHandle(meshRenderer->GetShaderHandle());
+            targetRenderer->SetMaterialHandle(meshRenderer->GetMaterialHandle());
+            targetRenderer->SetMaterialData(meshRenderer->GetMaterialData());
+            targetRenderer->SetQueue(meshRenderer->GetQueue());
+            targetRenderer->SetLoadTextures(meshRenderer->ShouldLoadTextures());
+        }
+
+        if (const AnimationPlayer *animation = world.GetComponent<AnimationPlayer>(source))
+        {
+            *world.AddComponent<AnimationPlayer>(target) = *animation;
+        }
+
+        if (const SkeletonPose *pose = world.GetComponent<SkeletonPose>(source))
+        {
+            *world.AddComponent<SkeletonPose>(target) = *pose;
+        }
+
+        if (const Skybox *skybox = world.GetComponent<Skybox>(source))
+        {
+            *world.AddComponent<Skybox>(target) = *skybox;
+        }
+
+        if (const OrbitCameraController *orbit = world.GetComponent<OrbitCameraController>(source))
+        {
+            *world.AddComponent<OrbitCameraController>(target) = *orbit;
+        }
+
+        if (const LightOrbitController *lightOrbit = world.GetComponent<LightOrbitController>(source))
+        {
+            *world.AddComponent<LightOrbitController>(target) = *lightOrbit;
+        }
+    }
+
+    std::string SerializeWorldToSceneJson(const World &world, resources::ResourceManager *resourceManager, std::string_view scenePath)
+    {
+        std::ostringstream output;
+        std::vector<Entity> entities(world.GetAllEntities().begin(), world.GetAllEntities().end());
+        std::sort(entities.begin(), entities.end(), [](Entity left, Entity right)
+                  { return left.GetID() < right.GetID(); });
+
+        const std::string sceneName = std::filesystem::path(scenePath).stem().string();
+        output << "{\n";
+        WriteStringField(output, 4, "name", sceneName);
+        WriteStringField(output, 4, "version", "1.0");
+        WriteIndent(output, 4);
+        output << "\"entities\": [\n";
+
+        for (size_t entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
+        {
+            const Entity entity = entities[entityIndex];
+            const Name *name = world.GetComponent<Name>(entity);
+            const Transform *transform = world.GetComponent<Transform>(entity);
+            const MeshRenderer *meshRenderer = world.GetComponent<MeshRenderer>(entity);
+            const Light *light = world.GetComponent<Light>(entity);
+            const Camera *camera = world.GetComponent<Camera>(entity);
+            const AnimationPlayer *animation = world.GetComponent<AnimationPlayer>(entity);
+            const Skybox *skybox = world.GetComponent<Skybox>(entity);
+            const OrbitCameraController *orbitCamera = world.GetComponent<OrbitCameraController>(entity);
+            const LightOrbitController *lightOrbit = world.GetComponent<LightOrbitController>(entity);
+
+            WriteIndent(output, 8);
+            output << "{\n";
+            WriteStringField(output, 12, "name", name ? name->value : ("Entity " + std::to_string(entity.GetID())));
+            WriteIndent(output, 12);
+            output << "\"components\": [\n";
+
+            bool wroteAnyComponent = false;
+            auto writeComponentSeparator = [&output, &wroteAnyComponent]()
+            {
+                if (wroteAnyComponent)
+                {
+                    output << ",\n";
+                }
+                wroteAnyComponent = true;
+            };
+
+            if (transform)
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "Transform");
+                WriteVec3Field(output, 20, "position", transform->position);
+                WriteVec3Field(output, 20, "rotation", transform->rotation);
+                WriteVec3Field(output, 20, "scale", transform->scale, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (const Rigidbody *rigidbody = world.GetComponent<Rigidbody>(entity))
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "Rigidbody");
+                WriteStringField(output, 20, "bodyType", RigidbodyTypeToJson(rigidbody->type));
+                WriteFloatField(output, 20, "mass", rigidbody->mass);
+                WriteFloatField(output, 20, "gravityScale", rigidbody->gravityScale);
+                WriteFloatField(output, 20, "linearDamping", rigidbody->linearDamping);
+                WriteFloatField(output, 20, "angularDamping", rigidbody->angularDamping);
+                WriteBoolField(output, 20, "useGravity", rigidbody->useGravity);
+                WriteBoolField(output, 20, "lockRotation", rigidbody->lockRotation);
+                WriteBoolField(output, 20, "isTrigger", rigidbody->isTrigger);
+                WriteVec3Field(output, 20, "linearVelocity", rigidbody->linearVelocity);
+                WriteVec3Field(output, 20, "angularVelocity", rigidbody->angularVelocity, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (const BoxCollider *boxCollider = world.GetComponent<BoxCollider>(entity))
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "BoxCollider");
+                WriteVec3Field(output, 20, "center", boxCollider->center);
+                WriteVec3Field(output, 20, "halfExtents", boxCollider->halfExtents);
+                WriteBoolField(output, 20, "isTrigger", boxCollider->isTrigger);
+                WritePhysicsMaterialObject(output, 20, boxCollider->material, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (const SphereCollider *sphereCollider = world.GetComponent<SphereCollider>(entity))
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "SphereCollider");
+                WriteVec3Field(output, 20, "center", sphereCollider->center);
+                WriteFloatField(output, 20, "radius", sphereCollider->radius);
+                WriteBoolField(output, 20, "isTrigger", sphereCollider->isTrigger);
+                WritePhysicsMaterialObject(output, 20, sphereCollider->material, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (const CapsuleCollider *capsuleCollider = world.GetComponent<CapsuleCollider>(entity))
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "CapsuleCollider");
+                WriteVec3Field(output, 20, "center", capsuleCollider->center);
+                WriteFloatField(output, 20, "radius", capsuleCollider->radius);
+                WriteFloatField(output, 20, "height", capsuleCollider->height);
+                WriteBoolField(output, 20, "isTrigger", capsuleCollider->isTrigger);
+                WritePhysicsMaterialObject(output, 20, capsuleCollider->material, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (meshRenderer)
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "Render");
+
+                std::string modelPath;
+                std::string materialPath;
+                std::string shaderPath;
+                if (resourceManager)
+                {
+                    if (const resources::Model *model = resourceManager->Get(meshRenderer->GetModelHandle()))
+                    {
+                        modelPath = StripAssetsPrefix(model->GetPath());
+                    }
+                    if (const resources::Material *material = resourceManager->Get(meshRenderer->GetMaterialHandle()))
+                    {
+                        materialPath = StripAssetsPrefix(material->GetPath());
+                    }
+                    if (const resources::Shader *shader = resourceManager->Get(meshRenderer->GetShaderHandle()))
+                    {
+                        shaderPath = StripAssetsPrefix(shader->GetPath());
+                    }
+                }
+
+                WriteStringField(output, 20, "model", modelPath.empty() ? "" : modelPath);
+                if (!materialPath.empty())
+                {
+                    WriteStringField(output, 20, "material", materialPath);
+                }
+                else if (!shaderPath.empty())
+                {
+                    WriteStringField(output, 20, "shader", shaderPath);
+                }
+
+                if (meshRenderer->GetQueue() != RenderQueue::Lit)
+                {
+                    std::string queueName = "lit";
+                    if (meshRenderer->GetQueue() == RenderQueue::Transparent)
+                        queueName = "transparent";
+                    else if (meshRenderer->GetQueue() == RenderQueue::Unlit)
+                        queueName = "unlit";
+                    else if (meshRenderer->GetQueue() == RenderQueue::Debug)
+                        queueName = "debug";
+                    WriteStringField(output, 20, "queue", queueName);
+                }
+
+                WriteBoolField(output, 20, "loadTextures", meshRenderer->ShouldLoadTextures(), false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (light)
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "Light");
+                std::string lightType = "point";
+                if (light->type == LightType::Directional)
+                    lightType = "directional";
+                else if (light->type == LightType::Spot)
+                    lightType = "spot";
+                WriteStringField(output, 20, "lightType", lightType);
+                WriteVec3Field(output, 20, "direction", light->direction);
+                WriteVec3Field(output, 20, "color", light->color);
+                WriteFloatField(output, 20, "intensity", light->intensity);
+                WriteVec3Field(output, 20, "ambient", light->ambient);
+                WriteVec3Field(output, 20, "diffuse", light->diffuse);
+                WriteVec3Field(output, 20, "specular", light->specular);
+                WriteBoolField(output, 20, "castShadows", light->castShadows, light->type != LightType::Directional);
+
+                if (light->type != LightType::Directional)
+                {
+                    WriteIndent(output, 20);
+                    output << "\"attenuation\": {\n";
+                    WriteFloatField(output, 24, "constant", light->constant);
+                    WriteFloatField(output, 24, "linear", light->linear);
+                    WriteFloatField(output, 24, "quadratic", light->quadratic, false);
+                    WriteIndent(output, 20);
+                    output << "}";
+                    if (light->type == LightType::Spot)
+                    {
+                        output << ",\n";
+                        WriteIndent(output, 20);
+                        output << "\"spot\": {\n";
+                        WriteFloatField(output, 24, "innerCutoff", light->innerCutoff);
+                        WriteFloatField(output, 24, "outerCutoff", light->outerCutoff, false);
+                        WriteIndent(output, 20);
+                        output << "}\n";
+                    }
+                    else
+                    {
+                        output << '\n';
+                    }
+                }
+
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (camera)
+            {
+                writeComponentSeparator();
+                const PerspectiveProjection &projection = camera->GetProjection();
+                const PerspectiveProjection::Frustrum &frustrum = projection.GetFrustrum();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "Camera");
+                WriteIndent(output, 20);
+                output << "\"frustrum\": ["
+                       << FloatToJson(frustrum.angle) << ", "
+                       << FloatToJson(frustrum.width) << ", "
+                       << FloatToJson(frustrum.height) << ", "
+                       << FloatToJson(frustrum.near) << ", "
+                       << FloatToJson(frustrum.far) << "],\n";
+                WriteVec3Field(output, 20, "lookAt", projection.GetLookAt());
+                WriteVec3Field(output, 20, "upVector", projection.GetUpVector(), false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (animation)
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "Animation");
+                if (!animation->clipName.empty())
+                {
+                    WriteStringField(output, 20, "clip", animation->clipName);
+                }
+                WriteFloatField(output, 20, "speed", animation->speed);
+                WriteBoolField(output, 20, "loop", animation->loop);
+                WriteBoolField(output, 20, "paused", animation->paused);
+                WriteFloatField(output, 20, "startTime", static_cast<float>(animation->currentTimeSeconds), false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (skybox)
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "Skybox");
+                if (resourceManager)
+                {
+                    if (const resources::Material *material = resourceManager->Get(skybox->materialHandle))
+                    {
+                        WriteStringField(output, 20, "material", material->GetPath());
+                    }
+                    if (const resources::Model *model = resourceManager->Get(skybox->modelHandle))
+                    {
+                        WriteStringField(output, 20, "model", model->GetPath());
+                    }
+                }
+                WriteFloatField(output, 20, "intensity", skybox->intensity);
+                WriteFloatField(output, 20, "scale", skybox->scale, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (orbitCamera)
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "OrbitCameraController");
+                WriteVec3Field(output, 20, "target", orbitCamera->target);
+                WriteVec3Field(output, 20, "upVector", orbitCamera->upVector);
+                WriteFloatField(output, 20, "radius", orbitCamera->radius);
+                WriteFloatField(output, 20, "minRadius", orbitCamera->minRadius);
+                WriteFloatField(output, 20, "maxRadius", orbitCamera->maxRadius);
+                WriteFloatField(output, 20, "zoomSpeed", orbitCamera->zoomSpeed);
+                WriteFloatField(output, 20, "yaw", orbitCamera->yaw);
+                WriteFloatField(output, 20, "pitch", orbitCamera->pitch);
+                WriteFloatField(output, 20, "yawSpeed", orbitCamera->yawSpeed);
+                WriteFloatField(output, 20, "pitchSpeed", orbitCamera->pitchSpeed);
+                WriteFloatField(output, 20, "maxPitch", orbitCamera->maxPitch, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (lightOrbit)
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "LightOrbitController");
+                WriteVec3Field(output, 20, "center", lightOrbit->center);
+                WriteVec3Field(output, 20, "axisRadii", lightOrbit->axisRadii);
+                WriteVec3Field(output, 20, "angularSpeeds", lightOrbit->angularSpeeds);
+                WriteVec3Field(output, 20, "angles", lightOrbit->angles, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (wroteAnyComponent)
+            {
+                output << '\n';
+            }
+            WriteIndent(output, 12);
+            output << "]\n";
+            WriteIndent(output, 8);
+            output << '}';
+            if (entityIndex + 1 < entities.size())
+            {
+                output << ',';
+            }
+            output << '\n';
+        }
+
+        WriteIndent(output, 4);
+        output << "]\n";
+        output << "}\n";
+        return output.str();
+    }
+
 }
 
-GameScene::GameScene(std::string scenePath, resources::ResourceManager *resourceManager) : m_resourceManager(resourceManager), m_scenePath(std::move(scenePath))
+EditorScene::EditorScene(std::string scenePath, resources::ResourceManager *resourceManager, bool runtimeMode) : m_resourceManager(resourceManager), m_scenePath(std::move(scenePath)), m_runtimeMode(runtimeMode)
 {
 }
 
-void GameScene::Init()
+void EditorScene::Init()
 {
     ReloadScene();
 }
 
-void GameScene::Update(float deltaTime)
+void EditorScene::Update(float deltaTime)
 {
     if (InputManager::Get().IsActionJustPressed("reload_scene_clean"))
     {
@@ -409,20 +913,23 @@ void GameScene::Update(float deltaTime)
         m_pendingEditorCameraRefit = !TryFitEditorCameraToSceneBounds();
     }
 
-    m_world.UpdateSystems(deltaTime);
+    if (m_runtimeMode || m_editorPlayMode)
+    {
+        m_world.UpdateSystems(deltaTime);
+    }
 }
 
-void GameScene::Draw(float deltaTime)
+void EditorScene::Draw(float deltaTime)
 {
     m_world.RenderSystems(deltaTime);
 }
 
-void GameScene::OnResize(int width, int height)
+void EditorScene::OnResize(int width, int height)
 {
     ApplyViewportSize(width, height);
 }
 
-void GameScene::ApplyViewportSize(int width, int height)
+void EditorScene::ApplyViewportSize(int width, int height)
 {
     m_viewportWidth = width;
     m_viewportHeight = height;
@@ -432,27 +939,14 @@ void GameScene::ApplyViewportSize(int width, int height)
         return;
     }
 
-    for (Entity entity : m_world.GetEntitiesWith<Camera>())
-    {
-        Camera *cam = m_world.GetComponent<Camera>(entity);
-        if (cam && cam->main)
-        {
-            cam->GetProjection().SetViewportSize(static_cast<float>(width), static_cast<float>(height));
-            break;
-        }
-    }
-
-    if (m_renderSystem)
-    {
-        m_renderSystem->SetViewportSize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-    }
+    runtime_scene_support::ApplyViewportToMainCameraAndRenderer(m_world, m_renderSystem, width, height);
 
     m_editorCameraFrustrum.width = static_cast<float>(width);
     m_editorCameraFrustrum.height = static_cast<float>(height);
     RebuildEditorCameraState();
 }
 
-AnimationDebugSnapshot GameScene::GetAnimationDebugSnapshot() const
+AnimationDebugSnapshot EditorScene::GetAnimationDebugSnapshot() const
 {
     AnimationDebugSnapshot snapshot;
 
@@ -529,7 +1023,7 @@ AnimationDebugSnapshot GameScene::GetAnimationDebugSnapshot() const
     return snapshot;
 }
 
-std::vector<EditorEntitySummary> GameScene::GetEditorEntitySummaries() const
+std::vector<EditorEntitySummary> EditorScene::GetEditorEntitySummaries() const
 {
     std::vector<EditorEntitySummary> entities;
     entities.reserve(m_world.GetAllEntities().size());
@@ -554,7 +1048,7 @@ std::vector<EditorEntitySummary> GameScene::GetEditorEntitySummaries() const
     return entities;
 }
 
-EditorEntityInspectorState GameScene::GetEditorEntityInspectorState(Entity entity) const
+EditorEntityInspectorState EditorScene::GetEditorEntityInspectorState(Entity entity) const
 {
     EditorEntityInspectorState state;
     if (!m_world.IsEntityActive(entity))
@@ -614,6 +1108,52 @@ EditorEntityInspectorState GameScene::GetEditorEntityInspectorState(Entity entit
         state.camera.main = camera->main;
     }
 
+    if (const Rigidbody *rigidbody = m_world.GetComponent<Rigidbody>(entity))
+    {
+        state.hasRigidbody = true;
+        state.rigidbody.type = static_cast<int>(rigidbody->type);
+        state.rigidbody.mass = rigidbody->mass;
+        state.rigidbody.gravityScale = rigidbody->gravityScale;
+        state.rigidbody.linearDamping = rigidbody->linearDamping;
+        state.rigidbody.angularDamping = rigidbody->angularDamping;
+        state.rigidbody.useGravity = rigidbody->useGravity;
+        state.rigidbody.lockRotation = rigidbody->lockRotation;
+        state.rigidbody.isTrigger = rigidbody->isTrigger;
+        state.rigidbody.linearVelocity = rigidbody->linearVelocity;
+        state.rigidbody.angularVelocity = rigidbody->angularVelocity;
+    }
+
+    if (const BoxCollider *boxCollider = m_world.GetComponent<BoxCollider>(entity))
+    {
+        state.hasBoxCollider = true;
+        state.boxCollider.center = boxCollider->center;
+        state.boxCollider.halfExtents = boxCollider->halfExtents;
+        state.boxCollider.isTrigger = boxCollider->isTrigger;
+        state.boxCollider.material.friction = boxCollider->material.friction;
+        state.boxCollider.material.restitution = boxCollider->material.restitution;
+    }
+
+    if (const SphereCollider *sphereCollider = m_world.GetComponent<SphereCollider>(entity))
+    {
+        state.hasSphereCollider = true;
+        state.sphereCollider.center = sphereCollider->center;
+        state.sphereCollider.radius = sphereCollider->radius;
+        state.sphereCollider.isTrigger = sphereCollider->isTrigger;
+        state.sphereCollider.material.friction = sphereCollider->material.friction;
+        state.sphereCollider.material.restitution = sphereCollider->material.restitution;
+    }
+
+    if (const CapsuleCollider *capsuleCollider = m_world.GetComponent<CapsuleCollider>(entity))
+    {
+        state.hasCapsuleCollider = true;
+        state.capsuleCollider.center = capsuleCollider->center;
+        state.capsuleCollider.radius = capsuleCollider->radius;
+        state.capsuleCollider.height = capsuleCollider->height;
+        state.capsuleCollider.isTrigger = capsuleCollider->isTrigger;
+        state.capsuleCollider.material.friction = capsuleCollider->material.friction;
+        state.capsuleCollider.material.restitution = capsuleCollider->material.restitution;
+    }
+
     if (const MeshRenderer *meshRenderer = m_world.GetComponent<MeshRenderer>(entity))
     {
         state.hasMeshRenderer = true;
@@ -654,7 +1194,7 @@ EditorEntityInspectorState GameScene::GetEditorEntityInspectorState(Entity entit
     return state;
 }
 
-bool GameScene::SetEditorEntityName(Entity entity, std::string_view name)
+bool EditorScene::SetEditorEntityName(Entity entity, std::string_view name)
 {
     if (!m_world.IsEntityActive(entity))
     {
@@ -671,7 +1211,7 @@ bool GameScene::SetEditorEntityName(Entity entity, std::string_view name)
     return true;
 }
 
-bool GameScene::SetEditorTransform(Entity entity, const EditorTransformState &transform)
+bool EditorScene::SetEditorTransform(Entity entity, const EditorTransformState &transform)
 {
     Transform *target = m_world.GetComponent<Transform>(entity);
     if (!target)
@@ -685,7 +1225,7 @@ bool GameScene::SetEditorTransform(Entity entity, const EditorTransformState &tr
     return true;
 }
 
-bool GameScene::SetEditorLight(Entity entity, const EditorLightState &light)
+bool EditorScene::SetEditorLight(Entity entity, const EditorLightState &light)
 {
     Light *target = m_world.GetComponent<Light>(entity);
     if (!target)
@@ -709,7 +1249,7 @@ bool GameScene::SetEditorLight(Entity entity, const EditorLightState &light)
     return true;
 }
 
-bool GameScene::SetEditorCamera(Entity entity, const EditorCameraState &cameraState)
+bool EditorScene::SetEditorCamera(Entity entity, const EditorCameraState &cameraState)
 {
     Camera *target = m_world.GetComponent<Camera>(entity);
     if (!target)
@@ -745,7 +1285,77 @@ bool GameScene::SetEditorCamera(Entity entity, const EditorCameraState &cameraSt
     return true;
 }
 
-void GameScene::SetEditorViewportSize(int width, int height)
+bool EditorScene::SetEditorRigidbody(Entity entity, const EditorRigidbodyState &rigidbodyState)
+{
+    Rigidbody *target = m_world.GetComponent<Rigidbody>(entity);
+    if (!target)
+    {
+        return false;
+    }
+
+    target->type = static_cast<RigidbodyType>(rigidbodyState.type);
+    target->mass = std::max(rigidbodyState.mass, 0.001f);
+    target->gravityScale = rigidbodyState.gravityScale;
+    target->linearDamping = std::max(rigidbodyState.linearDamping, 0.0f);
+    target->angularDamping = std::max(rigidbodyState.angularDamping, 0.0f);
+    target->useGravity = rigidbodyState.useGravity;
+    target->lockRotation = rigidbodyState.lockRotation;
+    target->isTrigger = rigidbodyState.isTrigger;
+    target->linearVelocity = rigidbodyState.linearVelocity;
+    target->angularVelocity = rigidbodyState.angularVelocity;
+    return true;
+}
+
+bool EditorScene::SetEditorBoxCollider(Entity entity, const EditorBoxColliderState &colliderState)
+{
+    BoxCollider *target = m_world.GetComponent<BoxCollider>(entity);
+    if (!target)
+    {
+        return false;
+    }
+
+    target->center = colliderState.center;
+    target->halfExtents = glm::max(colliderState.halfExtents, glm::vec3(0.001f));
+    target->isTrigger = colliderState.isTrigger;
+    target->material.friction = colliderState.material.friction;
+    target->material.restitution = colliderState.material.restitution;
+    return true;
+}
+
+bool EditorScene::SetEditorSphereCollider(Entity entity, const EditorSphereColliderState &colliderState)
+{
+    SphereCollider *target = m_world.GetComponent<SphereCollider>(entity);
+    if (!target)
+    {
+        return false;
+    }
+
+    target->center = colliderState.center;
+    target->radius = std::max(colliderState.radius, 0.001f);
+    target->isTrigger = colliderState.isTrigger;
+    target->material.friction = colliderState.material.friction;
+    target->material.restitution = colliderState.material.restitution;
+    return true;
+}
+
+bool EditorScene::SetEditorCapsuleCollider(Entity entity, const EditorCapsuleColliderState &colliderState)
+{
+    CapsuleCollider *target = m_world.GetComponent<CapsuleCollider>(entity);
+    if (!target)
+    {
+        return false;
+    }
+
+    target->center = colliderState.center;
+    target->radius = std::max(colliderState.radius, 0.001f);
+    target->height = std::max(colliderState.height, target->radius * 2.0f);
+    target->isTrigger = colliderState.isTrigger;
+    target->material.friction = colliderState.material.friction;
+    target->material.restitution = colliderState.material.restitution;
+    return true;
+}
+
+void EditorScene::SetEditorViewportSize(int width, int height)
 {
     if (width <= 0 || height <= 0)
     {
@@ -760,17 +1370,17 @@ void GameScene::SetEditorViewportSize(int width, int height)
     ApplyViewportSize(width, height);
 }
 
-uint32_t GameScene::GetEditorViewportTextureId() const
+uint32_t EditorScene::GetEditorViewportTextureId() const
 {
     return m_renderSystem ? m_renderSystem->GetViewportTextureId() : 0;
 }
 
-EditorViewportCameraState GameScene::GetEditorViewportCameraState() const
+EditorViewportCameraState EditorScene::GetEditorViewportCameraState() const
 {
     return m_editorCameraState;
 }
 
-bool GameScene::OrbitEditorViewportCamera(float deltaX, float deltaY)
+bool EditorScene::OrbitEditorViewportCamera(float deltaX, float deltaY)
 {
     if (!m_editorCameraState.valid)
     {
@@ -785,7 +1395,7 @@ bool GameScene::OrbitEditorViewportCamera(float deltaX, float deltaY)
     return true;
 }
 
-bool GameScene::PanEditorViewportCamera(float deltaX, float deltaY)
+bool EditorScene::PanEditorViewportCamera(float deltaX, float deltaY)
 {
     if (!m_editorCameraState.valid || m_editorCameraFrustrum.height <= 0.0f)
     {
@@ -803,7 +1413,7 @@ bool GameScene::PanEditorViewportCamera(float deltaX, float deltaY)
     return true;
 }
 
-bool GameScene::DollyEditorViewportCamera(float deltaY)
+bool EditorScene::DollyEditorViewportCamera(float deltaY)
 {
     if (!m_editorCameraState.valid)
     {
@@ -815,7 +1425,7 @@ bool GameScene::DollyEditorViewportCamera(float deltaY)
     return true;
 }
 
-Entity GameScene::PickEditorEntityInViewport(float viewportX, float viewportY) const
+Entity EditorScene::PickEditorEntityInViewport(float viewportX, float viewportY) const
 {
     if (!m_editorCameraState.valid)
     {
@@ -863,7 +1473,7 @@ Entity GameScene::PickEditorEntityInViewport(float viewportX, float viewportY) c
     return closestEntity;
 }
 
-bool GameScene::AddEditorComponent(Entity entity, std::string_view componentType)
+bool EditorScene::AddEditorComponent(Entity entity, std::string_view componentType)
 {
     if (!m_world.IsEntityActive(entity))
     {
@@ -908,10 +1518,42 @@ bool GameScene::AddEditorComponent(Entity entity, std::string_view componentType
         return true;
     }
 
+    if (componentType == "Rigidbody")
+    {
+        if (m_world.HasComponent<Rigidbody>(entity))
+            return false;
+        m_world.AddComponent<Rigidbody>(entity);
+        return true;
+    }
+
+    if (componentType == "BoxCollider")
+    {
+        if (HasAnyCollider(m_world, entity))
+            return false;
+        m_world.AddComponent<BoxCollider>(entity);
+        return true;
+    }
+
+    if (componentType == "SphereCollider")
+    {
+        if (HasAnyCollider(m_world, entity))
+            return false;
+        m_world.AddComponent<SphereCollider>(entity);
+        return true;
+    }
+
+    if (componentType == "CapsuleCollider")
+    {
+        if (HasAnyCollider(m_world, entity))
+            return false;
+        m_world.AddComponent<CapsuleCollider>(entity);
+        return true;
+    }
+
     return false;
 }
 
-bool GameScene::RemoveEditorComponent(Entity entity, std::string_view componentType)
+bool EditorScene::RemoveEditorComponent(Entity entity, std::string_view componentType)
 {
     if (!m_world.IsEntityActive(entity))
     {
@@ -940,15 +1582,118 @@ bool GameScene::RemoveEditorComponent(Entity entity, std::string_view componentT
         return removedAnimation || removedPose;
     }
 
+    if (componentType == "Rigidbody")
+    {
+        return m_world.RemoveComponent<Rigidbody>(entity);
+    }
+
+    if (componentType == "BoxCollider")
+    {
+        return m_world.RemoveComponent<BoxCollider>(entity);
+    }
+
+    if (componentType == "SphereCollider")
+    {
+        return m_world.RemoveComponent<SphereCollider>(entity);
+    }
+
+    if (componentType == "CapsuleCollider")
+    {
+        return m_world.RemoveComponent<CapsuleCollider>(entity);
+    }
+
     return false;
 }
 
-std::string GameScene::GetEditorScenePath() const
+std::string EditorScene::ExportEditorSceneSnapshot() const
+{
+    return SerializeWorldToSceneJson(m_world, m_resourceManager, m_scenePath);
+}
+
+bool EditorScene::RestoreEditorSceneSnapshot(std::string_view snapshot)
+{
+    if (m_editorPlayMode)
+    {
+        return false;
+    }
+
+    return ReloadSceneFromSnapshot(snapshot);
+}
+
+Entity EditorScene::CreateEditorEntity(std::string_view name)
+{
+    if (m_editorPlayMode)
+    {
+        return {};
+    }
+
+    Entity entity = m_world.CreateEntity();
+    m_world.AddComponent<Name>(entity, name.empty() ? "Entity" : std::string(name));
+    m_world.AddComponent<Transform>(entity);
+    return entity;
+}
+
+bool EditorScene::DeleteEditorEntity(Entity entity)
+{
+    if (m_editorPlayMode || !m_world.IsEntityActive(entity))
+    {
+        return false;
+    }
+
+    m_world.DestroyEntity(entity);
+    return true;
+}
+
+Entity EditorScene::DuplicateEditorEntity(Entity entity)
+{
+    if (m_editorPlayMode || !m_world.IsEntityActive(entity))
+    {
+        return {};
+    }
+
+    Entity duplicate = m_world.CreateEntity();
+    std::string duplicateName = "Entity " + std::to_string(duplicate.GetID());
+    if (const Name *name = m_world.GetComponent<Name>(entity))
+    {
+        duplicateName = name->value + " Copy";
+    }
+
+    m_world.AddComponent<Name>(duplicate, duplicateName);
+    CopySupportedEditorComponents(m_world, entity, duplicate);
+
+    if (!m_world.HasComponent<Transform>(duplicate))
+    {
+        m_world.AddComponent<Transform>(duplicate);
+    }
+
+    return duplicate;
+}
+
+bool EditorScene::FrameEditorEntity(Entity entity)
+{
+    if (!m_world.IsEntityActive(entity))
+    {
+        return false;
+    }
+
+    const SceneBounds bounds = BuildEntityBounds(m_world, m_resourceManager, entity);
+    if (!bounds.valid)
+    {
+        return false;
+    }
+
+    m_editorCameraTarget = (bounds.min + bounds.max) * 0.5f;
+    m_editorCameraDistance = std::max(ComputeFitDistanceForBounds(bounds, m_editorCameraFrustrum), 1.0f);
+    RebuildEditorCameraState();
+    return true;
+}
+
+std::string EditorScene::GetEditorScenePath() const
 {
     return m_scenePath;
 }
 
-std::vector<std::string> GameScene::GetEditorSceneFiles() const
+std::vector<std::string> EditorScene::GetEditorSceneFiles() const
 {
     std::vector<std::string> sceneFiles;
     const std::filesystem::path sceneRoot("assets/scenes");
@@ -976,7 +1721,7 @@ std::vector<std::string> GameScene::GetEditorSceneFiles() const
     return sceneFiles;
 }
 
-bool GameScene::SaveEditorScene()
+bool EditorScene::SaveEditorScene()
 {
     std::ofstream output(m_scenePath, std::ios::out | std::ios::trunc);
     if (!output.is_open())
@@ -984,289 +1729,19 @@ bool GameScene::SaveEditorScene()
         ERROR("Failed to open scene for saving: " << m_scenePath);
         return false;
     }
-
-    std::vector<Entity> entities(m_world.GetAllEntities().begin(), m_world.GetAllEntities().end());
-    std::sort(entities.begin(), entities.end(), [](Entity left, Entity right)
-              { return left.GetID() < right.GetID(); });
-
-    const std::string sceneName = std::filesystem::path(m_scenePath).stem().string();
-    output << "{\n";
-    WriteStringField(output, 4, "name", sceneName);
-    WriteStringField(output, 4, "version", "1.0");
-    WriteIndent(output, 4);
-    output << "\"entities\": [\n";
-
-    for (size_t entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
-    {
-        const Entity entity = entities[entityIndex];
-        const Name *name = m_world.GetComponent<Name>(entity);
-        const Transform *transform = m_world.GetComponent<Transform>(entity);
-        const MeshRenderer *meshRenderer = m_world.GetComponent<MeshRenderer>(entity);
-        const Light *light = m_world.GetComponent<Light>(entity);
-        const Camera *camera = m_world.GetComponent<Camera>(entity);
-        const AnimationPlayer *animation = m_world.GetComponent<AnimationPlayer>(entity);
-        const Skybox *skybox = m_world.GetComponent<Skybox>(entity);
-        const OrbitCameraController *orbitCamera = m_world.GetComponent<OrbitCameraController>(entity);
-        const LightOrbitController *lightOrbit = m_world.GetComponent<LightOrbitController>(entity);
-
-        WriteIndent(output, 8);
-        output << "{\n";
-        WriteStringField(output, 12, "name", name ? name->value : ("Entity " + std::to_string(entity.GetID())));
-        WriteIndent(output, 12);
-        output << "\"components\": [\n";
-
-        bool wroteAnyComponent = false;
-        auto writeComponentSeparator = [&output, &wroteAnyComponent]()
-        {
-            if (wroteAnyComponent)
-            {
-                output << ",\n";
-            }
-            wroteAnyComponent = true;
-        };
-
-        if (transform)
-        {
-            writeComponentSeparator();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "Transform");
-            WriteVec3Field(output, 20, "position", transform->position);
-            WriteVec3Field(output, 20, "rotation", transform->rotation);
-            WriteVec3Field(output, 20, "scale", transform->scale, false);
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (meshRenderer)
-        {
-            writeComponentSeparator();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "Render");
-
-            std::string modelPath;
-            std::string materialPath;
-            std::string shaderPath;
-            if (m_resourceManager)
-            {
-                if (const resources::Model *model = m_resourceManager->Get(meshRenderer->GetModelHandle()))
-                {
-                    modelPath = StripAssetsPrefix(model->GetPath());
-                }
-                if (const resources::Material *material = m_resourceManager->Get(meshRenderer->GetMaterialHandle()))
-                {
-                    materialPath = StripAssetsPrefix(material->GetPath());
-                }
-                if (const resources::Shader *shader = m_resourceManager->Get(meshRenderer->GetShaderHandle()))
-                {
-                    shaderPath = StripAssetsPrefix(shader->GetPath());
-                }
-            }
-
-            WriteStringField(output, 20, "model", modelPath.empty() ? "" : modelPath);
-            if (!materialPath.empty())
-            {
-                WriteStringField(output, 20, "material", materialPath);
-            }
-            else if (!shaderPath.empty())
-            {
-                WriteStringField(output, 20, "shader", shaderPath);
-            }
-
-            if (meshRenderer->GetQueue() != RenderQueue::Lit)
-            {
-                std::string queueName = "lit";
-                if (meshRenderer->GetQueue() == RenderQueue::Transparent)
-                    queueName = "transparent";
-                else if (meshRenderer->GetQueue() == RenderQueue::Unlit)
-                    queueName = "unlit";
-                else if (meshRenderer->GetQueue() == RenderQueue::Debug)
-                    queueName = "debug";
-                WriteStringField(output, 20, "queue", queueName);
-            }
-
-            WriteBoolField(output, 20, "loadTextures", meshRenderer->ShouldLoadTextures(), false);
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (light)
-        {
-            writeComponentSeparator();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "Light");
-            std::string lightType = "point";
-            if (light->type == LightType::Directional)
-                lightType = "directional";
-            else if (light->type == LightType::Spot)
-                lightType = "spot";
-            WriteStringField(output, 20, "lightType", lightType);
-            WriteVec3Field(output, 20, "direction", light->direction);
-            WriteVec3Field(output, 20, "color", light->color);
-            WriteFloatField(output, 20, "intensity", light->intensity);
-            WriteVec3Field(output, 20, "ambient", light->ambient);
-            WriteVec3Field(output, 20, "diffuse", light->diffuse);
-            WriteVec3Field(output, 20, "specular", light->specular);
-            WriteBoolField(output, 20, "castShadows", light->castShadows, light->type != LightType::Directional);
-
-            if (light->type != LightType::Directional)
-            {
-                WriteIndent(output, 20);
-                output << "\"attenuation\": {\n";
-                WriteFloatField(output, 24, "constant", light->constant);
-                WriteFloatField(output, 24, "linear", light->linear);
-                WriteFloatField(output, 24, "quadratic", light->quadratic, false);
-                WriteIndent(output, 20);
-                output << "}";
-                if (light->type == LightType::Spot)
-                {
-                    output << ",\n";
-                    WriteIndent(output, 20);
-                    output << "\"spot\": {\n";
-                    WriteFloatField(output, 24, "innerCutoff", light->innerCutoff);
-                    WriteFloatField(output, 24, "outerCutoff", light->outerCutoff, false);
-                    WriteIndent(output, 20);
-                    output << "}\n";
-                }
-                else
-                {
-                    output << '\n';
-                }
-            }
-
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (camera)
-        {
-            writeComponentSeparator();
-            const PerspectiveProjection &projection = camera->GetProjection();
-            const PerspectiveProjection::Frustrum &frustrum = projection.GetFrustrum();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "Camera");
-            WriteIndent(output, 20);
-            output << "\"frustrum\": ["
-                   << FloatToJson(frustrum.angle) << ", "
-                   << FloatToJson(frustrum.width) << ", "
-                   << FloatToJson(frustrum.height) << ", "
-                   << FloatToJson(frustrum.near) << ", "
-                   << FloatToJson(frustrum.far) << "],\n";
-            WriteVec3Field(output, 20, "lookAt", projection.GetLookAt());
-            WriteVec3Field(output, 20, "upVector", projection.GetUpVector(), false);
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (animation)
-        {
-            writeComponentSeparator();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "Animation");
-            if (!animation->clipName.empty())
-            {
-                WriteStringField(output, 20, "clip", animation->clipName);
-            }
-            WriteFloatField(output, 20, "speed", animation->speed);
-            WriteBoolField(output, 20, "loop", animation->loop);
-            WriteBoolField(output, 20, "paused", animation->paused);
-            WriteFloatField(output, 20, "startTime", static_cast<float>(animation->currentTimeSeconds), false);
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (skybox)
-        {
-            writeComponentSeparator();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "Skybox");
-            if (m_resourceManager)
-            {
-                if (const resources::Material *material = m_resourceManager->Get(skybox->materialHandle))
-                {
-                    WriteStringField(output, 20, "material", material->GetPath());
-                }
-                if (const resources::Model *model = m_resourceManager->Get(skybox->modelHandle))
-                {
-                    WriteStringField(output, 20, "model", model->GetPath());
-                }
-            }
-            WriteFloatField(output, 20, "intensity", skybox->intensity);
-            WriteFloatField(output, 20, "scale", skybox->scale, false);
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (orbitCamera)
-        {
-            writeComponentSeparator();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "OrbitCameraController");
-            WriteVec3Field(output, 20, "target", orbitCamera->target);
-            WriteVec3Field(output, 20, "upVector", orbitCamera->upVector);
-            WriteFloatField(output, 20, "radius", orbitCamera->radius);
-            WriteFloatField(output, 20, "minRadius", orbitCamera->minRadius);
-            WriteFloatField(output, 20, "maxRadius", orbitCamera->maxRadius);
-            WriteFloatField(output, 20, "zoomSpeed", orbitCamera->zoomSpeed);
-            WriteFloatField(output, 20, "yaw", orbitCamera->yaw);
-            WriteFloatField(output, 20, "pitch", orbitCamera->pitch);
-            WriteFloatField(output, 20, "yawSpeed", orbitCamera->yawSpeed);
-            WriteFloatField(output, 20, "pitchSpeed", orbitCamera->pitchSpeed);
-            WriteFloatField(output, 20, "maxPitch", orbitCamera->maxPitch, false);
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (lightOrbit)
-        {
-            writeComponentSeparator();
-            WriteIndent(output, 16);
-            output << "{\n";
-            WriteStringField(output, 20, "type", "LightOrbitController");
-            WriteVec3Field(output, 20, "center", lightOrbit->center);
-            WriteVec3Field(output, 20, "axisRadii", lightOrbit->axisRadii);
-            WriteVec3Field(output, 20, "angularSpeeds", lightOrbit->angularSpeeds);
-            WriteVec3Field(output, 20, "angles", lightOrbit->angles, false);
-            WriteIndent(output, 16);
-            output << '}';
-        }
-
-        if (wroteAnyComponent)
-        {
-            output << '\n';
-        }
-        WriteIndent(output, 12);
-        output << "]\n";
-        WriteIndent(output, 8);
-        output << '}';
-        if (entityIndex + 1 < entities.size())
-        {
-            output << ',';
-        }
-        output << '\n';
-    }
-
-    WriteIndent(output, 4);
-    output << "]\n";
-    output << "}\n";
+    output << ExportEditorSceneSnapshot();
     INFO("Saved scene: " << m_scenePath);
     return true;
 }
 
-bool GameScene::LoadEditorScene(std::string_view scenePath)
+bool EditorScene::LoadEditorScene(std::string_view scenePath)
 {
     m_scenePath = std::string(scenePath);
     ReloadScene(false);
     return true;
 }
 
-bool GameScene::RequestAnimationTransition(Entity entity, int clipIndex, float durationSeconds)
+bool EditorScene::RequestAnimationTransition(Entity entity, int clipIndex, float durationSeconds)
 {
     AnimationPlayer *animationPlayer = m_world.GetComponent<AnimationPlayer>(entity);
     MeshRenderer *meshRenderer = m_world.GetComponent<MeshRenderer>(entity);
@@ -1308,7 +1783,7 @@ bool GameScene::RequestAnimationTransition(Entity entity, int clipIndex, float d
     return true;
 }
 
-void GameScene::ReloadScene(bool clearResourceCache)
+void EditorScene::ReloadScene(bool clearResourceCache)
 {
     if (clearResourceCache && m_resourceManager)
     {
@@ -1339,7 +1814,28 @@ void GameScene::ReloadScene(bool clearResourceCache)
     INFO("Reloaded scene: " << m_scenePath);
 }
 
-void GameScene::ConfigureSystems()
+bool EditorScene::ReloadSceneFromSnapshot(std::string_view snapshot)
+{
+    World reloadedWorld;
+    if (!SceneLoader::LoadIntoWorldFromJson(snapshot, &reloadedWorld, m_resourceManager))
+    {
+        ERROR("Failed to restore scene snapshot: " << m_scenePath);
+        return false;
+    }
+
+    m_world = std::move(reloadedWorld);
+    ConfigureSystems();
+    m_pendingEditorCameraRefit = InitializeEditorCameraFromScene();
+
+    if (m_viewportWidth > 0 && m_viewportHeight > 0)
+    {
+        OnResize(m_viewportWidth, m_viewportHeight);
+    }
+
+    return true;
+}
+
+void EditorScene::ConfigureSystems()
 {
     m_world.AddSystem<PhysicsSystem>();
     m_world.AddSystem<OrbitCameraControllerSystem>();
@@ -1353,7 +1849,7 @@ void GameScene::ConfigureSystems()
     SyncEditorCameraOverride();
 }
 
-bool GameScene::InitializeEditorCameraFromScene()
+bool EditorScene::InitializeEditorCameraFromScene()
 {
     bool initializedFromScene = false;
     for (Entity entity : m_world.GetEntitiesWith<Camera>())
@@ -1419,7 +1915,7 @@ bool GameScene::InitializeEditorCameraFromScene()
     return shouldAutoFit;
 }
 
-bool GameScene::TryFitEditorCameraToSceneBounds()
+bool EditorScene::TryFitEditorCameraToSceneBounds()
 {
     const SceneBounds sceneBounds = BuildSceneBounds(m_world, m_resourceManager);
     if (!sceneBounds.valid)
@@ -1465,7 +1961,7 @@ bool GameScene::TryFitEditorCameraToSceneBounds()
     return sceneBounds.complete && sceneBounds.contributorCount > 0;
 }
 
-void GameScene::RebuildEditorCameraState()
+void EditorScene::RebuildEditorCameraState()
 {
     const float horizontalRadius = m_editorCameraDistance * std::cos(m_editorCameraPitch);
     m_editorCameraState.position = m_editorCameraTarget + glm::vec3(
@@ -1484,10 +1980,16 @@ void GameScene::RebuildEditorCameraState()
     SyncEditorCameraOverride();
 }
 
-void GameScene::SyncEditorCameraOverride()
+void EditorScene::SyncEditorCameraOverride()
 {
     if (!m_renderSystem)
     {
+        return;
+    }
+
+    if (m_runtimeMode)
+    {
+        m_renderSystem->SetCameraOverride(std::nullopt);
         return;
     }
 
@@ -1507,4 +2009,54 @@ void GameScene::SyncEditorCameraOverride()
     cameraData.near = m_editorCameraFrustrum.near;
     cameraData.far = m_editorCameraFrustrum.far;
     m_renderSystem->SetCameraOverride(cameraData);
+}
+
+bool EditorScene::StartEditorPlayMode()
+{
+    if (m_runtimeMode)
+    {
+        return false;
+    }
+
+    if (m_editorPlayMode)
+    {
+        return false;
+    }
+
+    m_playModeSnapshot = ExportEditorSceneSnapshot();
+    m_editorPlayMode = true;
+    return true;
+}
+
+bool EditorScene::StopEditorPlayMode()
+{
+    if (m_runtimeMode)
+    {
+        return false;
+    }
+
+    if (!m_editorPlayMode)
+    {
+        return false;
+    }
+
+    m_editorPlayMode = false;
+    const std::string snapshot = m_playModeSnapshot;
+    m_playModeSnapshot.clear();
+    if (snapshot.empty())
+    {
+        return true;
+    }
+
+    return ReloadSceneFromSnapshot(snapshot);
+}
+
+bool EditorScene::IsEditorPlayMode() const
+{
+    return m_runtimeMode || m_editorPlayMode;
+}
+
+void EditorScene::PresentToScreen()
+{
+    runtime_scene_support::PresentRenderSystem(m_renderSystem);
 }

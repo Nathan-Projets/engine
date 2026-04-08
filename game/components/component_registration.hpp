@@ -2,7 +2,7 @@
 
 class SceneLoader;
 
-namespace GameSceneComponents
+namespace GameComponentLoaders
 {
     void RegisterAll();
 }

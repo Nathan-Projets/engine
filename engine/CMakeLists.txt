@@ -22,6 +22,13 @@ add_library(
     ecs/components/mesh_renderer.hpp
     ecs/components/light.hpp
     ecs/components/camera.hpp
+
+    physics/collider.hpp
+    physics/bullet_physics_backend.cpp
+    physics/physics_backend.hpp
+    physics/physics_world.hpp
+    physics/raycast.hpp
+    physics/rigidbody.hpp
     
     render/camera/camera_projection.hpp
     render/camera/perspective_projection.cpp
@@ -77,5 +84,8 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     )
 endif ()
 
-target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson imgui)
+target_include_directories(Engine
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE ${PROJECT_SOURCE_DIR}/external/bullet3/src)
+
+target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson imgui BulletDynamics BulletCollision LinearMath)

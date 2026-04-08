@@ -9,8 +9,9 @@
 
 #include "../components/light_orbit_controller.hpp"
 #include "../components/orbit_camera_controller.hpp"
+#include "../components/player_controller.hpp"
 
-namespace GameSceneComponents
+namespace GameComponentLoaders
 {
     void RegisterAll()
     {
@@ -109,6 +110,23 @@ namespace GameSceneComponents
                                                  }
 
                                                  controller->initialized = true;
+                                             });
+
+        SceneLoader::RegisterComponentLoader("PlayerController",
+                                             [](Entity entity,
+                                                simdjson::ondemand::object componentJson,
+                                                World &world,
+                                                resources::ResourceManager *resourceManager)
+                                             {
+                                                 (void)resourceManager;
+
+                                                 PlayerController *controller = world.AddComponent<PlayerController>(entity);
+                                                 controller->moveSpeed = SceneLoader::ReadFloat(componentJson, "moveSpeed", controller->moveSpeed);
+                                                 controller->turnSpeedDegrees = SceneLoader::ReadFloat(componentJson, "turnSpeedDegrees", controller->turnSpeedDegrees);
+                                                 controller->cameraDistance = SceneLoader::ReadFloat(componentJson, "cameraDistance", controller->cameraDistance);
+                                                 controller->cameraHeight = SceneLoader::ReadFloat(componentJson, "cameraHeight", controller->cameraHeight);
+                                                 controller->lookAtHeight = SceneLoader::ReadFloat(componentJson, "lookAtHeight", controller->lookAtHeight);
+                                                 controller->cameraForward = glm::normalize(SceneLoader::ReadVec3(componentJson, "cameraForward", controller->cameraForward));
                                              });
     }
 }

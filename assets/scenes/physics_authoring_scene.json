@@ -1,0 +1,243 @@
+{
+    "name": "physics_authoring_scene",
+    "version": "1.0",
+    "entities": [
+        {
+            "name": "Ground",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -2.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [14.0, 0.35, 14.0]
+                },
+                {
+                    "type": "Rigidbody",
+                    "bodyType": "static",
+                    "mass": 1.0,
+                    "gravityScale": 1.0,
+                    "linearDamping": 0.05,
+                    "useGravity": true,
+                    "lockRotation": false,
+                    "isTrigger": false,
+                    "linearVelocity": [0.0, 0.0, 0.0],
+                    "angularVelocity": [0.0, 0.0, 0.0]
+                },
+                {
+                    "type": "BoxCollider",
+                    "center": [0.0, 0.0, 0.0],
+                    "halfExtents": [1.0, 1.0, 1.0],
+                    "isTrigger": false,
+                    "material": {
+                        "friction": 0.95,
+                        "restitution": 0.0
+                    }
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/cube/cube.obj",
+                    "material": "materials/lit_pavement.json",
+                    "loadTextures": true
+                }
+            ]
+        },
+        {
+            "name": "TiltedBox",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [-3.0, 2.4, 0.0],
+                    "rotation": [55.0, 20.0, -15.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Rigidbody",
+                    "bodyType": "dynamic",
+                    "mass": 1.0,
+                    "gravityScale": 1.0,
+                    "linearDamping": 0.08,
+                    "useGravity": true,
+                    "lockRotation": false,
+                    "isTrigger": false,
+                    "linearVelocity": [0.0, 0.0, 0.0],
+                    "angularVelocity": [0.0, 0.0, 0.0]
+                },
+                {
+                    "type": "BoxCollider",
+                    "center": [0.0, 0.0, 0.0],
+                    "halfExtents": [1.0, 1.0, 1.0],
+                    "isTrigger": false,
+                    "material": {
+                        "friction": 0.7,
+                        "restitution": 0.0
+                    }
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/cube/cube.obj",
+                    "material": "materials/lit_cube.json",
+                    "loadTextures": true
+                }
+            ]
+        },
+        {
+            "name": "SphereProbe",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 3.2, 0.5],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.8, 0.8, 0.8]
+                },
+                {
+                    "type": "Rigidbody",
+                    "bodyType": "dynamic",
+                    "mass": 0.8,
+                    "gravityScale": 1.0,
+                    "linearDamping": 0.03,
+                    "useGravity": true,
+                    "lockRotation": false,
+                    "isTrigger": false,
+                    "linearVelocity": [0.0, 0.0, 0.0],
+                    "angularVelocity": [0.0, 0.0, 0.0]
+                },
+                {
+                    "type": "SphereCollider",
+                    "center": [0.0, 0.0, 0.0],
+                    "radius": 1.0,
+                    "isTrigger": false,
+                    "material": {
+                        "friction": 0.35,
+                        "restitution": 0.1
+                    }
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json",
+                    "loadTextures": true
+                }
+            ]
+        },
+        {
+            "name": "CapsuleProbe",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [3.0, 3.0, -0.5],
+                    "rotation": [0.0, 0.0, 18.0],
+                    "scale": [0.6, 1.1, 0.6]
+                },
+                {
+                    "type": "Rigidbody",
+                    "bodyType": "dynamic",
+                    "mass": 1.0,
+                    "gravityScale": 1.0,
+                    "linearDamping": 0.04,
+                    "useGravity": true,
+                    "lockRotation": false,
+                    "isTrigger": false,
+                    "linearVelocity": [0.0, 0.0, 0.0],
+                    "angularVelocity": [0.0, 0.0, 0.0]
+                },
+                {
+                    "type": "CapsuleCollider",
+                    "center": [0.0, 0.0, 0.0],
+                    "radius": 0.7,
+                    "height": 2.6,
+                    "isTrigger": false,
+                    "material": {
+                        "friction": 0.55,
+                        "restitution": 0.0
+                    }
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/cube/cube.obj",
+                    "material": "materials/lit_cube.json",
+                    "loadTextures": true
+                }
+            ]
+        },
+        {
+            "name": "TriggerVolume",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -0.2, 3.5],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [2.5, 1.0, 1.5]
+                },
+                {
+                    "type": "Rigidbody",
+                    "bodyType": "static",
+                    "mass": 1.0,
+                    "gravityScale": 1.0,
+                    "linearDamping": 0.05,
+                    "useGravity": true,
+                    "lockRotation": false,
+                    "isTrigger": true,
+                    "linearVelocity": [0.0, 0.0, 0.0],
+                    "angularVelocity": [0.0, 0.0, 0.0]
+                },
+                {
+                    "type": "BoxCollider",
+                    "center": [0.0, 0.0, 0.0],
+                    "halfExtents": [1.0, 1.0, 1.0],
+                    "isTrigger": true,
+                    "material": {
+                        "friction": 0.5,
+                        "restitution": 0.0
+                    }
+                }
+            ]
+        },
+        {
+            "name": "MainLight",
+            "components": [
+                {
+                    "type": "Light",
+                    "lightType": "directional",
+                    "direction": [-0.45, -1.0, -0.35],
+                    "color": [1.0, 0.98, 0.95],
+                    "intensity": 1.2,
+                    "ambient": [0.05, 0.05, 0.055],
+                    "diffuse": [0.8, 0.78, 0.75],
+                    "specular": [0.45, 0.45, 0.45],
+                    "castShadows": true
+                }
+            ]
+        },
+        {
+            "name": "EditorCamera",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 3.0, 12.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Camera",
+                    "frustrum": [45.0, 1280.0, 720.0, 0.1, 250.0],
+                    "lookAt": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0]
+                },
+                {
+                    "type": "OrbitCameraController",
+                    "target": [0.0, 0.0, 0.0],
+                    "upVector": [0.0, 1.0, 0.0],
+                    "radius": 12.0,
+                    "minRadius": 2.0,
+                    "maxRadius": 30.0,
+                    "zoomSpeed": 0.8,
+                    "yaw": 0.15,
+                    "pitch": 0.2,
+                    "yawSpeed": 3.0,
+                    "pitchSpeed": 3.0,
+                    "maxPitch": 1.2
+                }
+            ]
+        }
+    ]
+}

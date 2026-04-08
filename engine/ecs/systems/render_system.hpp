@@ -47,6 +47,11 @@ public:
         return m_renderer.GetSceneColorTextureId();
     }
 
+    void PresentToScreen() const
+    {
+        m_renderer.PresentSceneToBackbuffer();
+    }
+
     void Update(World &world, float deltaTime) override {}
 
     void Render(World &world, float deltaTime) override

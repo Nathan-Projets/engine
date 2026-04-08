@@ -2,6 +2,7 @@
 
 #include <print>
 #include <chrono>
+#include <string>
 #include <vector>
 #include <memory>
 
@@ -25,7 +26,14 @@
 class Application
 {
 public:
-    Application(int width = 800, int height = 800);
+    struct Options
+    {
+        bool enableEditorUI = true;
+        bool enableDebugUI = true;
+        std::string windowTitle = "Engine";
+    };
+
+    Application(int width = 800, int height = 800, Options options = {});
     ~Application();
 
     bool Init();
@@ -41,6 +49,8 @@ private:
     int m_width, m_height;
     bool m_bShouldExit;
     bool m_initialized;
+    bool m_debugUIInitialized = false;
+    Options m_options;
 
     Scene* m_scene = nullptr;
 

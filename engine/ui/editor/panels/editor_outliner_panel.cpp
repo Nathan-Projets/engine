@@ -34,6 +34,47 @@ void EditorOutlinerPanel::Draw()
                   return left.name < right.name;
               });
 
+    Scene *scene = m_context->GetScene();
+    ImGui::BeginDisabled(!m_context->CanEdit());
+    if (ImGui::Button("Create"))
+    {
+        Entity createdEntity;
+        if (m_context->ExecuteMutation([&](Scene *targetScene)
+                                       {
+                                           createdEntity = targetScene->CreateEditorEntity("Entity");
+                                           return createdEntity.IsValid();
+                                       }))
+        {
+            m_context->SelectEntity(createdEntity);
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Duplicate") && m_context->HasSelection())
+    {
+        Entity duplicatedEntity;
+        if (m_context->ExecuteMutation([&](Scene *targetScene)
+                                       {
+                                           duplicatedEntity = targetScene->DuplicateEditorEntity(m_context->GetSelectedEntity());
+                                           return duplicatedEntity.IsValid();
+                                       }))
+        {
+            m_context->SelectEntity(duplicatedEntity);
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Delete") && m_context->HasSelection())
+    {
+        const Entity selectedEntity = m_context->GetSelectedEntity();
+        if (m_context->ExecuteMutation([&](Scene *targetScene)
+                                       { return targetScene->DeleteEditorEntity(selectedEntity); }))
+        {
+            m_context->ClearSelection();
+        }
+    }
+    ImGui::EndDisabled();
+
+    ImGui::Separator();
+
     if (entities.empty())
     {
         ImGui::TextUnformatted("Scene has no entities.");
