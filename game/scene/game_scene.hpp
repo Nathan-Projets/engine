@@ -55,6 +55,10 @@ public:
     bool StartEditorPlayMode() override;
     bool StopEditorPlayMode() override;
     bool IsEditorPlayMode() const override;
+    RuntimeUIState GetRuntimeUIState() const override;
+    bool SetGamePaused(bool paused) override;
+    bool IsGamePaused() const override;
+    bool ResetRuntimeState() override;
     void PresentToScreen() override;
 
 private:
@@ -84,5 +88,6 @@ private:
     bool m_pendingEditorCameraRefit = false;
     bool m_editorPlayMode = false;
     bool m_runtimeMode = false;
+    bool m_runtimePaused = false;
     std::string m_playModeSnapshot;
 };

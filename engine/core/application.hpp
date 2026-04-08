@@ -22,6 +22,7 @@
 #include "ui/editor/panels/editor_inspector_panel.hpp"
 #include "ui/editor/panels/editor_outliner_panel.hpp"
 #include "ui/editor/panels/editor_viewport_panel.hpp"
+#include "ui/game/game_hud_panel.hpp"
 
 class Application
 {
@@ -30,6 +31,7 @@ public:
     {
         bool enableEditorUI = true;
         bool enableDebugUI = true;
+        bool enableGameUI = false;
         std::string windowTitle = "Engine";
     };
 
@@ -63,6 +65,7 @@ private:
     EditorOutlinerPanel m_outlinerPanel;
     EditorInspectorPanel m_inspectorPanel;
     EditorViewportPanel m_viewportPanel;
+    GameHUDPanel m_gameHUDPanel;
     bool m_debugPanelsVisible = false;
 
     std::vector<std::unique_ptr<Scene>> m_scenes;

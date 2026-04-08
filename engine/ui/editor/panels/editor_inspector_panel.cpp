@@ -146,6 +146,14 @@ void EditorInspectorPanel::Draw()
                                        { return targetScene->AddEditorComponent(state.entity, "Animation"); });
         }
     }
+    if (!state.hasPhysicsListener)
+    {
+        if (ImGui::Button("Add Physics Listener"))
+        {
+            m_context->ExecuteMutation([&](Scene *targetScene)
+                                       { return targetScene->AddEditorComponent(state.entity, "PhysicsListener"); });
+        }
+    }
     if (!state.hasRigidbody)
     {
         if (ImGui::Button("Add Rigidbody"))
@@ -528,6 +536,25 @@ void EditorInspectorPanel::Draw()
                     state.animation.loop ? "yes" : "no",
                     state.animation.paused ? "yes" : "no");
         ImGui::Text("Transition active: %s", state.animation.transitionActive ? "yes" : "no");
+    }
+
+    if (state.hasPhysicsListener)
+    {
+        ImGui::SeparatorText("Physics Listener");
+        ImGui::BeginDisabled(!m_context->CanEdit());
+        if (ImGui::SmallButton("Remove Physics Listener"))
+        {
+            if (m_context->ExecuteMutation([&](Scene *targetScene)
+                                           { return targetScene->RemoveEditorComponent(state.entity, "PhysicsListener"); }))
+            {
+                ImGui::EndDisabled();
+                ImGui::End();
+                return;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::TextUnformatted("Routes per-frame collision and trigger events to gameplay code.");
+        ImGui::TextUnformatted("No editable properties. Query it from systems with HasEvent/FindFirstEvent.");
     }
 
     ImGui::End();

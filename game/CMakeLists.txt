@@ -11,9 +11,12 @@ add_library(
     components/component_registration.hpp
     components/light_orbit_controller.hpp
     components/orbit_camera_controller.hpp
+    components/physics_listener.hpp
     components/player_controller.hpp
     systems/light_orbit_controller_system.hpp
     systems/orbit_camera_controller_system.hpp
+    systems/physics_event_listener_system.hpp
+    systems/physics_listener_demo_system.hpp
     systems/player_controller_system.hpp
     systems/rotating_light_system.hpp
 )

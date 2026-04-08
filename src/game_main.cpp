@@ -7,7 +7,7 @@
 
 int main(int argc, char const *argv[])
 {
-    Application app(1280, 720, {.enableEditorUI = false, .enableDebugUI = false, .windowTitle = "Game"});
+    Application app(1280, 720, {.enableEditorUI = false, .enableDebugUI = false, .enableGameUI = true, .windowTitle = "Game"});
     if (!app.Init())
     {
         return EXIT_FAILURE;

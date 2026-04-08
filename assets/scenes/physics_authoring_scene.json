@@ -73,6 +73,9 @@
                     }
                 },
                 {
+                    "type": "PhysicsListener"
+                },
+                {
                     "type": "Render",
                     "model": "meshes/cube/cube.obj",
                     "material": "materials/lit_cube.json",
@@ -150,6 +153,9 @@
                         "friction": 0.55,
                         "restitution": 0.0
                     }
+                },
+                {
+                    "type": "PhysicsListener"
                 },
                 {
                     "type": "Render",

@@ -1,6 +1,8 @@
 add_library(
     Engine
     
+    audio/audio_engine.cpp
+    
     core/application.cpp
     core/base_scene.cpp
     core/scene.hpp
@@ -89,3 +91,7 @@ target_include_directories(Engine
     PRIVATE ${PROJECT_SOURCE_DIR}/external/bullet3/src)
 
 target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson imgui BulletDynamics BulletCollision LinearMath)
+
+if (WIN32)
+    target_link_libraries(Engine PUBLIC winmm)
+endif()

@@ -174,6 +174,7 @@ struct EditorEntityInspectorState
     bool hasRigidbody = false;
     bool hasMeshRenderer = false;
     bool hasAnimation = false;
+    bool hasPhysicsListener = false;
     bool hasBoxCollider = false;
     bool hasSphereCollider = false;
     bool hasCapsuleCollider = false;
@@ -186,6 +187,17 @@ struct EditorEntityInspectorState
     EditorBoxColliderState boxCollider;
     EditorSphereColliderState sphereCollider;
     EditorCapsuleColliderState capsuleCollider;
+};
+
+struct RuntimeUIState
+{
+    bool valid = false;
+    bool paused = false;
+    bool objectiveCompleted = false;
+    std::string title;
+    std::string objective;
+    std::string status;
+    std::string hint;
 };
 
 class Scene
@@ -345,6 +357,14 @@ public:
     virtual bool StartEditorPlayMode() { return false; }
     virtual bool StopEditorPlayMode() { return false; }
     virtual bool IsEditorPlayMode() const { return false; }
+    virtual RuntimeUIState GetRuntimeUIState() const { return {}; }
+    virtual bool SetGamePaused(bool paused)
+    {
+        (void)paused;
+        return false;
+    }
+    virtual bool IsGamePaused() const { return false; }
+    virtual bool ResetRuntimeState() { return false; }
     virtual void PresentToScreen() {}
 
     void Render(float deltaTime)

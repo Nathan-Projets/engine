@@ -152,6 +152,34 @@ public:
         return systemPtr;
     }
 
+    template <typename T>
+    T *GetSystem()
+    {
+        for (const auto &system : m_systems)
+        {
+            if (T *typedSystem = dynamic_cast<T *>(system.get()))
+            {
+                return typedSystem;
+            }
+        }
+
+        return nullptr;
+    }
+
+    template <typename T>
+    const T *GetSystem() const
+    {
+        for (const auto &system : m_systems)
+        {
+            if (const T *typedSystem = dynamic_cast<const T *>(system.get()))
+            {
+                return typedSystem;
+            }
+        }
+
+        return nullptr;
+    }
+
     void UpdateSystems(float deltaTime)
     {
         for (auto &system : m_systems)

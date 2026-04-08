@@ -109,6 +109,7 @@ assets/
 - **Material-Driven Rendering**: Shaders and textures driven by material definitions
 - **Async Resource Loading**: Non-blocking asset loading with deduplication
 - **GPU Callbacks**: Explicit control over GPU upload and release phases
+- **Runtime Audio**: Minimal engine-level music and one-shot sound playback for `Game.exe`
 - **Scene Format**: JSON-based scene definitions with component composition
 - **Shader Auto-Discovery**: Automatic shader stage discovery from file extensions
 - **Hot Reload**: SceneLoader API enables live scene reloading during development
@@ -122,6 +123,10 @@ assets/
 3. Use `Editor.exe` to build scenes and tune component data in `assets/scenes/`.
 4. Use `Game.exe` to validate the actual player-facing runtime without editor tooling.
 5. Pass a scene path to `Game.exe` when you want to run the JSON-backed `EditorScene` runtime instead of the default gameplay bootstrap scene.
+
+For gameplay collision logic, add a `PhysicsListener` component to any entity that should react to collisions or triggers. The runtime wiring now fills that component automatically each frame from Bullet events, so gameplay systems can query the entity-local listener instead of scanning the global physics event stream manually.
+
+`SimpleGameScene` now includes a concrete trigger example: the player cube has a `PhysicsListener`, entering the `GoalTrigger` zone opens the `GoalDoor` cube, boosts the fill light, and plays a confirmation sound; exiting the zone closes it again with a second cue. `Game.exe` also now shows a minimal runtime HUD and pause menu, and the default bootstrap scene starts looping background music, so there is a real player-facing menu/HUD/audio path instead of editor-only tooling. The editor inspector also supports adding and removing `PhysicsListener` visually, so the component can be authored like the other gameplay-facing components.
 
 ### Build Targets
 
@@ -147,6 +152,22 @@ Examples:
 # Run the sample physics authoring scene with box/sphere/capsule/trigger setup
 ./build/bin/Release/Game.exe assets/scenes/physics_authoring_scene.json
 ```
+
+In `Game.exe`, `ESC` now opens a minimal pause menu with Resume, Restart, and Quit. The default bootstrap scene also shows a HUD objective/status overlay.
+
+Audio assets for the default runtime demo live under `assets/audio/`. The engine audio service is currently Windows-backed and intended as a lightweight runtime seam for simple games and prototype-scale content.
+
+Example usage in gameplay code:
+
+```cpp
+PhysicsListener *listener = world.GetComponent<PhysicsListener>(playerEntity);
+if (listener && listener->HasEvent(PhysicsEventType::TriggerEnter))
+{
+	// react to entering a trigger this frame
+}
+```
+
+The full in-repo example lives in `game/scene/simple_game_scene.cpp` and `game/systems/physics_listener_demo_system.hpp`.
 
 ### Shipping
 

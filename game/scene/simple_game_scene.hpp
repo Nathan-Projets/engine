@@ -10,13 +10,17 @@ class SimpleGameScene : public Scene
 {
 public:
     explicit SimpleGameScene(resources::ResourceManager *resourceManager = nullptr);
-    ~SimpleGameScene() override = default;
+    ~SimpleGameScene() override;
 
     void Init() override;
     void Update(float deltaTime) override;
     void Draw(float deltaTime) override;
     void OnResize(int width, int height) override;
     resources::ResourceManager *GetResourceManager() override { return m_resourceManager; }
+    RuntimeUIState GetRuntimeUIState() const override;
+    bool SetGamePaused(bool paused) override;
+    bool IsGamePaused() const override { return m_gamePaused; }
+    bool ResetRuntimeState() override;
     void PresentToScreen() override;
 
 private:
@@ -30,4 +34,5 @@ private:
     Entity m_cubeEntity;
     int m_viewportWidth = 1280;
     int m_viewportHeight = 720;
+    bool m_gamePaused = false;
 };

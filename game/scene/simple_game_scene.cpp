@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include <audio/audio_engine.hpp>
 #include <ecs/components/camera.hpp>
 #include <ecs/components/light.hpp>
 #include <ecs/components/mesh_renderer.hpp>
@@ -15,12 +16,19 @@
 #include <resources/units/material.hpp>
 #include <resources/units/model.hpp>
 
+#include "../components/physics_listener.hpp"
 #include "../components/player_controller.hpp"
 #include "../scene/runtime_scene_support.hpp"
+#include "../systems/physics_listener_demo_system.hpp"
 #include "../systems/player_controller_system.hpp"
 
 SimpleGameScene::SimpleGameScene(resources::ResourceManager *resourceManager) : m_resourceManager(resourceManager)
 {
+}
+
+SimpleGameScene::~SimpleGameScene()
+{
+    AudioEngine::Get().StopMusic();
 }
 
 void SimpleGameScene::Init()
@@ -30,7 +38,10 @@ void SimpleGameScene::Init()
 
 void SimpleGameScene::Update(float deltaTime)
 {
-    m_world.UpdateSystems(deltaTime);
+    if (!m_gamePaused)
+    {
+        m_world.UpdateSystems(deltaTime);
+    }
 }
 
 void SimpleGameScene::Draw(float deltaTime)
@@ -43,6 +54,55 @@ void SimpleGameScene::OnResize(int width, int height)
     ApplyViewportSize(width, height);
 }
 
+RuntimeUIState SimpleGameScene::GetRuntimeUIState() const
+{
+    RuntimeUIState state;
+    state.valid = true;
+    state.paused = m_gamePaused;
+    state.title = "Trigger Door Demo";
+    state.objective = "Push the player cube into the trigger zone to open the door.";
+    state.hint = "WASD move | ESC pause | Enter the glowing zone behind the player.";
+
+    bool doorOpen = false;
+    for (Entity entity : m_world.GetEntitiesWith<Transform, Name>())
+    {
+        const Name *name = m_world.GetComponent<Name>(entity);
+        const Transform *transform = m_world.GetComponent<Transform>(entity);
+        if (!name || !transform || name->value != "GoalDoor")
+        {
+            continue;
+        }
+
+        doorOpen = transform->position.y > 2.0f;
+        break;
+    }
+
+    state.objectiveCompleted = doorOpen;
+    state.status = doorOpen ? "Door open: objective complete" : "Door closed: move into the trigger zone";
+    return state;
+}
+
+bool SimpleGameScene::SetGamePaused(bool paused)
+{
+    m_gamePaused = paused;
+    if (paused)
+    {
+        AudioEngine::Get().PauseMusic();
+    }
+    else
+    {
+        AudioEngine::Get().ResumeMusic();
+    }
+    return true;
+}
+
+bool SimpleGameScene::ResetRuntimeState()
+{
+    BuildScene();
+    ApplyViewportSize(m_viewportWidth, m_viewportHeight);
+    return true;
+}
+
 void SimpleGameScene::PresentToScreen()
 {
     runtime_scene_support::PresentRenderSystem(m_renderSystem);
@@ -51,6 +111,9 @@ void SimpleGameScene::PresentToScreen()
 void SimpleGameScene::BuildScene()
 {
     m_world = World{};
+    m_gamePaused = false;
+    AudioEngine::Get().StopMusic();
+    AudioEngine::Get().PlayMusic("assets/audio/runtime_loop.wav", true, 0.55f);
 
     Entity groundEntity = m_world.CreateEntity();
     m_world.AddComponent<Name>(groundEntity, "Ground");
@@ -78,8 +141,36 @@ void SimpleGameScene::BuildScene()
     playerCollider->material.friction = 0.8f;
     playerCollider->material.restitution = 0.0f;
     m_world.AddComponent<PlayerController>(m_cubeEntity);
+    m_world.AddComponent<PhysicsListener>(m_cubeEntity);
     MeshRenderer *cubeRenderer = m_world.AddComponent<MeshRenderer>(m_cubeEntity);
     cubeRenderer->SetLoadTextures(true);
+
+    Entity triggerEntity = m_world.CreateEntity();
+    m_world.AddComponent<Name>(triggerEntity, "GoalTrigger");
+    m_world.AddComponent<Transform>(triggerEntity, glm::vec3(0.0f, 0.2f, -4.5f), glm::vec3(0.0f), glm::vec3(1.4f, 1.4f, 1.4f));
+    Rigidbody *triggerBody = m_world.AddComponent<Rigidbody>(triggerEntity);
+    triggerBody->type = RigidbodyType::Static;
+    triggerBody->isTrigger = true;
+    BoxCollider *triggerCollider = m_world.AddComponent<BoxCollider>(triggerEntity);
+    triggerCollider->halfExtents = glm::vec3(1.0f);
+    triggerCollider->isTrigger = true;
+    triggerCollider->material.friction = 0.0f;
+    triggerCollider->material.restitution = 0.0f;
+    MeshRenderer *triggerRenderer = m_world.AddComponent<MeshRenderer>(triggerEntity);
+    triggerRenderer->SetLoadTextures(true);
+
+    Entity doorEntity = m_world.CreateEntity();
+    m_world.AddComponent<Name>(doorEntity, "GoalDoor");
+    m_world.AddComponent<Transform>(doorEntity, glm::vec3(0.0f, 0.65f, -7.0f), glm::vec3(0.0f), glm::vec3(2.2f, 2.0f, 0.45f));
+    Rigidbody *doorBody = m_world.AddComponent<Rigidbody>(doorEntity);
+    doorBody->type = RigidbodyType::Static;
+    BoxCollider *doorCollider = m_world.AddComponent<BoxCollider>(doorEntity);
+    doorCollider->halfExtents = glm::vec3(1.0f);
+    doorCollider->material.friction = 0.9f;
+    doorCollider->material.restitution = 0.0f;
+    MeshRenderer *doorRenderer = m_world.AddComponent<MeshRenderer>(doorEntity);
+    doorRenderer->SetLoadTextures(true);
+
     if (m_resourceManager)
     {
         groundRenderer->SetModelHandle(m_resourceManager->Load<resources::Model>("assets/meshes/cube/cube.obj"));
@@ -87,6 +178,12 @@ void SimpleGameScene::BuildScene()
 
         cubeRenderer->SetModelHandle(m_resourceManager->Load<resources::Model>("assets/meshes/cube/cube.obj"));
         cubeRenderer->SetMaterialHandle(m_resourceManager->Load<resources::Material>("assets/materials/lit_cube.json"));
+
+        triggerRenderer->SetModelHandle(m_resourceManager->Load<resources::Model>("assets/meshes/cube/cube.obj"));
+        triggerRenderer->SetMaterialHandle(m_resourceManager->Load<resources::Material>("assets/materials/lit_cube.json"));
+
+        doorRenderer->SetModelHandle(m_resourceManager->Load<resources::Model>("assets/meshes/cube/cube.obj"));
+        doorRenderer->SetMaterialHandle(m_resourceManager->Load<resources::Material>("assets/materials/lit_pavement.json"));
     }
 
     Entity lightEntity = m_world.CreateEntity();
@@ -123,6 +220,7 @@ void SimpleGameScene::BuildScene()
                                  true);
 
     m_world.AddSystem<PlayerControllerSystem>();
+    m_world.AddSystem<PhysicsListenerDemoSystem>();
     runtime_scene_support::ConfigureBasicRuntimeSystems(m_world, m_resourceManager, m_renderSystem);
     runtime_scene_support::ApplyViewportToMainCameraAndRenderer(m_world, m_renderSystem, m_viewportWidth, m_viewportHeight);
 }

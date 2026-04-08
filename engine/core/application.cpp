@@ -2,12 +2,15 @@
 
 #include <imgui.h>
 
+#include <audio/audio_engine.hpp>
+
 Application::Application(int width, int height, Options options) : m_window(nullptr), m_width(width), m_height(height), m_bShouldExit(false), m_initialized(false), m_options(std::move(options))
 {
 }
 
 Application::~Application()
 {
+    AudioEngine::Get().Shutdown();
     if (m_debugUIInitialized)
     {
         m_debugUI.Shutdown();
@@ -18,6 +21,10 @@ Application::~Application()
 void Application::SetScene(Scene *scene)
 {
     m_scene = scene;
+    if (m_options.enableGameUI)
+    {
+        m_gameHUDPanel.SetScene(m_scene);
+    }
     if (m_options.enableEditorUI)
     {
         m_editorContext.BindScene(m_scene);
@@ -53,8 +60,9 @@ bool Application::Init()
     }
 
     InputManager::Get().AttachToWindow(m_window);
+    AudioEngine::Get().Init();
 
-    if (m_options.enableEditorUI || m_options.enableDebugUI)
+    if (m_options.enableEditorUI || m_options.enableDebugUI || m_options.enableGameUI)
     {
         m_debugUI.Init(m_window);
         m_debugUIInitialized = true;
@@ -85,6 +93,14 @@ bool Application::Init()
             m_outlinerPanel.visible = true;
             m_inspectorPanel.visible = true;
             m_viewportPanel.visible = true;
+        }
+
+        if (m_options.enableGameUI)
+        {
+            m_gameHUDPanel.SetScene(m_scene);
+            m_gameHUDPanel.SetQuitCallback([this]() { Stop(); });
+            m_gameHUDPanel.visible = true;
+            m_debugUI.AddPanel(&m_gameHUDPanel);
         }
     }
 
@@ -142,6 +158,7 @@ bool Application::Run()
     while (!glfwWindowShouldClose(m_window))
     {
         InputManager::Get().Update();
+        AudioEngine::Get().Update();
 
         glfwPollEvents();
 
@@ -151,7 +168,14 @@ bool Application::Run()
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-        if (InputManager::Get().IsKeyPressedGlobal(GLFW_KEY_ESCAPE))
+        if (m_options.enableGameUI && InputManager::Get().IsKeyJustPressedGlobal(GLFW_KEY_ESCAPE) && m_scene)
+        {
+            if (!m_scene->SetGamePaused(!m_scene->IsGamePaused()))
+            {
+                Stop();
+            }
+        }
+        else if (!m_options.enableGameUI && InputManager::Get().IsKeyPressedGlobal(GLFW_KEY_ESCAPE))
         {
             Stop();
         }
@@ -201,6 +225,12 @@ bool Application::Run()
         {
             InputManager::Get().SetMouseInputBlocked(!m_editorContext.IsViewportHovered());
             InputManager::Get().SetKeyboardInputBlocked(!m_editorContext.IsViewportFocused());
+        }
+        else if (m_options.enableGameUI)
+        {
+            const bool paused = m_scene && m_scene->IsGamePaused();
+            InputManager::Get().SetMouseInputBlocked(paused);
+            InputManager::Get().SetKeyboardInputBlocked(paused);
         }
         else
         {

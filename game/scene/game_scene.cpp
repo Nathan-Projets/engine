@@ -28,11 +28,13 @@
 #include "../../engine/resources/loaders/scene_loader.hpp"
 #include "../components/light_orbit_controller.hpp"
 #include "../components/orbit_camera_controller.hpp"
+#include "../components/physics_listener.hpp"
 #include "runtime_scene_support.hpp"
 #include "../../engine/physics/collider.hpp"
 #include "../../engine/physics/rigidbody.hpp"
 #include "../systems/light_orbit_controller_system.hpp"
 #include "../systems/orbit_camera_controller_system.hpp"
+#include "../systems/physics_event_listener_system.hpp"
 
 namespace
 {
@@ -509,6 +511,15 @@ namespace
             *world.AddComponent<CapsuleCollider>(target) = *capsuleCollider;
         }
 
+        if (const PhysicsListener *physicsListener = world.GetComponent<PhysicsListener>(source))
+        {
+            *world.AddComponent<PhysicsListener>(target) = *physicsListener;
+            if (PhysicsListener *targetListener = world.GetComponent<PhysicsListener>(target))
+            {
+                targetListener->ClearFrameEvents();
+            }
+        }
+
         if (const MeshRenderer *meshRenderer = world.GetComponent<MeshRenderer>(source))
         {
             MeshRenderer *targetRenderer = world.AddComponent<MeshRenderer>(target);
@@ -661,6 +672,16 @@ namespace
                 WriteFloatField(output, 20, "height", capsuleCollider->height);
                 WriteBoolField(output, 20, "isTrigger", capsuleCollider->isTrigger);
                 WritePhysicsMaterialObject(output, 20, capsuleCollider->material, false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (world.HasComponent<PhysicsListener>(entity))
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "PhysicsListener", false);
                 WriteIndent(output, 16);
                 output << '}';
             }
@@ -913,7 +934,7 @@ void EditorScene::Update(float deltaTime)
         m_pendingEditorCameraRefit = !TryFitEditorCameraToSceneBounds();
     }
 
-    if (m_runtimeMode || m_editorPlayMode)
+    if ((m_runtimeMode && !m_runtimePaused) || m_editorPlayMode)
     {
         m_world.UpdateSystems(deltaTime);
     }
@@ -1121,6 +1142,11 @@ EditorEntityInspectorState EditorScene::GetEditorEntityInspectorState(Entity ent
         state.rigidbody.isTrigger = rigidbody->isTrigger;
         state.rigidbody.linearVelocity = rigidbody->linearVelocity;
         state.rigidbody.angularVelocity = rigidbody->angularVelocity;
+    }
+
+    if (m_world.HasComponent<PhysicsListener>(entity))
+    {
+        state.hasPhysicsListener = true;
     }
 
     if (const BoxCollider *boxCollider = m_world.GetComponent<BoxCollider>(entity))
@@ -1518,6 +1544,14 @@ bool EditorScene::AddEditorComponent(Entity entity, std::string_view componentTy
         return true;
     }
 
+    if (componentType == "PhysicsListener")
+    {
+        if (m_world.HasComponent<PhysicsListener>(entity))
+            return false;
+        m_world.AddComponent<PhysicsListener>(entity);
+        return true;
+    }
+
     if (componentType == "Rigidbody")
     {
         if (m_world.HasComponent<Rigidbody>(entity))
@@ -1580,6 +1614,11 @@ bool EditorScene::RemoveEditorComponent(Entity entity, std::string_view componen
         const bool removedAnimation = m_world.RemoveComponent<AnimationPlayer>(entity);
         const bool removedPose = m_world.RemoveComponent<SkeletonPose>(entity);
         return removedAnimation || removedPose;
+    }
+
+    if (componentType == "PhysicsListener")
+    {
+        return m_world.RemoveComponent<PhysicsListener>(entity);
     }
 
     if (componentType == "Rigidbody")
@@ -1838,6 +1877,7 @@ bool EditorScene::ReloadSceneFromSnapshot(std::string_view snapshot)
 void EditorScene::ConfigureSystems()
 {
     m_world.AddSystem<PhysicsSystem>();
+    m_world.AddSystem<PhysicsEventListenerSystem>();
     m_world.AddSystem<OrbitCameraControllerSystem>();
     m_world.AddSystem<LightOrbitControllerSystem>();
     m_world.AddSystem<AnimationSystem>(m_resourceManager);
@@ -2054,6 +2094,51 @@ bool EditorScene::StopEditorPlayMode()
 bool EditorScene::IsEditorPlayMode() const
 {
     return m_runtimeMode || m_editorPlayMode;
+}
+
+RuntimeUIState EditorScene::GetRuntimeUIState() const
+{
+    if (!m_runtimeMode)
+    {
+        return {};
+    }
+
+    RuntimeUIState state;
+    state.valid = true;
+    state.paused = m_runtimePaused;
+    state.title = std::filesystem::path(m_scenePath).stem().string();
+    state.objective = "Runtime scene preview";
+    state.status = m_runtimePaused ? "Paused" : "Running authored scene";
+    state.hint = "ESC pause | Restart reloads the current scene file";
+    return state;
+}
+
+bool EditorScene::SetGamePaused(bool paused)
+{
+    if (!m_runtimeMode)
+    {
+        return false;
+    }
+
+    m_runtimePaused = paused;
+    return true;
+}
+
+bool EditorScene::IsGamePaused() const
+{
+    return m_runtimeMode && m_runtimePaused;
+}
+
+bool EditorScene::ResetRuntimeState()
+{
+    if (!m_runtimeMode)
+    {
+        return false;
+    }
+
+    m_runtimePaused = false;
+    ReloadScene(false);
+    return true;
 }
 
 void EditorScene::PresentToScreen()

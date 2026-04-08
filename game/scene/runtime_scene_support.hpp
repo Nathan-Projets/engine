@@ -8,6 +8,8 @@
 #include <ecs/systems/render_system.hpp>
 #include <resources/resource_manager.hpp>
 
+#include <systems/physics_event_listener_system.hpp>
+
 namespace runtime_scene_support
 {
     inline void ConfigureBasicRuntimeSystems(World &world,
@@ -18,6 +20,7 @@ namespace runtime_scene_support
         if (includePhysics)
         {
             world.AddSystem<PhysicsSystem>();
+            world.AddSystem<PhysicsEventListenerSystem>();
         }
 
         renderSystem = world.AddSystem<RenderSystem>(resourceManager);

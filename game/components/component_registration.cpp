@@ -9,6 +9,7 @@
 
 #include "../components/light_orbit_controller.hpp"
 #include "../components/orbit_camera_controller.hpp"
+#include "../components/physics_listener.hpp"
 #include "../components/player_controller.hpp"
 
 namespace GameComponentLoaders
@@ -127,6 +128,17 @@ namespace GameComponentLoaders
                                                  controller->cameraHeight = SceneLoader::ReadFloat(componentJson, "cameraHeight", controller->cameraHeight);
                                                  controller->lookAtHeight = SceneLoader::ReadFloat(componentJson, "lookAtHeight", controller->lookAtHeight);
                                                  controller->cameraForward = glm::normalize(SceneLoader::ReadVec3(componentJson, "cameraForward", controller->cameraForward));
+                                             });
+
+        SceneLoader::RegisterComponentLoader("PhysicsListener",
+                                             [](Entity entity,
+                                                simdjson::ondemand::object componentJson,
+                                                World &world,
+                                                resources::ResourceManager *resourceManager)
+                                             {
+                                                 (void)componentJson;
+                                                 (void)resourceManager;
+                                                 world.AddComponent<PhysicsListener>(entity);
                                              });
     }
 }
