@@ -46,7 +46,7 @@ namespace resources
         return g_activeLoadDebugSink;
     }
 
-    ResourceManager::ResourceManager(size_t numLoaderThreads) : m_modelPool(256), m_shaderPool(64), m_texturePool(256), m_materialPool(128)
+    ResourceManager::ResourceManager(size_t numLoaderThreads) : m_modelPool(256), m_shaderPool(64), m_texturePool(256), m_materialPool(128), m_audioClipPool(128)
     {
         m_activeThreadDebugStates.resize(numLoaderThreads);
 
@@ -502,11 +502,13 @@ namespace resources
         auto shaderResources = m_shaderPool.ExtractAll();
         auto textureResources = m_texturePool.ExtractAll();
         auto materialResources = m_materialPool.ExtractAll();
+        auto audioClipResources = m_audioClipPool.ExtractAll();
 
         releaseResources(modelResources);
         releaseResources(shaderResources);
         releaseResources(textureResources);
         releaseResources(materialResources);
+        releaseResources(audioClipResources);
 
         {
             std::lock_guard<std::mutex> deletionLock(m_deletionMutex);
@@ -544,6 +546,7 @@ namespace resources
         m_shaderPool.Clear();
         m_texturePool.Clear();
         m_materialPool.Clear();
+        m_audioClipPool.Clear();
 
         {
             std::lock_guard<std::mutex> lock(m_pathMapMutex);

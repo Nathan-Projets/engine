@@ -2,11 +2,13 @@
 
 #include <simdjson.h>
 
+#include <audio/audio_engine.hpp>
 #include <helpers/log.hpp>
 #include <resources/loaders/scene_loader.hpp>
 #include <ecs/components/transform.hpp>
 #include <ecs/components/skybox.hpp>
 
+#include "../components/audio_source.hpp"
 #include "../components/light_orbit_controller.hpp"
 #include "../components/orbit_camera_controller.hpp"
 #include "../components/physics_listener.hpp"
@@ -139,6 +141,38 @@ namespace GameComponentLoaders
                                                  (void)componentJson;
                                                  (void)resourceManager;
                                                  world.AddComponent<PhysicsListener>(entity);
+                                             });
+
+        SceneLoader::RegisterComponentLoader("AudioSource",
+                                             [](Entity entity,
+                                                simdjson::ondemand::object componentJson,
+                                                World &world,
+                                                resources::ResourceManager *resourceManager)
+                                             {
+                                                 AudioSource *source = world.AddComponent<AudioSource>(entity);
+                                                 std::string clipPath;
+                                                 if (SceneLoader::readOptionalString(componentJson, "clip", clipPath))
+                                                 {
+                                                     source->clipPath = clipPath;
+                                                 }
+                                                 source->volume = SceneLoader::ReadFloat(componentJson, "volume", source->volume);
+                                                 source->loop = SceneLoader::ReadBool(componentJson, "loop", source->loop);
+                                                 source->playOnAwake = SceneLoader::ReadBool(componentJson, "playOnAwake", source->playOnAwake);
+                                                 source->enabled = SceneLoader::ReadBool(componentJson, "enabled", source->enabled);
+                                                 source->spatialized = SceneLoader::ReadBool(componentJson, "spatialized", source->spatialized);
+                                                 source->relativeToListener = SceneLoader::ReadBool(componentJson, "relativeToListener", source->relativeToListener);
+                                                 source->minDistance = SceneLoader::ReadFloat(componentJson, "minDistance", source->minDistance);
+                                                 source->maxDistance = SceneLoader::ReadFloat(componentJson, "maxDistance", source->maxDistance);
+                                                 source->attenuation = SceneLoader::ReadFloat(componentJson, "attenuation", source->attenuation);
+
+                                                 if (resourceManager && !source->clipPath.empty())
+                                                 {
+                                                     source->clipHandle = AudioEngine::Get().Preload(resourceManager, source->clipPath);
+                                                     if (source->clipHandle.IsValid())
+                                                     {
+                                                         source->loadedClipPath = source->clipPath;
+                                                     }
+                                                 }
                                              });
     }
 }

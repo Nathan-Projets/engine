@@ -2,7 +2,13 @@
 
 #include <core/scene.hpp>
 #include <ecs/world.hpp>
+#include <resources/handle.hpp>
 #include <resources/resource_manager.hpp>
+
+namespace resources
+{
+    class AudioClip;
+}
 
 class RenderSystem;
 
@@ -26,13 +32,18 @@ public:
 private:
     void BuildScene();
     void ApplyViewportSize(int width, int height);
+    void TryStartBackgroundMusic();
 
 private:
     World m_world;
     resources::ResourceManager *m_resourceManager = nullptr;
     RenderSystem *m_renderSystem = nullptr;
     Entity m_cubeEntity;
+    resources::Handle<resources::AudioClip> m_musicClip;
+    resources::Handle<resources::AudioClip> m_goalOpenClip;
+    resources::Handle<resources::AudioClip> m_goalCloseClip;
     int m_viewportWidth = 1280;
     int m_viewportHeight = 720;
     bool m_gamePaused = false;
+    bool m_backgroundMusicStarted = false;
 };

@@ -13,6 +13,7 @@
 #include <ecs/systems/render_system.hpp>
 #include <helpers/log.hpp>
 #include <resources/resource_manager.hpp>
+#include <resources/units/audio_clip.hpp>
 #include <resources/units/material.hpp>
 #include <resources/units/model.hpp>
 
@@ -28,7 +29,7 @@ SimpleGameScene::SimpleGameScene(resources::ResourceManager *resourceManager) : 
 
 SimpleGameScene::~SimpleGameScene()
 {
-    AudioEngine::Get().StopMusic();
+    AudioEngine::Get().StopAll();
 }
 
 void SimpleGameScene::Init()
@@ -38,6 +39,8 @@ void SimpleGameScene::Init()
 
 void SimpleGameScene::Update(float deltaTime)
 {
+    TryStartBackgroundMusic();
+
     if (!m_gamePaused)
     {
         m_world.UpdateSystems(deltaTime);
@@ -87,11 +90,11 @@ bool SimpleGameScene::SetGamePaused(bool paused)
     m_gamePaused = paused;
     if (paused)
     {
-        AudioEngine::Get().PauseMusic();
+        AudioEngine::Get().PauseAll();
     }
     else
     {
-        AudioEngine::Get().ResumeMusic();
+        AudioEngine::Get().ResumeAll();
     }
     return true;
 }
@@ -112,8 +115,26 @@ void SimpleGameScene::BuildScene()
 {
     m_world = World{};
     m_gamePaused = false;
-    AudioEngine::Get().StopMusic();
-    AudioEngine::Get().PlayMusic("assets/audio/runtime_loop.wav", true, 0.55f);
+    m_backgroundMusicStarted = false;
+    AudioEngine::Get().StopAll();
+
+    if (m_resourceManager)
+    {
+        m_musicClip = AudioEngine::Get().Preload(m_resourceManager, "assets/audio/runtime_loop.wav", false);
+        m_goalOpenClip = AudioEngine::Get().Preload(m_resourceManager, "assets/audio/goal_open.wav");
+        m_goalCloseClip = AudioEngine::Get().Preload(m_resourceManager, "assets/audio/goal_close.wav");
+
+        if (m_musicClip.IsValid() && AudioEngine::Get().PlayMusic(m_resourceManager, m_musicClip, true, 0.55f))
+        {
+            m_backgroundMusicStarted = true;
+        }
+    }
+    else
+    {
+        m_musicClip = {};
+        m_goalOpenClip = {};
+        m_goalCloseClip = {};
+    }
 
     Entity groundEntity = m_world.CreateEntity();
     m_world.AddComponent<Name>(groundEntity, "Ground");
@@ -220,7 +241,7 @@ void SimpleGameScene::BuildScene()
                                  true);
 
     m_world.AddSystem<PlayerControllerSystem>();
-    m_world.AddSystem<PhysicsListenerDemoSystem>();
+    m_world.AddSystem<PhysicsListenerDemoSystem>(m_resourceManager, m_goalOpenClip, m_goalCloseClip);
     runtime_scene_support::ConfigureBasicRuntimeSystems(m_world, m_resourceManager, m_renderSystem);
     runtime_scene_support::ApplyViewportToMainCameraAndRenderer(m_world, m_renderSystem, m_viewportWidth, m_viewportHeight);
 }
@@ -230,4 +251,26 @@ void SimpleGameScene::ApplyViewportSize(int width, int height)
     m_viewportWidth = std::max(width, 1);
     m_viewportHeight = std::max(height, 1);
     runtime_scene_support::ApplyViewportToMainCameraAndRenderer(m_world, m_renderSystem, m_viewportWidth, m_viewportHeight);
+}
+
+void SimpleGameScene::TryStartBackgroundMusic()
+{
+    if (m_backgroundMusicStarted)
+    {
+        return;
+    }
+
+    if (m_resourceManager && m_musicClip.IsValid())
+    {
+        if (AudioEngine::Get().PlayMusic(m_resourceManager, m_musicClip, true, 0.55f))
+        {
+            m_backgroundMusicStarted = true;
+        }
+        return;
+    }
+
+    if (AudioEngine::Get().PlayMusic("assets/audio/runtime_loop.wav", true, 0.55f))
+    {
+        m_backgroundMusicStarted = true;
+    }
 }

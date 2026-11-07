@@ -9,6 +9,8 @@
 #include <optional>
 #include <sstream>
 
+#include <audio/audio_engine.hpp>
+
 #include <glm/gtc/matrix_inverse.hpp>
 
 #include "../../engine/helpers/log.hpp"
@@ -26,12 +28,14 @@
 #include "../../engine/ecs/systems/physics_system.hpp"
 #include "../../engine/ecs/systems/render_system.hpp"
 #include "../../engine/resources/loaders/scene_loader.hpp"
+#include "../components/audio_source.hpp"
 #include "../components/light_orbit_controller.hpp"
 #include "../components/orbit_camera_controller.hpp"
 #include "../components/physics_listener.hpp"
 #include "runtime_scene_support.hpp"
 #include "../../engine/physics/collider.hpp"
 #include "../../engine/physics/rigidbody.hpp"
+#include "../systems/audio_source_system.hpp"
 #include "../systems/light_orbit_controller_system.hpp"
 #include "../systems/orbit_camera_controller_system.hpp"
 #include "../systems/physics_event_listener_system.hpp"
@@ -520,6 +524,13 @@ namespace
             }
         }
 
+        if (const AudioSource *audioSource = world.GetComponent<AudioSource>(source))
+        {
+            AudioSource *targetAudioSource = world.AddComponent<AudioSource>(target);
+            *targetAudioSource = *audioSource;
+            targetAudioSource->ResetRuntimeState();
+        }
+
         if (const MeshRenderer *meshRenderer = world.GetComponent<MeshRenderer>(source))
         {
             MeshRenderer *targetRenderer = world.AddComponent<MeshRenderer>(target);
@@ -682,6 +693,26 @@ namespace
                 WriteIndent(output, 16);
                 output << "{\n";
                 WriteStringField(output, 20, "type", "PhysicsListener", false);
+                WriteIndent(output, 16);
+                output << '}';
+            }
+
+            if (const AudioSource *audioSource = world.GetComponent<AudioSource>(entity))
+            {
+                writeComponentSeparator();
+                WriteIndent(output, 16);
+                output << "{\n";
+                WriteStringField(output, 20, "type", "AudioSource");
+                WriteStringField(output, 20, "clip", audioSource->clipPath);
+                WriteFloatField(output, 20, "volume", audioSource->volume);
+                WriteBoolField(output, 20, "loop", audioSource->loop);
+                WriteBoolField(output, 20, "playOnAwake", audioSource->playOnAwake);
+                WriteBoolField(output, 20, "enabled", audioSource->enabled);
+                WriteBoolField(output, 20, "spatialized", audioSource->spatialized);
+                WriteBoolField(output, 20, "relativeToListener", audioSource->relativeToListener);
+                WriteFloatField(output, 20, "minDistance", audioSource->minDistance);
+                WriteFloatField(output, 20, "maxDistance", audioSource->maxDistance);
+                WriteFloatField(output, 20, "attenuation", audioSource->attenuation, false);
                 WriteIndent(output, 16);
                 output << '}';
             }
@@ -938,6 +969,8 @@ void EditorScene::Update(float deltaTime)
     {
         m_world.UpdateSystems(deltaTime);
     }
+
+    AudioEngine::Get().Update();
 }
 
 void EditorScene::Draw(float deltaTime)
@@ -1217,6 +1250,21 @@ EditorEntityInspectorState EditorScene::GetEditorEntityInspectorState(Entity ent
         state.animation.transitionActive = animationPlayer->transitionActive;
     }
 
+    if (const AudioSource *audioSource = m_world.GetComponent<AudioSource>(entity))
+    {
+        state.hasAudioSource = true;
+        state.audioSource.clipPath = audioSource->clipPath;
+        state.audioSource.volume = audioSource->volume;
+        state.audioSource.loop = audioSource->loop;
+        state.audioSource.playOnAwake = audioSource->playOnAwake;
+        state.audioSource.enabled = audioSource->enabled;
+        state.audioSource.spatialized = audioSource->spatialized;
+        state.audioSource.relativeToListener = audioSource->relativeToListener;
+        state.audioSource.minDistance = audioSource->minDistance;
+        state.audioSource.maxDistance = audioSource->maxDistance;
+        state.audioSource.attenuation = audioSource->attenuation;
+    }
+
     return state;
 }
 
@@ -1378,6 +1426,49 @@ bool EditorScene::SetEditorCapsuleCollider(Entity entity, const EditorCapsuleCol
     target->isTrigger = colliderState.isTrigger;
     target->material.friction = colliderState.material.friction;
     target->material.restitution = colliderState.material.restitution;
+    return true;
+}
+
+bool EditorScene::SetEditorAudioSource(Entity entity, const EditorAudioSourceState &audioSourceState)
+{
+    AudioSource *target = m_world.GetComponent<AudioSource>(entity);
+    if (!target)
+    {
+        return false;
+    }
+
+    const bool clipChanged = target->clipPath != audioSourceState.clipPath;
+    target->volume = std::clamp(audioSourceState.volume, 0.0f, 1.0f);
+    target->loop = audioSourceState.loop;
+    target->playOnAwake = audioSourceState.playOnAwake;
+    target->enabled = audioSourceState.enabled;
+    target->spatialized = audioSourceState.spatialized;
+    target->relativeToListener = audioSourceState.relativeToListener;
+    target->minDistance = std::max(audioSourceState.minDistance, 0.001f);
+    target->maxDistance = std::max(audioSourceState.maxDistance, target->minDistance);
+    target->attenuation = std::max(audioSourceState.attenuation, 0.0f);
+
+    if (!clipChanged)
+    {
+        return true;
+    }
+
+    if (target->playbackHandle != 0)
+    {
+        AudioEngine::Get().StopPlayback(target->playbackHandle);
+    }
+
+    target->ResetRuntimeState();
+    target->clipPath = audioSourceState.clipPath;
+    if (m_resourceManager && !target->clipPath.empty())
+    {
+        target->clipHandle = AudioEngine::Get().Preload(m_resourceManager, target->clipPath);
+        if (target->clipHandle.IsValid())
+        {
+            target->loadedClipPath = target->clipPath;
+        }
+    }
+
     return true;
 }
 
@@ -1544,6 +1635,14 @@ bool EditorScene::AddEditorComponent(Entity entity, std::string_view componentTy
         return true;
     }
 
+    if (componentType == "AudioSource")
+    {
+        if (m_world.HasComponent<AudioSource>(entity))
+            return false;
+        m_world.AddComponent<AudioSource>(entity);
+        return true;
+    }
+
     if (componentType == "PhysicsListener")
     {
         if (m_world.HasComponent<PhysicsListener>(entity))
@@ -1614,6 +1713,18 @@ bool EditorScene::RemoveEditorComponent(Entity entity, std::string_view componen
         const bool removedAnimation = m_world.RemoveComponent<AnimationPlayer>(entity);
         const bool removedPose = m_world.RemoveComponent<SkeletonPose>(entity);
         return removedAnimation || removedPose;
+    }
+
+    if (componentType == "AudioSource")
+    {
+        if (AudioSource *audioSource = m_world.GetComponent<AudioSource>(entity))
+        {
+            if (audioSource->playbackHandle != 0)
+            {
+                AudioEngine::Get().StopPlayback(audioSource->playbackHandle);
+            }
+        }
+        return m_world.RemoveComponent<AudioSource>(entity);
     }
 
     if (componentType == "PhysicsListener")
@@ -1824,6 +1935,8 @@ bool EditorScene::RequestAnimationTransition(Entity entity, int clipIndex, float
 
 void EditorScene::ReloadScene(bool clearResourceCache)
 {
+    AudioEngine::Get().StopAll();
+
     if (clearResourceCache && m_resourceManager)
     {
         if (!m_resourceManager->ResetForCleanReload())
@@ -1855,6 +1968,8 @@ void EditorScene::ReloadScene(bool clearResourceCache)
 
 bool EditorScene::ReloadSceneFromSnapshot(std::string_view snapshot)
 {
+    AudioEngine::Get().StopAll();
+
     World reloadedWorld;
     if (!SceneLoader::LoadIntoWorldFromJson(snapshot, &reloadedWorld, m_resourceManager))
     {
@@ -1878,6 +1993,7 @@ void EditorScene::ConfigureSystems()
 {
     m_world.AddSystem<PhysicsSystem>();
     m_world.AddSystem<PhysicsEventListenerSystem>();
+    m_world.AddSystem<AudioSourceSystem>(m_resourceManager);
     m_world.AddSystem<OrbitCameraControllerSystem>();
     m_world.AddSystem<LightOrbitControllerSystem>();
     m_world.AddSystem<AnimationSystem>(m_resourceManager);
@@ -2121,6 +2237,14 @@ bool EditorScene::SetGamePaused(bool paused)
     }
 
     m_runtimePaused = paused;
+    if (paused)
+    {
+        AudioEngine::Get().PauseAll();
+    }
+    else
+    {
+        AudioEngine::Get().ResumeAll();
+    }
     return true;
 }
 
@@ -2137,6 +2261,7 @@ bool EditorScene::ResetRuntimeState()
     }
 
     m_runtimePaused = false;
+    AudioEngine::Get().StopAll();
     ReloadScene(false);
     return true;
 }

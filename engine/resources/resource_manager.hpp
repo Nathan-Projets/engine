@@ -10,11 +10,13 @@
 #include "units/shader.hpp"
 #include "units/texture.hpp"
 #include "units/material.hpp"
+#include "units/audio_clip.hpp"
 
 #include "loaders/model_loader.hpp"
 #include "loaders/shader_loader.hpp"
 #include "loaders/texture_loader.hpp"
 #include "loaders/material_loader.hpp"
+#include "loaders/audio_clip_loader.hpp"
 
 #include "../helpers/log.hpp"
 
@@ -357,6 +359,10 @@ namespace resources
             {
                 return "Material";
             }
+            else if constexpr (std::is_same_v<T, AudioClip>)
+            {
+                return "AudioClip";
+            }
             else
             {
                 static_assert(always_false_v<T>, "Unsupported resource type");
@@ -382,6 +388,10 @@ namespace resources
             {
                 return m_materialPool;
             }
+            else if constexpr (std::is_same_v<T, AudioClip>)
+            {
+                return m_audioClipPool;
+            }
             else
             {
                 static_assert(always_false_v<T>, "Unsupported resource type");
@@ -406,6 +416,10 @@ namespace resources
             else if constexpr (std::is_same_v<T, Material>)
             {
                 return m_materialPool;
+            }
+            else if constexpr (std::is_same_v<T, AudioClip>)
+            {
+                return m_audioClipPool;
             }
             else
             {
@@ -498,6 +512,7 @@ namespace resources
         ResourcePool<Shader> m_shaderPool;
         ResourcePool<Texture> m_texturePool;
         ResourcePool<Material> m_materialPool;
+        ResourcePool<AudioClip> m_audioClipPool;
 
         std::unordered_map<std::string, uint32_t> m_pathToHandle; // key -> handle id
         mutable std::mutex m_pathMapMutex;

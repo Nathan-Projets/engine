@@ -32,6 +32,7 @@ public:
     bool SetEditorBoxCollider(Entity entity, const EditorBoxColliderState &collider) override;
     bool SetEditorSphereCollider(Entity entity, const EditorSphereColliderState &collider) override;
     bool SetEditorCapsuleCollider(Entity entity, const EditorCapsuleColliderState &collider) override;
+    bool SetEditorAudioSource(Entity entity, const EditorAudioSourceState &audioSource) override;
     void SetEditorViewportSize(int width, int height) override;
     uint32_t GetEditorViewportTextureId() const override;
     EditorViewportCameraState GetEditorViewportCameraState() const override;

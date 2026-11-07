@@ -23,3 +23,9 @@
 [submodule "external/bullet3"]
 	path = external/bullet3
 	url = https://github.com/bulletphysics/bullet3.git
+[submodule "external/freetype"]
+	path = external/freetype
+	url = https://github.com/freetype/freetype.git
+[submodule "external/sfml"]
+	path = external/sfml
+	url = https://github.com/SFML/SFML.git

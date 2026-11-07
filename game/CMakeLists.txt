@@ -7,12 +7,14 @@ add_library(
     scene/runtime_scene_support.hpp
     scene/simple_game_scene.cpp
     scene/simple_game_scene.hpp
+    components/audio_source.hpp
     components/component_registration.cpp
     components/component_registration.hpp
     components/light_orbit_controller.hpp
     components/orbit_camera_controller.hpp
     components/physics_listener.hpp
     components/player_controller.hpp
+    systems/audio_source_system.hpp
     systems/light_orbit_controller_system.hpp
     systems/orbit_camera_controller_system.hpp
     systems/physics_event_listener_system.hpp

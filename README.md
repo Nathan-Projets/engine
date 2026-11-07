@@ -109,7 +109,7 @@ assets/
 - **Material-Driven Rendering**: Shaders and textures driven by material definitions
 - **Async Resource Loading**: Non-blocking asset loading with deduplication
 - **GPU Callbacks**: Explicit control over GPU upload and release phases
-- **Runtime Audio**: Minimal engine-level music and one-shot sound playback for `Game.exe`
+- **Runtime Audio**: SFML-backed engine-level music and one-shot sound playback for `Game.exe`
 - **Scene Format**: JSON-based scene definitions with component composition
 - **Shader Auto-Discovery**: Automatic shader stage discovery from file extensions
 - **Hot Reload**: SceneLoader API enables live scene reloading during development
@@ -155,7 +155,7 @@ Examples:
 
 In `Game.exe`, `ESC` now opens a minimal pause menu with Resume, Restart, and Quit. The default bootstrap scene also shows a HUD objective/status overlay.
 
-Audio assets for the default runtime demo live under `assets/audio/`. The engine audio service is currently Windows-backed and intended as a lightweight runtime seam for simple games and prototype-scale content.
+Audio assets for the default runtime demo live under `assets/audio/`. The engine audio service is now SFML-backed and intended as a lightweight runtime seam for simple games and prototype-scale content.
 
 Example usage in gameplay code:
 

@@ -90,8 +90,4 @@ target_include_directories(Engine
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE ${PROJECT_SOURCE_DIR}/external/bullet3/src)
 
-target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson imgui BulletDynamics BulletCollision LinearMath)
-
-if (WIN32)
-    target_link_libraries(Engine PUBLIC winmm)
-endif()
+target_link_libraries(Engine PUBLIC glad glfw glm stb assimp simdjson imgui BulletDynamics BulletCollision LinearMath SFML::Audio SFML::System)

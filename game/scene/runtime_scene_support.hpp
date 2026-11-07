@@ -8,6 +8,7 @@
 #include <ecs/systems/render_system.hpp>
 #include <resources/resource_manager.hpp>
 
+#include <systems/audio_source_system.hpp>
 #include <systems/physics_event_listener_system.hpp>
 
 namespace runtime_scene_support
@@ -22,6 +23,8 @@ namespace runtime_scene_support
             world.AddSystem<PhysicsSystem>();
             world.AddSystem<PhysicsEventListenerSystem>();
         }
+
+        world.AddSystem<AudioSourceSystem>(resourceManager);
 
         renderSystem = world.AddSystem<RenderSystem>(resourceManager);
         if (renderSystem)

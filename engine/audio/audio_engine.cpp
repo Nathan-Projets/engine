@@ -1,33 +1,61 @@
 #include "audio_engine.hpp"
 
+#include <SFML/Audio/Listener.hpp>
+#include <SFML/Audio/Music.hpp>
+#include <SFML/Audio/Sound.hpp>
+#include <SFML/Audio/SoundBuffer.hpp>
+
+#include <algorithm>
+#include <array>
+#include <chrono>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <thread>
+#include <unordered_map>
 #include <vector>
 
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#include <mmsystem.h>
-#ifdef ERROR
-#undef ERROR
-#endif
-#endif
-
 #include <helpers/log.hpp>
+#include <resources/resource_manager.hpp>
+#include <resources/units/audio_clip.hpp>
 
 namespace
 {
+    constexpr size_t kAudioBusCount = static_cast<size_t>(resources::AudioBus::Count);
+
+    struct ActiveSoundInstance
+    {
+        AudioEngine::PlaybackHandle id = 0;
+        std::unique_ptr<sf::Sound> sound;
+        float baseVolume = 1.0f;
+        resources::AudioBus bus = resources::AudioBus::Sfx;
+    };
+
+    struct ActiveStreamInstance
+    {
+        AudioEngine::PlaybackHandle id = 0;
+        std::unique_ptr<sf::Music> stream;
+        float baseVolume = 1.0f;
+        resources::AudioBus bus = resources::AudioBus::Music;
+    };
+
+    struct MusicPlayback
+    {
+        std::unique_ptr<sf::Music> stream;
+        float baseVolume = 0.65f;
+        resources::AudioBus bus = resources::AudioBus::Music;
+    };
+
     struct AudioEngineState
     {
         bool initialized = false;
-        bool warnedUnsupportedPlatform = false;
-        uint64_t nextAliasId = 1;
-        bool musicLoop = false;
-        std::wstring musicAlias;
-        std::vector<std::wstring> activeOneShots;
+        AudioEngine::PlaybackHandle nextPlaybackId = 1;
+        MusicPlayback music;
+        std::unordered_map<std::string, std::shared_ptr<sf::SoundBuffer>> soundBuffers;
+        std::vector<ActiveSoundInstance> activeSounds;
+        std::vector<ActiveStreamInstance> activeStreams;
+        std::array<float, kAudioBusCount> busVolumes = {1.0f, 1.0f, 1.0f};
     };
 
     AudioEngineState &GetState()
@@ -54,85 +82,190 @@ namespace
         return candidate;
     }
 
-#ifdef _WIN32
-    std::string Narrow(const std::wstring &value)
+    float ToSfmlVolume(float volume)
     {
-        if (value.empty())
-        {
-            return {};
-        }
-
-        const int requiredSize = WideCharToMultiByte(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
-        if (requiredSize <= 0)
-        {
-            return {};
-        }
-
-        std::string result(static_cast<size_t>(requiredSize), '\0');
-        WideCharToMultiByte(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), result.data(), requiredSize, nullptr, nullptr);
-        return result;
+        return std::clamp(volume, 0.0f, 1.0f) * 100.0f;
     }
 
-    bool SendMciCommand(const std::wstring &command, std::wstring *output = nullptr)
+    size_t ToBusIndex(resources::AudioBus bus)
     {
-        wchar_t buffer[256] = {};
-        const UINT error = mciSendStringW(command.c_str(), output ? buffer : nullptr, output ? static_cast<UINT>(std::size(buffer)) : 0, nullptr);
-        if (error != 0)
-        {
-            wchar_t errorBuffer[256] = {};
-            mciGetErrorStringW(error, errorBuffer, static_cast<UINT>(std::size(errorBuffer)));
-            WARNING("Audio MCI command failed: " + Narrow(command) + " | " + Narrow(errorBuffer));
-            return false;
-        }
-
-        if (output)
-        {
-            *output = buffer;
-        }
-        return true;
+        return static_cast<size_t>(bus);
     }
 
-    std::wstring BuildOpenCommand(const std::filesystem::path &path, const std::wstring &alias)
+    float ApplyBusGain(const AudioEngineState &state, float volume, resources::AudioBus bus)
     {
-        std::wstring command = L"open \"" + path.wstring() + L"\"";
-        const std::wstring extension = path.extension().wstring();
-        if (extension == L".wav")
-        {
-            command += L" type waveaudio";
-        }
-        else if (extension == L".mp3" || extension == L".mpeg" || extension == L".mpg")
-        {
-            command += L" type mpegvideo";
-        }
-
-        command += L" alias " + alias;
-        return command;
+        return std::clamp(volume, 0.0f, 1.0f) * std::clamp(state.busVolumes[ToBusIndex(bus)], 0.0f, 1.0f);
     }
 
-    bool OpenClip(const std::filesystem::path &path, const std::wstring &alias)
+    sf::Vector3f ToSfVector(const glm::vec3 &value)
     {
+        return {value.x, value.y, value.z};
+    }
+
+    template <typename TSound>
+    void ApplySpatialSettings(TSound &sound, const AudioSpatialParams &spatial)
+    {
+        sound.setSpatializationEnabled(true);
+        sound.setRelativeToListener(spatial.relativeToListener);
+        sound.setPosition(ToSfVector(spatial.position));
+        sound.setMinDistance(std::max(spatial.minDistance, 0.001f));
+        sound.setMaxDistance(std::max(spatial.maxDistance, spatial.minDistance));
+        sound.setAttenuation(std::max(spatial.attenuation, 0.0f));
+    }
+
+    template <typename TSound>
+    void DisableSpatialization(TSound &sound)
+    {
+        sound.setSpatializationEnabled(false);
+        sound.setRelativeToListener(false);
+    }
+
+    std::shared_ptr<sf::SoundBuffer> LoadSoundBuffer(AudioEngineState &state, const std::filesystem::path &path)
+    {
+        const std::string cacheKey = path.lexically_normal().generic_string();
+        if (const auto it = state.soundBuffers.find(cacheKey); it != state.soundBuffers.end())
+        {
+            return it->second;
+        }
+
         if (!std::filesystem::exists(path))
         {
             WARNING("Audio asset not found: " + path.string());
-            return false;
+            return nullptr;
         }
 
-        if (!SendMciCommand(BuildOpenCommand(path, alias)))
+        auto buffer = std::make_shared<sf::SoundBuffer>();
+        if (!buffer->loadFromFile(path))
         {
-            return false;
+            WARNING("Failed to load audio asset: " + path.string());
+            return nullptr;
         }
-        return true;
+
+        state.soundBuffers.emplace(cacheKey, buffer);
+        return buffer;
     }
 
-    void CloseAlias(const std::wstring &alias)
+    bool WaitForAudioClip(resources::ResourceManager *resourceManager,
+                          resources::Handle<resources::AudioClip> clip,
+                          std::chrono::milliseconds timeout)
     {
-        if (!alias.empty())
+        if (!resourceManager || !clip.IsValid())
         {
-            SendMciCommand(L"stop " + alias);
-            SendMciCommand(L"close " + alias);
+            return false;
         }
+
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            const resources::AudioClip *audioClip = resourceManager->Get(clip);
+            if (audioClip && audioClip->IsLoaded())
+            {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        return false;
     }
-#endif
+
+    const resources::AudioClip *ResolveLoadedAudioClip(resources::ResourceManager *resourceManager, resources::Handle<resources::AudioClip> clip)
+    {
+        if (!resourceManager || !clip.IsValid())
+        {
+            return nullptr;
+        }
+
+        const resources::AudioClip *audioClip = resourceManager->Get(clip);
+        if (!audioClip || !audioClip->IsLoaded())
+        {
+            return nullptr;
+        }
+
+        return audioClip;
+    }
+
+    ActiveSoundInstance *FindActiveSound(AudioEngineState &state, AudioEngine::PlaybackHandle handle)
+    {
+        for (ActiveSoundInstance &instance : state.activeSounds)
+        {
+            if (instance.id == handle)
+            {
+                return &instance;
+            }
+        }
+
+        return nullptr;
+    }
+
+    ActiveStreamInstance *FindActiveStream(AudioEngineState &state, AudioEngine::PlaybackHandle handle)
+    {
+        for (ActiveStreamInstance &instance : state.activeStreams)
+        {
+            if (instance.id == handle)
+            {
+                return &instance;
+            }
+        }
+
+        return nullptr;
+    }
+
+    const ActiveSoundInstance *FindActiveSound(const AudioEngineState &state, AudioEngine::PlaybackHandle handle)
+    {
+        for (const ActiveSoundInstance &instance : state.activeSounds)
+        {
+            if (instance.id == handle)
+            {
+                return &instance;
+            }
+        }
+
+        return nullptr;
+    }
+
+    const ActiveStreamInstance *FindActiveStream(const AudioEngineState &state, AudioEngine::PlaybackHandle handle)
+    {
+        for (const ActiveStreamInstance &instance : state.activeStreams)
+        {
+            if (instance.id == handle)
+            {
+                return &instance;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void ApplyActiveSoundVolume(const AudioEngineState &state, ActiveSoundInstance &instance)
+    {
+        if (!instance.sound)
+        {
+            return;
+        }
+
+        instance.sound->setVolume(ToSfmlVolume(ApplyBusGain(state, instance.baseVolume, instance.bus)));
+    }
+
+    void ApplyActiveStreamVolume(const AudioEngineState &state, ActiveStreamInstance &instance)
+    {
+        if (!instance.stream)
+        {
+            return;
+        }
+
+        instance.stream->setVolume(ToSfmlVolume(ApplyBusGain(state, instance.baseVolume, instance.bus)));
+    }
+
+    void ApplyMusicVolume(const AudioEngineState &state)
+    {
+        if (!state.music.stream)
+        {
+            return;
+        }
+
+        state.music.stream->setVolume(ToSfmlVolume(ApplyBusGain(state, state.music.baseVolume, state.music.bus)));
+    }
 }
 
 AudioEngine &AudioEngine::Get()
@@ -150,28 +283,14 @@ bool AudioEngine::Init()
     }
 
     state.initialized = true;
-#ifndef _WIN32
-    if (!state.warnedUnsupportedPlatform)
-    {
-        WARNING("AudioEngine is currently implemented only on Windows; audio playback is disabled.");
-        state.warnedUnsupportedPlatform = true;
-    }
-#endif
     return true;
 }
 
 void AudioEngine::Shutdown()
 {
     AudioEngineState &state = GetState();
-#ifdef _WIN32
-    for (const std::wstring &alias : state.activeOneShots)
-    {
-        CloseAlias(alias);
-    }
-    state.activeOneShots.clear();
-    CloseAlias(state.musicAlias);
-    state.musicAlias.clear();
-#endif
+    StopAll();
+    state.soundBuffers.clear();
     state.initialized = false;
 }
 
@@ -183,37 +302,417 @@ void AudioEngine::Update()
         return;
     }
 
-#ifdef _WIN32
-    if (!state.musicAlias.empty())
+    state.activeSounds.erase(
+        std::remove_if(
+            state.activeSounds.begin(),
+            state.activeSounds.end(),
+            [](const ActiveSoundInstance &instance)
+            {
+                return !instance.sound || instance.sound->getStatus() == sf::SoundSource::Status::Stopped;
+            }),
+        state.activeSounds.end());
+
+    state.activeStreams.erase(
+        std::remove_if(
+            state.activeStreams.begin(),
+            state.activeStreams.end(),
+            [](const ActiveStreamInstance &instance)
+            {
+                return !instance.stream || instance.stream->getStatus() == sf::SoundSource::Status::Stopped;
+            }),
+        state.activeStreams.end());
+
+    if (state.music.stream && state.music.stream->getStatus() == sf::SoundSource::Status::Stopped && !state.music.stream->isLooping())
     {
-        std::wstring mode;
-        if (SendMciCommand(L"status " + state.musicAlias + L" mode", &mode) && mode == L"stopped")
+        state.music.stream.reset();
+    }
+}
+
+void AudioEngine::UpdateListener(const glm::vec3 &position, const glm::vec3 &forward, const glm::vec3 &up)
+{
+    if (!Init())
+    {
+        return;
+    }
+
+    sf::Listener::setPosition(ToSfVector(position));
+    sf::Listener::setDirection(ToSfVector(forward));
+    sf::Listener::setUpVector(ToSfVector(up));
+}
+
+void AudioEngine::StopAll()
+{
+    AudioEngineState &state = GetState();
+    for (ActiveSoundInstance &instance : state.activeSounds)
+    {
+        if (instance.sound)
         {
-            if (state.musicLoop)
-            {
-                SendMciCommand(L"play " + state.musicAlias + L" from 0");
-            }
-            else
-            {
-                CloseAlias(state.musicAlias);
-                state.musicAlias.clear();
-            }
+            instance.sound->stop();
+        }
+    }
+    state.activeSounds.clear();
+
+    for (ActiveStreamInstance &instance : state.activeStreams)
+    {
+        if (instance.stream)
+        {
+            instance.stream->stop();
+        }
+    }
+    state.activeStreams.clear();
+    StopMusic();
+}
+
+void AudioEngine::PauseAll()
+{
+    AudioEngineState &state = GetState();
+    for (ActiveSoundInstance &instance : state.activeSounds)
+    {
+        if (instance.sound && instance.sound->getStatus() == sf::SoundSource::Status::Playing)
+        {
+            instance.sound->pause();
         }
     }
 
-    for (size_t index = 0; index < state.activeOneShots.size();)
+    for (ActiveStreamInstance &instance : state.activeStreams)
     {
-        std::wstring mode;
-        if (!SendMciCommand(L"status " + state.activeOneShots[index] + L" mode", &mode) || mode == L"stopped")
+        if (instance.stream && instance.stream->getStatus() == sf::SoundSource::Status::Playing)
         {
-            CloseAlias(state.activeOneShots[index]);
-            state.activeOneShots.erase(state.activeOneShots.begin() + static_cast<std::ptrdiff_t>(index));
-            continue;
+            instance.stream->pause();
+        }
+    }
+
+    if (state.music.stream && state.music.stream->getStatus() == sf::SoundSource::Status::Playing)
+    {
+        state.music.stream->pause();
+    }
+}
+
+void AudioEngine::ResumeAll()
+{
+    AudioEngineState &state = GetState();
+    for (ActiveSoundInstance &instance : state.activeSounds)
+    {
+        if (instance.sound && instance.sound->getStatus() == sf::SoundSource::Status::Paused)
+        {
+            instance.sound->play();
+        }
+    }
+
+    for (ActiveStreamInstance &instance : state.activeStreams)
+    {
+        if (instance.stream && instance.stream->getStatus() == sf::SoundSource::Status::Paused)
+        {
+            instance.stream->play();
+        }
+    }
+
+    if (state.music.stream && state.music.stream->getStatus() == sf::SoundSource::Status::Paused)
+    {
+        state.music.stream->play();
+    }
+}
+
+void AudioEngine::SetBusVolume(resources::AudioBus bus, float volume)
+{
+    AudioEngineState &state = GetState();
+    if (!Init())
+    {
+        return;
+    }
+
+    state.busVolumes[ToBusIndex(bus)] = std::clamp(volume, 0.0f, 1.0f);
+    for (ActiveSoundInstance &instance : state.activeSounds)
+    {
+        ApplyActiveSoundVolume(state, instance);
+    }
+    for (ActiveStreamInstance &instance : state.activeStreams)
+    {
+        ApplyActiveStreamVolume(state, instance);
+    }
+    ApplyMusicVolume(state);
+}
+
+float AudioEngine::GetBusVolume(resources::AudioBus bus) const
+{
+    const AudioEngineState &state = GetState();
+    return state.busVolumes[ToBusIndex(bus)];
+}
+
+resources::Handle<resources::AudioClip> AudioEngine::Preload(resources::ResourceManager *resourceManager,
+                                                             std::string_view path,
+                                                             bool cacheBuffer,
+                                                             std::chrono::milliseconds timeout)
+{
+    AudioEngineState &state = GetState();
+    if (!Init())
+    {
+        return {};
+    }
+
+    if (!resourceManager)
+    {
+        return {};
+    }
+
+    resources::Handle<resources::AudioClip> clip = resourceManager->Load<resources::AudioClip>(std::string(path));
+    if (!WaitForAudioClip(resourceManager, clip, timeout))
+    {
+        return {};
+    }
+
+    const resources::AudioClip *audioClip = ResolveLoadedAudioClip(resourceManager, clip);
+    if (!audioClip)
+    {
+        return {};
+    }
+
+    if (!cacheBuffer || audioClip->GetResolvedLoadMode() != resources::AudioLoadMode::Preload)
+    {
+        return clip;
+    }
+
+    if (!LoadSoundBuffer(state, std::filesystem::path(audioClip->GetSourcePath())))
+    {
+        return {};
+    }
+
+    return clip;
+}
+
+AudioEngine::PlaybackHandle AudioEngine::PlayClip(resources::ResourceManager *resourceManager,
+                                                  resources::Handle<resources::AudioClip> clip,
+                                                  bool loop,
+                                                  float volume,
+                                                  const AudioSpatialParams *spatial)
+{
+    AudioEngineState &state = GetState();
+    if (!Init())
+    {
+        return 0;
+    }
+
+    const resources::AudioClip *audioClip = ResolveLoadedAudioClip(resourceManager, clip);
+    if (!audioClip)
+    {
+        return 0;
+    }
+
+    const PlaybackHandle handle = state.nextPlaybackId++;
+    if (audioClip->GetPlaybackMode() == resources::AudioPlaybackMode::Streamed)
+    {
+        auto stream = std::make_unique<sf::Music>();
+        if (!stream->openFromFile(std::filesystem::path(audioClip->GetSourcePath())))
+        {
+            WARNING("Failed to open streamed audio clip: " + audioClip->GetSourcePath());
+            return 0;
         }
 
-        ++index;
+        stream->setLooping(loop);
+        if (spatial)
+        {
+            ApplySpatialSettings(*stream, *spatial);
+        }
+        else
+        {
+            DisableSpatialization(*stream);
+        }
+
+        ActiveStreamInstance instance;
+        instance.id = handle;
+        instance.baseVolume = volume;
+        instance.bus = audioClip->GetBus();
+        instance.stream = std::move(stream);
+        ApplyActiveStreamVolume(state, instance);
+        instance.stream->play();
+        state.activeStreams.push_back(std::move(instance));
+        return handle;
     }
-#endif
+
+    std::shared_ptr<sf::SoundBuffer> buffer = LoadSoundBuffer(state, std::filesystem::path(audioClip->GetSourcePath()));
+    if (!buffer)
+    {
+        return 0;
+    }
+
+    ActiveSoundInstance instance;
+    instance.id = handle;
+    instance.baseVolume = volume;
+    instance.bus = audioClip->GetBus();
+    instance.sound = std::make_unique<sf::Sound>(*buffer);
+    instance.sound->setLooping(loop);
+    if (spatial)
+    {
+        ApplySpatialSettings(*instance.sound, *spatial);
+    }
+    else
+    {
+        DisableSpatialization(*instance.sound);
+    }
+    ApplyActiveSoundVolume(state, instance);
+    instance.sound->play();
+    state.activeSounds.push_back(std::move(instance));
+    return handle;
+}
+
+bool AudioEngine::IsPlaybackActive(PlaybackHandle handle) const
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+
+    const AudioEngineState &state = GetState();
+    if (const ActiveSoundInstance *sound = FindActiveSound(state, handle))
+    {
+        return sound->sound && sound->sound->getStatus() != sf::SoundSource::Status::Stopped;
+    }
+
+    if (const ActiveStreamInstance *stream = FindActiveStream(state, handle))
+    {
+        return stream->stream && stream->stream->getStatus() != sf::SoundSource::Status::Stopped;
+    }
+
+    return false;
+}
+
+void AudioEngine::StopPlayback(PlaybackHandle handle)
+{
+    if (handle == 0)
+    {
+        return;
+    }
+
+    AudioEngineState &state = GetState();
+    state.activeSounds.erase(
+        std::remove_if(
+            state.activeSounds.begin(),
+            state.activeSounds.end(),
+            [handle](ActiveSoundInstance &instance)
+            {
+                if (instance.id != handle)
+                {
+                    return false;
+                }
+
+                if (instance.sound)
+                {
+                    instance.sound->stop();
+                }
+                return true;
+            }),
+        state.activeSounds.end());
+
+    state.activeStreams.erase(
+        std::remove_if(
+            state.activeStreams.begin(),
+            state.activeStreams.end(),
+            [handle](ActiveStreamInstance &instance)
+            {
+                if (instance.id != handle)
+                {
+                    return false;
+                }
+
+                if (instance.stream)
+                {
+                    instance.stream->stop();
+                }
+                return true;
+            }),
+        state.activeStreams.end());
+}
+
+bool AudioEngine::PausePlayback(PlaybackHandle handle)
+{
+    AudioEngineState &state = GetState();
+    if (ActiveSoundInstance *sound = FindActiveSound(state, handle))
+    {
+        if (sound->sound)
+        {
+            sound->sound->pause();
+            return true;
+        }
+    }
+
+    if (ActiveStreamInstance *stream = FindActiveStream(state, handle))
+    {
+        if (stream->stream)
+        {
+            stream->stream->pause();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool AudioEngine::ResumePlayback(PlaybackHandle handle)
+{
+    AudioEngineState &state = GetState();
+    if (ActiveSoundInstance *sound = FindActiveSound(state, handle))
+    {
+        if (sound->sound)
+        {
+            sound->sound->play();
+            return true;
+        }
+    }
+
+    if (ActiveStreamInstance *stream = FindActiveStream(state, handle))
+    {
+        if (stream->stream)
+        {
+            stream->stream->play();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool AudioEngine::SetPlaybackVolume(PlaybackHandle handle, float volume)
+{
+    AudioEngineState &state = GetState();
+    if (ActiveSoundInstance *sound = FindActiveSound(state, handle))
+    {
+        sound->baseVolume = volume;
+        ApplyActiveSoundVolume(state, *sound);
+        return true;
+    }
+
+    if (ActiveStreamInstance *stream = FindActiveStream(state, handle))
+    {
+        stream->baseVolume = volume;
+        ApplyActiveStreamVolume(state, *stream);
+        return true;
+    }
+
+    return false;
+}
+
+bool AudioEngine::SetPlaybackSpatial(PlaybackHandle handle, const AudioSpatialParams &spatial)
+{
+    AudioEngineState &state = GetState();
+    if (ActiveSoundInstance *sound = FindActiveSound(state, handle))
+    {
+        if (sound->sound)
+        {
+            ApplySpatialSettings(*sound->sound, spatial);
+            return true;
+        }
+    }
+
+    if (ActiveStreamInstance *stream = FindActiveStream(state, handle))
+    {
+        if (stream->stream)
+        {
+            ApplySpatialSettings(*stream->stream, spatial);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool AudioEngine::PlayOneShot(std::string_view path, float volume)
@@ -224,29 +723,35 @@ bool AudioEngine::PlayOneShot(std::string_view path, float volume)
         return false;
     }
 
-    (void)volume;
-
-#ifdef _WIN32
-    const std::filesystem::path resolvedPath = ResolveAudioPath(path);
-    const std::wstring alias = L"sfx_" + std::to_wstring(state.nextAliasId++);
-    if (!OpenClip(resolvedPath, alias))
+    std::shared_ptr<sf::SoundBuffer> buffer = LoadSoundBuffer(state, ResolveAudioPath(path));
+    if (!buffer)
     {
         return false;
     }
 
-    if (!SendMciCommand(L"play " + alias + L" from 0"))
-    {
-        CloseAlias(alias);
-        return false;
-    }
-
-    state.activeOneShots.push_back(alias);
+    ActiveSoundInstance instance;
+    instance.id = state.nextPlaybackId++;
+    instance.baseVolume = volume;
+    instance.bus = resources::AudioBus::Sfx;
+    instance.sound = std::make_unique<sf::Sound>(*buffer);
+    DisableSpatialization(*instance.sound);
+    ApplyActiveSoundVolume(state, instance);
+    instance.sound->play();
+    state.activeSounds.push_back(std::move(instance));
     return true;
-#else
-    (void)path;
-    (void)volume;
-    return false;
-#endif
+}
+
+bool AudioEngine::PlayOneShot(resources::ResourceManager *resourceManager, resources::Handle<resources::AudioClip> clip, float volume)
+{
+    return PlayClip(resourceManager, clip, false, volume, nullptr) != 0;
+}
+
+bool AudioEngine::PlayOneShotAt(resources::ResourceManager *resourceManager,
+                                resources::Handle<resources::AudioClip> clip,
+                                const AudioSpatialParams &spatial,
+                                float volume)
+{
+    return PlayClip(resourceManager, clip, false, volume, &spatial) != 0;
 }
 
 bool AudioEngine::PlayMusic(std::string_view path, bool loop, float volume)
@@ -257,71 +762,76 @@ bool AudioEngine::PlayMusic(std::string_view path, bool loop, float volume)
         return false;
     }
 
-    (void)volume;
-
-#ifdef _WIN32
     StopMusic();
 
     const std::filesystem::path resolvedPath = ResolveAudioPath(path);
-    const std::wstring alias = L"music_" + std::to_wstring(state.nextAliasId++);
-    if (!OpenClip(resolvedPath, alias))
+    if (!std::filesystem::exists(resolvedPath))
     {
+        WARNING("Audio asset not found: " + resolvedPath.string());
         return false;
     }
 
-    if (!SendMciCommand(L"play " + alias + L" from 0"))
+    auto music = std::make_unique<sf::Music>();
+    if (!music->openFromFile(resolvedPath))
     {
-        CloseAlias(alias);
+        WARNING("Failed to open music asset: " + resolvedPath.string());
         return false;
     }
 
-    state.musicLoop = loop;
-    state.musicAlias = alias;
+    music->setLooping(loop);
+    DisableSpatialization(*music);
+    state.music.baseVolume = volume;
+    state.music.bus = resources::AudioBus::Music;
+    state.music.stream = std::move(music);
+    ApplyMusicVolume(state);
+    state.music.stream->play();
     return true;
-#else
-    (void)path;
-    (void)loop;
-    (void)volume;
-    return false;
-#endif
+}
+
+bool AudioEngine::PlayMusic(resources::ResourceManager *resourceManager,
+                            resources::Handle<resources::AudioClip> clip,
+                            bool loop,
+                            float volume)
+{
+    const resources::AudioClip *audioClip = ResolveLoadedAudioClip(resourceManager, clip);
+    if (!audioClip)
+    {
+        return false;
+    }
+
+    return PlayMusic(audioClip->GetSourcePath(), loop, volume);
 }
 
 void AudioEngine::StopMusic()
 {
     AudioEngineState &state = GetState();
-#ifdef _WIN32
-    state.musicLoop = false;
-    CloseAlias(state.musicAlias);
-    state.musicAlias.clear();
-#endif
+    if (state.music.stream)
+    {
+        state.music.stream->stop();
+        state.music.stream.reset();
+    }
 }
 
 bool AudioEngine::PauseMusic()
 {
     AudioEngineState &state = GetState();
-#ifdef _WIN32
-    if (state.musicAlias.empty())
+    if (!state.music.stream || state.music.stream->getStatus() != sf::SoundSource::Status::Playing)
     {
         return false;
     }
 
-    return SendMciCommand(L"pause " + state.musicAlias);
-#else
-    return false;
-#endif
+    state.music.stream->pause();
+    return true;
 }
 
 bool AudioEngine::ResumeMusic()
 {
     AudioEngineState &state = GetState();
-#ifdef _WIN32
-    if (state.musicAlias.empty())
+    if (!state.music.stream || state.music.stream->getStatus() != sf::SoundSource::Status::Paused)
     {
         return false;
     }
 
-    return SendMciCommand(L"resume " + state.musicAlias);
-#else
-    return false;
-#endif
+    state.music.stream->play();
+    return true;
 }

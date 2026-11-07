@@ -8,6 +8,9 @@
 #include <ecs/components/transform.hpp>
 #include <ecs/world.hpp>
 #include <helpers/log.hpp>
+#include <resources/handle.hpp>
+#include <resources/resource_manager.hpp>
+#include <resources/units/audio_clip.hpp>
 
 #include <glm/common.hpp>
 
@@ -17,6 +20,12 @@
 class PhysicsListenerDemoSystem : public System
 {
 public:
+    PhysicsListenerDemoSystem(resources::ResourceManager *resourceManager = nullptr,
+                              resources::Handle<resources::AudioClip> openClip = {},
+                              resources::Handle<resources::AudioClip> closeClip = {}) : m_resourceManager(resourceManager), m_openClip(openClip), m_closeClip(closeClip)
+    {
+    }
+
     void Update(World &world, float deltaTime) override
     {
         (void)deltaTime;
@@ -60,7 +69,7 @@ public:
         if (triggerActive != m_triggerActive)
         {
             SetFillLightActive(world, triggerActive);
-            AudioEngine::Get().PlayOneShot(triggerActive ? "assets/audio/goal_open.wav" : "assets/audio/goal_close.wav", 0.85f);
+            PlayGoalCue(world, triggerActive);
             m_triggerActive = triggerActive;
         }
 
@@ -68,6 +77,26 @@ public:
     }
 
 private:
+    void PlayGoalCue(World &world, bool triggerActive)
+    {
+        const resources::Handle<resources::AudioClip> clip = triggerActive ? m_openClip : m_closeClip;
+        const Transform *doorTransform = FindNamedTransform(world, "GoalDoor");
+        if (m_resourceManager && clip.IsValid() && doorTransform)
+        {
+            AudioSpatialParams spatial;
+            spatial.position = doorTransform->position;
+            spatial.minDistance = 2.5f;
+            spatial.maxDistance = 18.0f;
+            spatial.attenuation = 0.45f;
+            if (AudioEngine::Get().PlayOneShotAt(m_resourceManager, clip, spatial, 0.85f))
+            {
+                return;
+            }
+        }
+
+        AudioEngine::Get().PlayOneShot(triggerActive ? "assets/audio/goal_open.wav" : "assets/audio/goal_close.wav", 0.85f);
+    }
+
     static std::string GetEntityLabel(World &world, Entity entity)
     {
         if (const Name *name = world.GetComponent<Name>(entity))
@@ -76,6 +105,21 @@ private:
         }
 
         return "Entity " + std::to_string(entity.GetID());
+    }
+
+    static const Transform *FindNamedTransform(World &world, std::string_view targetName)
+    {
+        for (Entity entity : world.GetEntitiesWith<Transform, Name>())
+        {
+            const Name *name = world.GetComponent<Name>(entity);
+            const Transform *transform = world.GetComponent<Transform>(entity);
+            if (name && transform && name->value == targetName)
+            {
+                return transform;
+            }
+        }
+
+        return nullptr;
     }
 
     static void SetFillLightActive(World &world, bool active)
@@ -130,4 +174,7 @@ private:
     }
 
     bool m_triggerActive = false;
+    resources::ResourceManager *m_resourceManager = nullptr;
+    resources::Handle<resources::AudioClip> m_openClip;
+    resources::Handle<resources::AudioClip> m_closeClip;
 };

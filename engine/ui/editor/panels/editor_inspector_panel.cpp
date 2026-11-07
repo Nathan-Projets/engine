@@ -146,6 +146,14 @@ void EditorInspectorPanel::Draw()
                                        { return targetScene->AddEditorComponent(state.entity, "Animation"); });
         }
     }
+    if (!state.hasAudioSource)
+    {
+        if (ImGui::Button("Add Audio Source"))
+        {
+            m_context->ExecuteMutation([&](Scene *targetScene)
+                                       { return targetScene->AddEditorComponent(state.entity, "AudioSource"); });
+        }
+    }
     if (!state.hasPhysicsListener)
     {
         if (ImGui::Button("Add Physics Listener"))
@@ -536,6 +544,66 @@ void EditorInspectorPanel::Draw()
                     state.animation.loop ? "yes" : "no",
                     state.animation.paused ? "yes" : "no");
         ImGui::Text("Transition active: %s", state.animation.transitionActive ? "yes" : "no");
+    }
+
+    if (state.hasAudioSource)
+    {
+        ImGui::SeparatorText("Audio Source");
+        ImGui::BeginDisabled(!m_context->CanEdit());
+        if (ImGui::SmallButton("Remove Audio Source"))
+        {
+            if (m_context->ExecuteMutation([&](Scene *targetScene)
+                                           { return targetScene->RemoveEditorComponent(state.entity, "AudioSource"); }))
+            {
+                ImGui::EndDisabled();
+                ImGui::End();
+                return;
+            }
+        }
+
+        EditorAudioSourceState audioSource = state.audioSource;
+        std::array<char, 256> clipPathBuffer{};
+        const size_t clipCopyLength = std::min(audioSource.clipPath.size(), clipPathBuffer.size() - 1);
+        std::memcpy(clipPathBuffer.data(), audioSource.clipPath.data(), clipCopyLength);
+        clipPathBuffer[clipCopyLength] = '\0';
+
+        bool changed = false;
+        bool started = false;
+        bool finished = false;
+        changed |= ImGui::InputText("Clip Path", clipPathBuffer.data(), clipPathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
+        TrackItemEdit(started, finished);
+        audioSource.clipPath = clipPathBuffer.data();
+        changed |= ImGui::DragFloat("Audio Volume", &audioSource.volume, 0.01f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        TrackItemEdit(started, finished);
+        changed |= ImGui::Checkbox("Loop", &audioSource.loop);
+        TrackItemEdit(started, finished);
+        changed |= ImGui::Checkbox("Play On Awake", &audioSource.playOnAwake);
+        TrackItemEdit(started, finished);
+        changed |= ImGui::Checkbox("Enabled", &audioSource.enabled);
+        TrackItemEdit(started, finished);
+        changed |= ImGui::Checkbox("Spatialized", &audioSource.spatialized);
+        TrackItemEdit(started, finished);
+        if (audioSource.spatialized)
+        {
+            changed |= ImGui::Checkbox("Relative To Listener", &audioSource.relativeToListener);
+            TrackItemEdit(started, finished);
+            changed |= ImGui::DragFloat("Min Distance", &audioSource.minDistance, 0.05f, 0.001f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            TrackItemEdit(started, finished);
+            changed |= ImGui::DragFloat("Max Distance", &audioSource.maxDistance, 0.1f, 0.001f, 5000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            TrackItemEdit(started, finished);
+            changed |= ImGui::DragFloat("Attenuation", &audioSource.attenuation, 0.01f, 0.0f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            TrackItemEdit(started, finished);
+        }
+        BeginSceneMutation(m_context, started);
+        if (changed)
+        {
+            scene->SetEditorAudioSource(state.entity, audioSource);
+        }
+        if (finished)
+        {
+            m_context->CommitTransaction(true);
+        }
+        ImGui::EndDisabled();
     }
 
     if (state.hasPhysicsListener)

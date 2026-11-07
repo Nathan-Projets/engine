@@ -1,0 +1,206 @@
+{
+    "name": "audio_source_test_scene",
+    "version": "1.0",
+    "entities": [
+        {
+            "name": "Ground",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, -1.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [10.0, 0.2, 10.0]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/cube/cube.obj",
+                    "material": "materials/lit_pavement.json",
+                    "loadTextures": true
+                }
+            ]
+        },
+        {
+            "name": "LoopingBeacon",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [-3.5, 0.75, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.6, 0.6, 0.6]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/unlit_light.json",
+                    "queue": "unlit",
+                    "loadTextures": true
+                },
+                {
+                    "type": "AudioSource",
+                    "clip": "assets/audio/runtime_loop.wav",
+                    "volume": 0.22,
+                    "loop": true,
+                    "playOnAwake": true,
+                    "enabled": true,
+                    "spatialized": true,
+                    "relativeToListener": false,
+                    "minDistance": 2.0,
+                    "maxDistance": 22.0,
+                    "attenuation": 0.28
+                }
+            ]
+        },
+        {
+            "name": "StartupOneShot",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [3.5, 1.0, -1.5],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.75, 0.75, 0.75]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/cube/cube.obj",
+                    "material": "materials/lit_cube.json",
+                    "loadTextures": true
+                },
+                {
+                    "type": "AudioSource",
+                    "clip": "assets/audio/goal_open.wav",
+                    "volume": 0.9,
+                    "loop": false,
+                    "playOnAwake": true,
+                    "enabled": true,
+                    "spatialized": false,
+                    "relativeToListener": false,
+                    "minDistance": 1.0,
+                    "maxDistance": 15.0,
+                    "attenuation": 1.0
+                }
+            ]
+        },
+        {
+            "name": "ReloadOneShot",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 0.6, -4.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.5, 0.5, 0.5]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/lit_cube.json",
+                    "loadTextures": true
+                },
+                {
+                    "type": "AudioSource",
+                    "clip": "assets/audio/goal_close.wav",
+                    "volume": 0.75,
+                    "loop": false,
+                    "playOnAwake": true,
+                    "enabled": true,
+                    "spatialized": true,
+                    "relativeToListener": false,
+                    "minDistance": 1.5,
+                    "maxDistance": 18.0,
+                    "attenuation": 0.45
+                }
+            ]
+        },
+        {
+            "name": "SunLight",
+            "components": [
+                {
+                    "type": "Light",
+                    "lightType": "directional",
+                    "direction": [0.3, -1.0, -0.5],
+                    "color": [1.0, 0.95, 0.88],
+                    "intensity": 0.45,
+                    "ambient": [0.03, 0.03, 0.04],
+                    "diffuse": [0.45, 0.45, 0.45],
+                    "specular": [0.25, 0.25, 0.25],
+                    "castShadows": true
+                }
+            ]
+        },
+        {
+            "name": "FillLight",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [2.5, 2.0, 2.5],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [0.2, 0.2, 0.2]
+                },
+                {
+                    "type": "Render",
+                    "model": "meshes/sphere/sphere.glb",
+                    "material": "materials/unlit_light.json",
+                    "queue": "unlit",
+                    "loadTextures": true
+                },
+                {
+                    "type": "Light",
+                    "lightType": "point",
+                    "color": [0.6, 0.75, 1.0],
+                    "intensity": 2.0,
+                    "attenuation": {
+                        "constant": 1.0,
+                        "linear": 0.14,
+                        "quadratic": 0.07
+                    },
+                    "ambient": [0.03, 0.03, 0.04],
+                    "diffuse": [0.55, 0.65, 0.95],
+                    "specular": [0.55, 0.65, 0.95]
+                }
+            ]
+        },
+        {
+            "name": "PrototypeCamera",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 2.0, 10.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Camera",
+                    "frustrum": [45.0, 1600.0, 900.0, 0.1, 250.0],
+                    "lookAt": [0.0, 0.8, 0.0],
+                    "upVector": [0.0, 1.0, 0.0]
+                },
+                {
+                    "type": "OrbitCameraController",
+                    "target": [0.0, 0.8, 0.0],
+                    "upVector": [0.0, 1.0, 0.0],
+                    "radius": 9.0,
+                    "yaw": 0.1,
+                    "pitch": 0.12,
+                    "yawSpeed": 3.0,
+                    "pitchSpeed": 3.0,
+                    "maxPitch": 1.2
+                }
+            ]
+        },
+        {
+            "name": "Skybox",
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": [0.0, 0.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0]
+                },
+                {
+                    "type": "Skybox",
+                    "material": "assets/materials/skybox.json",
+                    "intensity": 1.0
+                }
+            ]
+        }
+    ]
+}

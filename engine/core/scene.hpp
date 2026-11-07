@@ -163,6 +163,20 @@ struct EditorAnimationState
     bool transitionActive = false;
 };
 
+struct EditorAudioSourceState
+{
+    std::string clipPath;
+    float volume = 1.0f;
+    bool loop = false;
+    bool playOnAwake = true;
+    bool enabled = true;
+    bool spatialized = true;
+    bool relativeToListener = false;
+    float minDistance = 1.0f;
+    float maxDistance = 20.0f;
+    float attenuation = 1.0f;
+};
+
 struct EditorEntityInspectorState
 {
     bool valid = false;
@@ -174,6 +188,7 @@ struct EditorEntityInspectorState
     bool hasRigidbody = false;
     bool hasMeshRenderer = false;
     bool hasAnimation = false;
+    bool hasAudioSource = false;
     bool hasPhysicsListener = false;
     bool hasBoxCollider = false;
     bool hasSphereCollider = false;
@@ -184,6 +199,7 @@ struct EditorEntityInspectorState
     EditorRigidbodyState rigidbody;
     EditorMeshRendererState meshRenderer;
     EditorAnimationState animation;
+    EditorAudioSourceState audioSource;
     EditorBoxColliderState boxCollider;
     EditorSphereColliderState sphereCollider;
     EditorCapsuleColliderState capsuleCollider;
@@ -263,6 +279,12 @@ public:
     {
         (void)entity;
         (void)collider;
+        return false;
+    }
+    virtual bool SetEditorAudioSource(Entity entity, const EditorAudioSourceState &audioSource)
+    {
+        (void)entity;
+        (void)audioSource;
         return false;
     }
     virtual void SetEditorViewportSize(int width, int height)
