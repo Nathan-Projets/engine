@@ -1,13 +1,11 @@
 #include <print>
 
-#include <helpers/log.hpp>
-#include <core/application.hpp>
+#include <main_application.hpp>
 
 int main(int argc, char const *argv[])
 {
-    Application myapp;
-
-    myapp.Run();
+    MainApplication app;
+    app.Run();
 
     return EXIT_SUCCESS;
 }

@@ -22,6 +22,32 @@ struct Handle
         return id != 0;
     }
 
+    constexpr Handle operator++() noexcept
+    {
+        ++id;
+        return *this;
+    }
+
+    constexpr Handle operator++(int) noexcept
+    {
+        Handle result = *this;
+        ++id;
+        return result;
+    }
+
+    constexpr Handle operator--() noexcept
+    {
+        --id;
+        return *this;
+    }
+
+    constexpr Handle operator--(int) noexcept
+    {
+        Handle result = *this;
+        --id;
+        return result;
+    }
+
     constexpr bool IsValid() const noexcept
     {
         return id != 0;

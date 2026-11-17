@@ -2,6 +2,7 @@ add_library(
     Engine
 
     core/application.cpp
+    core/engine.cpp
     
     helpers/log.hpp
     

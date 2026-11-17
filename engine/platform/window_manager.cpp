@@ -6,8 +6,7 @@ WindowManager::WindowManager(IPlatformBackend &platform) : m_platform(platform),
 
 Window &WindowManager::CreateWindow(const WindowConfig &config)
 {
-    const Handle<Window> id = m_nextId;
-    m_nextId.id++;
+    const Handle<Window> id = m_nextId++;
 
     if (!m_platform.CreateWindow(id, config))
     {
@@ -26,9 +25,10 @@ Window &WindowManager::CreateWindow(const WindowConfig &config)
 void WindowManager::DestroyWindow(Handle<Window> id)
 {
     auto windowIt = m_windows.find(id);
-
     if (windowIt == m_windows.end())
+    {
         return;
+    }
 
     m_platform.DestroyWindow(id);
     m_windows.erase(windowIt);

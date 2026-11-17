@@ -1,29 +1,27 @@
 #pragma once
 
-#include <string>
 #include <memory>
 
-#include "platform/platform_backend.hpp"
-#include "platform/window_manager.hpp"
+class Engine;
 
 class Application
 {
 public:
     Application();
-    virtual ~Application();
+    virtual ~Application() = default;
 
-    virtual void Run();
-    virtual void Shutdown();
+    void Run();
+    bool IsRunning() const;
+    
+    virtual void OnInit() = 0;
+    virtual void OnUpdate(float deltaTime) = 0;
+    virtual void OnShutdown() = 0;
 
 protected:
-    virtual void init();
+    Engine &GetEngine();
 
-    std::unique_ptr<IPlatformBackend> m_platform;
-    std::unique_ptr<WindowManager> m_windowManager;
+    bool m_running = true;
 
-    // TODO: window
-    // TODO: renderer
-    // TODO: asset_manager
-    // TODO: input_manager
-    // TODO: scene_manager
+private:
+    std::unique_ptr<Engine> m_engine;
 };

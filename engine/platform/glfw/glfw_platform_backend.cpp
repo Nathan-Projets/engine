@@ -25,9 +25,10 @@ void GlfwPlatformBackend::PollEvents()
 bool GlfwPlatformBackend::ShouldClose(Handle<Window> id) const
 {
     auto windowIt = m_windows.find(id);
-
     if (windowIt == m_windows.end())
+    {
         return true;
+    }
 
     return glfwWindowShouldClose(windowIt->second);
 }

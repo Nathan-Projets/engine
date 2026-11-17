@@ -1,47 +1,22 @@
-#include "application.hpp"
+#include "core/application.hpp"
 
-#include "helpers/log.hpp"
-#include "platform/glfw/glfw_platform_backend.hpp"
+#include "core/engine.hpp"
 
-Application::Application()
-{
-    m_platform = std::make_unique<GlfwPlatformBackend>();
-    m_windowManager = std::make_unique<WindowManager>(*m_platform);
-}
-
-Application::~Application()
+Application::Application() : m_engine(std::make_unique<Engine>())
 {
 }
-
-static Window *testWindow = nullptr;
 
 void Application::Run()
 {
-    init();
-
-    Window &testWindow = m_windowManager->CreateWindow({.title = "Test", .width = 400, .height = 400});
-
-    while (true)
-    {
-        if (testWindow.ShouldClose())
-        {
-            break;
-        }
-    }
+    m_engine->Run(*this);
 }
 
-void Application::Shutdown()
+bool Application::IsRunning() const
 {
-    m_windowManager.reset();
-    m_platform->Shutdown();
+    return m_running;
 }
 
-void Application::init()
+Engine &Application::GetEngine()
 {
-    if (!m_platform->Init())
-    {
-        throw std::runtime_error("Platform initialization failed");
-    }
-
-    DEBUG("Application initialized");
+    return *m_engine;
 }
