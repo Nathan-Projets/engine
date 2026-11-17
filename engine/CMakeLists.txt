@@ -1,11 +1,17 @@
 add_library(
     Engine
+
+    core/application.cpp
+    
+    helpers/log.hpp
     
     input/input_manager.cpp
     input/keyboard_state.cpp
     input/mouse_state.cpp
     
-    helpers/log.hpp
+    platform/window_manager.cpp
+    platform/window.cpp
+    platform/glfw/glfw_platform_backend.cpp
 )
 
 target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
