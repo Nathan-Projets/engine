@@ -2,6 +2,10 @@
 
 #include <unordered_map>
 
+#ifndef GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_NONE
+#endif
+
 #include <GLFW/glfw3.h>
 
 #include "platform/platform_backend.hpp"
@@ -13,6 +17,7 @@ public:
     void Shutdown() override;
 
     void PollEvents() override;
+    void SwapBuffers() override;
     bool ShouldClose(Handle<Window> id) const override;
 
     bool CreateWindow(Handle<Window> id, const WindowConfig &config) override;

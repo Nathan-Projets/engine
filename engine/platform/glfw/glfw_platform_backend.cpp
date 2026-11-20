@@ -13,13 +13,21 @@ void GlfwPlatformBackend::Shutdown()
     }
 
     m_windows.clear();
-
     glfwTerminate();
 }
 
 void GlfwPlatformBackend::PollEvents()
 {
     glfwPollEvents();
+}
+
+void GlfwPlatformBackend::SwapBuffers()
+{
+    for (const auto &[id, window] : m_windows)
+    {
+        glfwMakeContextCurrent(window);
+        glfwSwapBuffers(window);
+    }
 }
 
 bool GlfwPlatformBackend::ShouldClose(Handle<Window> id) const
@@ -48,6 +56,8 @@ bool GlfwPlatformBackend::CreateWindow(Handle<Window> id, const WindowConfig &co
     {
         return false;
     }
+    
+    glfwMakeContextCurrent(window); // TODO: for now only one window so no problem
 
     m_windows.emplace(id, window);
 
@@ -57,7 +67,6 @@ bool GlfwPlatformBackend::CreateWindow(Handle<Window> id, const WindowConfig &co
 void GlfwPlatformBackend::DestroyWindow(Handle<Window> id)
 {
     auto windowIt = m_windows.find(id);
-
     if (windowIt == m_windows.end())
         return;
 

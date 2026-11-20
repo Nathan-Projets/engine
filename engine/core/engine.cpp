@@ -5,10 +5,12 @@
 #include "core/application.hpp"
 #include "helpers/log.hpp"
 #include "platform/glfw/glfw_platform_backend.hpp"
+#include "renderer/gl/gl_renderer_backend.hpp"
 
 Engine::Engine()
 {
     m_platform = std::make_unique<GlfwPlatformBackend>();
+    m_renderer = std::make_unique<GlRendererBackend>(*m_platform);
     m_windowManager = std::make_unique<WindowManager>(*m_platform);
     m_initialized = false;
 }
@@ -19,10 +21,12 @@ Engine::~Engine()
 }
 
 void Engine::Run(Application &application)
-{
+{ 
     Init();
 
     application.OnInit();
+
+    m_renderer->Init();
 
     auto previousTime = std::chrono::steady_clock::now();
 
@@ -35,6 +39,9 @@ void Engine::Run(Application &application)
         previousTime = currentTime;
 
         Update(application, deltaTime);
+
+        m_renderer->Clear(1, 1, 0, 1);
+        m_platform->SwapBuffers();
 
         m_running = application.IsRunning();
     }
@@ -55,6 +62,8 @@ void Engine::Init()
     {
         throw std::runtime_error("Platform initialization failed");
     }
+
+    m_initialized = true;
 }
 
 void Engine::Update(Application &application, float deltaTime)
@@ -66,8 +75,12 @@ void Engine::Update(Application &application, float deltaTime)
 
 void Engine::Shutdown()
 {
+    if (!m_initialized)
+        return;
+
     m_windowManager.reset();
     m_platform->Shutdown();
+    m_initialized = false;
 }
 
 void Engine::PollEvents()

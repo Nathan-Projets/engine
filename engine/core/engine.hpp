@@ -4,6 +4,7 @@
 
 #include "platform/platform_backend.hpp"
 #include "platform/window_manager.hpp"
+#include "renderer/renderer_backend.hpp"
 
 class Application;
 
@@ -24,6 +25,7 @@ private:
     void PollEvents();
 
 private:
+    std::unique_ptr<IRendererBackend> m_renderer;
     std::unique_ptr<IPlatformBackend> m_platform;
     std::unique_ptr<WindowManager> m_windowManager;
 

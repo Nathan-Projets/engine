@@ -6,13 +6,14 @@ add_library(
     
     helpers/log.hpp
     
-    input/input_manager.cpp
-    input/keyboard_state.cpp
-    input/mouse_state.cpp
+    input/glfw/glfw_input_backend.cpp
     
     platform/window_manager.cpp
     platform/window.cpp
     platform/glfw/glfw_platform_backend.cpp
+
+    renderer/renderer_backend.cpp
+    renderer/gl/gl_renderer_backend.cpp
 )
 
 target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
