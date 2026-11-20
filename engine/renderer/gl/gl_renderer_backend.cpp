@@ -13,8 +13,7 @@ void GlRendererBackend::Init()
     }
 }
 
-void GlRendererBackend::Clear(int r, int g, int b, int a)
+void GlRendererBackend::Clear()
 {
-    glClearColor(r, g, b, a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }

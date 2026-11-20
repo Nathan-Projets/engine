@@ -14,5 +14,5 @@ public:
     ~GlRendererBackend() override = default;
 
     void Init() override;
-    void Clear(int r, int g, int b, int a = 1) override;
+    void Clear() override;
 };

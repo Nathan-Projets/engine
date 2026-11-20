@@ -40,7 +40,7 @@ void Engine::Run(Application &application)
 
         Update(application, deltaTime);
 
-        m_renderer->Clear(1, 1, 0, 1);
+        m_renderer->Clear();
         m_platform->SwapBuffers();
 
         m_running = application.IsRunning();

@@ -12,6 +12,7 @@ add_library(
     platform/window.cpp
     platform/glfw/glfw_platform_backend.cpp
 
+    renderer/renderer.cpp
     renderer/renderer_backend.cpp
     renderer/gl/gl_renderer_backend.cpp
 )
