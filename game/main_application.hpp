@@ -16,5 +16,5 @@ public:
 
 private:
     Window *m_window = nullptr;
-    Window *m_window_2 = nullptr;
+    // Window *m_window_2 = nullptr;
 };

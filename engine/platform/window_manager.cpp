@@ -33,3 +33,9 @@ void WindowManager::DestroyWindow(Handle<Window> id)
     m_platform.DestroyWindow(id);
     m_windows.erase(windowIt);
 }
+
+void WindowManager::Shutdown()
+{
+    m_windows.clear();
+    m_nextId.id = 1;
+}

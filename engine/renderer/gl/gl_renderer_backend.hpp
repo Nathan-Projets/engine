@@ -13,6 +13,6 @@ public:
     explicit GlRendererBackend(IPlatformBackend &platform);
     ~GlRendererBackend() override = default;
 
-    void Init() override;
+    bool Init() override;
     void Clear() override;
 };

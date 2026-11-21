@@ -16,6 +16,7 @@ public:
 
     Window &CreateWindow(const WindowConfig &config);
     void DestroyWindow(Handle<Window> id);
+    void Shutdown();
 
 private:
     IPlatformBackend &m_platform;

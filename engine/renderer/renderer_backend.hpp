@@ -8,7 +8,7 @@ public:
     IRendererBackend(IPlatformBackend &platform);
     virtual ~IRendererBackend() = default;
 
-    virtual void Init() = 0;
+    virtual bool Init() = 0;
     virtual void Clear() = 0;
 
 protected:

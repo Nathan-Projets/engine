@@ -4,7 +4,7 @@
 
 #include "platform/platform_backend.hpp"
 #include "platform/window_manager.hpp"
-#include "renderer/renderer_backend.hpp"
+#include "renderer/renderer.hpp"
 
 class Application;
 
@@ -19,14 +19,14 @@ public:
     WindowManager &GetWindowManager();
 
 private:
-    void Init();
+    void Init(Application &application);
     void Update(Application &application, float deltaTime);
     void Shutdown();
     void PollEvents();
 
 private:
-    std::unique_ptr<IRendererBackend> m_renderer;
     std::unique_ptr<IPlatformBackend> m_platform;
+    std::unique_ptr<Renderer> m_renderer;
     std::unique_ptr<WindowManager> m_windowManager;
 
     bool m_initialized;

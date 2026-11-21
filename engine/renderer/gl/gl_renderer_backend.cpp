@@ -4,13 +4,15 @@ GlRendererBackend::GlRendererBackend(IPlatformBackend &platform) : IRendererBack
 {
 }
 
-void GlRendererBackend::Init()
+bool GlRendererBackend::Init()
 {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))  // I would like  the renderer to not know any of this but lazy to think of something
     {
         ERROR("GLAD not initialized.");
-        return;
+        return false;
     }
+
+    return true;
 }
 
 void GlRendererBackend::Clear()
